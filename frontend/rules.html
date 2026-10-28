@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="th" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>กฎและข้อปฏิบัติ | WAVEVY COUNCIL</title>
+  <link rel="icon" href="/img/favicon.png">
+  <script src="/js/theme.js"></script>
+  <link rel="stylesheet" href="/css/output.css">
+  <script src="/js/config.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/pages/rules.js"></script>
+  <script defer src="/js/layout.js"></script>
+  <script defer src="/js/vendor/alpine.min.js"></script>
+</head>
+<body>
+  <div id="site-header"></div>
+
+  <main class="container-app py-8" x-data="rulesPage()">
+    <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+      <div>
+        <h1 class="section-title">กฎและข้อปฏิบัติ</h1>
+        <p class="mt-1 text-sm text-muted">ระเบียบการติดต่อสภาและการดำเนินการของแก๊ง / ครอบครัว</p>
+      </div>
+      <input type="search" x-model.debounce.200ms="q" placeholder="ค้นหาในกฎ เช่น หน้ากาก, อาวุธ, Blacklist"
+             class="input hidden lg:block lg:w-96" aria-label="ค้นหาในกฎ">
+    </div>
+
+    <p x-show="loading" class="mt-12 text-center text-muted">กำลังโหลด...</p>
+    <p x-show="error" x-text="error" class="penalty-box mt-12 text-center"></p>
+
+    <div class="mt-4 flex flex-col gap-4 lg:mt-6 lg:grid lg:gap-6 lg:grid-cols-[16rem_minmax(0,1fr)] xl:grid-cols-[18rem_minmax(0,1fr)] 2xl:grid-cols-[20rem_minmax(0,1fr)]" x-show="!loading && !error" x-cloak>
+      <!-- สารบัญ -->
+      <aside id="rules-bar"
+             class="sticky top-[var(--header-h,0px)] z-20 -mx-4 border-b border-line bg-[var(--header-bg)] px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6 sm:py-2.5 lg:top-20 lg:z-auto lg:mx-0 lg:self-start lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none"
+             @click.outside="tocOpen = false" @keydown.escape.window="tocOpen = false">
+        <!-- แท็บเล็ต/มือถือ: แถบค้นหา + หมวดที่เลือก ตรึงติดใต้เมนูตอนเลื่อน -->
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center lg:block">
+          <input type="search" x-model.debounce.200ms="q" placeholder="ค้นหาในกฎ เช่น หน้ากาก, อาวุธ"
+                 class="input py-1.5 text-sm sm:flex-1 lg:hidden" aria-label="ค้นหาในกฎ">
+
+          <button type="button" class="toc-toggle sm:flex-1 lg:hidden" @click="tocOpen = !tocOpen" :aria-expanded="tocOpen">
+            <span class="flex min-w-0 items-baseline gap-2">
+              <span class="text-xs text-muted">หมวด</span>
+              <span class="max-w-[55%] shrink-0 truncate font-semibold" x-text="searching ? 'ผลการค้นหา' : (currentSection ? currentSection.label : '')"></span>
+              <span x-show="!searching && activeCatTitle" class="min-w-0 truncate text-sm text-accent" x-text="'› ' + activeCatTitle"></span>
+            </span>
+            <span class="text-muted" x-text="tocOpen ? '▲' : '▼'"></span>
+          </button>
+        </div>
+
+        <div class="toc" :class="tocOpen ? 'block' : 'hidden lg:block'">
+          <div class="toc-head">
+            <span>สารบัญกฎ</span>
+            <button type="button" class="text-xs font-normal text-muted hover:text-accent" @click="toggleAll()"
+                    x-text="allOpen ? 'ย่อทั้งหมด' : 'ขยายทั้งหมด'"></button>
+          </div>
+
+          <nav id="toc-nav" class="toc-nav lg:max-h-[calc(100vh-8.5rem)] lg:overflow-y-auto lg:pr-1" aria-label="สารบัญกฎ">
+            <template x-for="g in groups" :key="g.label">
+              <div class="toc-group" :data-active="hasCurrent(g)">
+                <button type="button" class="toc-group-title" @click="toggleGroup(g)" :aria-expanded="isOpen(g)">
+                  <span class="toc-chevron" aria-hidden="true">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+                  </span>
+                  <span class="min-w-0 flex-1 truncate" x-text="g.label"></span>
+                  <span x-show="!isOpen(g) && hasCurrent(g)" class="toc-dot" title="หมวดที่กำลังอ่านอยู่ในกลุ่มนี้"></span>
+                  <span class="toc-pill" :title="g.items.length + ' หมวด'" x-text="g.items.length"></span>
+                </button>
+                <div class="toc-items" x-show="isOpen(g)" x-transition.opacity.duration.150ms>
+                <template x-for="s in g.items" :key="s.key">
+                  <div>
+                    <button type="button" class="toc-item"
+                            :aria-current="!searching && s.key === current"
+                            :class="searching && matchCount(s) === 0 ? 'opacity-40' : ''"
+                            @click="choose(s.key)">
+                      <span class="toc-no" x-text="pad(s.no)"></span>
+                      <span class="toc-label" x-text="s.label"></span>
+                      <span class="toc-count" :class="searching && matchCount(s) > 0 ? 'toc-count-hit' : ''"
+                            x-text="searching ? matchCount(s) : count(s)"></span>
+                    </button>
+
+                    <!-- หมวดย่อยของหมวดที่กำลังอ่าน: ต้นไม้มีเส้นนำ เน้นหมวดย่อยที่อ่านอยู่ -->
+                    <template x-if="!searching && s.key === current && s.cats.length >= 2">
+                      <ul class="toc-subs" aria-label="หมวดย่อย">
+                        <template x-for="k in s.cats" :key="k.id">
+                          <li>
+                            <button type="button" class="toc-sub" :data-cat="k.anchor"
+                                    :aria-current="activeCat === k.anchor ? 'location' : null"
+                                    @click="jumpSub(k)">
+                              <span class="toc-sub-no" x-text="k.cat"></span>
+                              <span class="toc-sub-label" x-text="k.title"></span>
+                              <span class="toc-sub-count" x-show="k.count" x-text="k.count"></span>
+                            </button>
+                          </li>
+                        </template>
+                      </ul>
+                    </template>
+                  </div>
+                </template>
+                </div>
+              </div>
+            </template>
+          </nav>
+
+          <p class="toc-foot mt-5 border-t border-line px-1 pt-4 text-[11px] tracking-[0.2em] text-muted">
+            WAVEVY CITY<br>COUNCIL RULEBOOK
+          </p>
+        </div>
+      </aside>
+
+      <!-- แผงเนื้อหา -->
+      <div id="rules-panel" class="min-w-0 scroll-mt-20 space-y-6">
+        <p x-show="chapters.length === 0" class="panel p-8 text-center text-muted">ไม่พบกฎที่ตรงกับคำค้น</p>
+
+        <template x-for="c in chapters" :key="c.key">
+          <section class="panel">
+            <header class="panel-head px-4 py-5 sm:px-8 sm:py-6">
+              <p class="eyebrow">
+                <span x-text="'CHAPTER ' + pad(c.no)"></span>
+                <span class="font-normal normal-case tracking-normal text-muted" x-text="'· ' + c.group"></span>
+              </p>
+              <h2 class="type-chapter mt-1" x-text="c.label"></h2>
+              <div class="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-xs text-muted">
+                <span>
+                  <span x-text="count(c) + ' รายการ'"></span>
+                  <template x-if="c.source_checked_at">
+                    <span> · ข้อมูลต้นฉบับล่าสุด <time :datetime="c.source_checked_at" x-text="thaiDate(c.source_checked_at)"></time></span>
+                  </template>
+                </span>
+                <div class="flex items-center gap-4">
+                  <div class="textsize" role="group" aria-label="ขนาดตัวอักษร">
+                    <button type="button" class="textsize-btn" @click="setScale(scaleIdx - 1)" :disabled="scaleIdx === 0" aria-label="ลดขนาดตัวอักษร">ก<small>−</small></button>
+                    <button type="button" class="textsize-val" @click="setScale(1)" x-text="scaleLabel" title="กลับเป็นขนาดปกติ"></button>
+                    <button type="button" class="textsize-btn" @click="setScale(scaleIdx + 1)" :disabled="scaleIdx === scaleSteps.length - 1" aria-label="เพิ่มขนาดตัวอักษร">ก<small>+</small></button>
+                  </div>
+                  <a :href="c.source_url" target="_blank" rel="noopener" class="border-b border-accent pb-0.5 text-accent hover:opacity-80">อ่านต้นฉบับ ↗</a>
+                </div>
+              </div>
+            </header>
+
+            <div class="space-y-3 p-3 sm:p-6">
+              <template x-for="r in c.rules" :key="r.id">
+                <div>
+                  <!-- ข้อกฎ -->
+                  <template x-if="r.kind === 'rule'">
+                    <article class="card p-3.5 sm:p-5">
+                      <div class="flex flex-col gap-2 sm:flex-row sm:gap-4">
+                        <span class="rule-no" x-text="'ข้อ ' + r.n"></span>
+                        <p class="type-rule min-w-0 whitespace-pre-line break-words" x-html="fmt(r.body)"></p>
+                      </div>
+                      <div class="mt-3 space-y-2 sm:pl-[4.25rem]">
+                        <template x-if="r.note">
+                          <p class="note-box type-meta"><b x-text="r.note_label + ' :'"></b> <span class="whitespace-pre-line" x-html="fmt(r.note)"></span></p>
+                        </template>
+                        <template x-if="r.penalty">
+                          <p class="penalty-box type-meta"><b>โทษ :</b> <span class="whitespace-pre-line" x-html="fmt(r.penalty)"></span></p>
+                        </template>
+                      </div>
+                    </article>
+                  </template>
+
+                  <!-- รายการราคา (ค่าบริการ) -->
+                  <template x-if="r.kind === 'price'">
+                    <div class="card px-4 py-3 sm:px-5">
+                      <div class="flex items-baseline justify-between gap-4">
+                        <p class="type-rule" x-text="r.title"></p>
+                        <p class="amt shrink-0 text-accent" x-text="r.body"></p>
+                      </div>
+                      <template x-if="r.note">
+                        <p class="note-box type-meta mt-2"><b x-text="r.note_label + ' :'"></b> <span x-html="fmt(r.note)"></span></p>
+                      </template>
+                    </div>
+                  </template>
+
+                  <!-- ย่อหน้า -->
+                  <template x-if="r.kind === 'text'">
+                    <p class="type-rule whitespace-pre-line px-1 text-muted" x-html="fmt(r.body)"></p>
+                  </template>
+
+                  <!-- หมวดย่อย: แถบหัวข้อเด่น เลขข้อด้านล่างนับใหม่จาก 1 -->
+                  <template x-if="r.kind === 'heading'">
+                    <div :id="r.anchor" class="subcat" :class="r.cat === 1 ? '' : 'subcat-next'">
+                      <div class="min-w-0">
+                        <p class="subcat-eyebrow" x-text="'หมวดย่อย ' + pad(r.cat) + (c.cats.length > 1 ? ' / ' + pad(c.cats.length) : '')"></p>
+                        <h3 class="subcat-title" x-text="r.title"></h3>
+                      </div>
+                      <span x-show="r.count" class="subcat-count" x-text="r.count + ' ข้อ'"></span>
+                    </div>
+                  </template>
+
+                  <!-- กล่องเน้น -->
+                  <template x-if="r.kind === 'highlight'">
+                    <div class="callout">
+                      <p class="type-sub text-accent" x-text="r.title"></p>
+                      <p class="type-rule mt-1 whitespace-pre-line" x-html="fmt(r.body)"></p>
+                    </div>
+                  </template>
+                </div>
+              </template>
+            </div>
+          </section>
+        </template>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

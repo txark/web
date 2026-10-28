@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="th" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WAVEVY COUNCIL</title>
+  <link rel="icon" href="/img/favicon.png">
+  <script src="/js/theme.js"></script>
+  <link rel="stylesheet" href="/css/output.css">
+  <script src="/js/config.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/pages/home.js"></script>
+  <script defer src="/js/layout.js"></script>
+  <script defer src="/js/vendor/alpine.min.js"></script>
+</head>
+<body>
+  <div id="site-header"></div>
+
+  <main class="container-app py-8" x-data="homePage()">
+    <section class="hero">
+      <svg class="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 1200 420" preserveAspectRatio="none" aria-hidden="true">
+        <defs>
+          <linearGradient id="swoosh" x1="0" x2="1" y1="0" y2="0">
+            <stop offset="0" stop-color="#7fd2ef" stop-opacity="0"/>
+            <stop offset=".55" stop-color="#7fd2ef" stop-opacity=".32"/>
+            <stop offset="1" stop-color="#7fd2ef" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <path d="M-60 430 C 300 310, 700 90, 1260 -10" stroke="url(#swoosh)" stroke-width="52" fill="none"/>
+        <path d="M220 440 C 620 340, 920 210, 1260 130" stroke="url(#swoosh)" stroke-width="2" fill="none"/>
+      </svg>
+
+      <div class="relative grid items-center gap-8 px-5 py-8 sm:px-10 sm:py-10 md:grid-cols-[1.3fr_1fr]">
+        <!-- กำลังตรวจว่าล็อกอินหรือไม่: จองที่ไว้ ไม่ให้หน้ากระตุก -->
+        <div x-show="loading" class="min-h-[22rem]"></div>
+
+        <!-- สภา (Council ขึ้นไป) -->
+        <div x-show="!loading && council()" x-cloak>
+          <p class="eyebrow-gold">WAVEVY CITY / COUNCIL</p>
+          <h1 class="font-display mt-4 text-2xl font-semibold sm:text-3xl">สวัสดี</h1>
+          <p class="font-display mt-1 break-words text-4xl font-bold tracking-wide text-[#7fd2ef] sm:text-5xl" x-text="displayName"></p>
+          <p class="mt-2 text-sm text-[#cfe2ec]" x-text="user ? user.role_label + ' · ' + user.role_name : ''"></p>
+          <div class="hero-rule mt-6 max-w-md"></div>
+
+          <p class="mt-6 text-[#cfe2ec]" x-text="!dutyRequired ? 'บทบาทของคุณไม่ต้องเข้าเวร ใช้งานเมนูสภาได้เลย' : (onDuty ? 'คุณกำลังอยู่ในเวร ใช้งานเมนูสภาได้ตามปกติ' : 'เข้าเวรก่อนเพื่อใช้งานเมนูสภา (ก่อนเข้าเวรเปิดได้เฉพาะหน้าแรกและกฎ)')"></p>
+
+          <div class="hero-notice mt-6 max-w-lg">
+            <p class="text-xs font-semibold text-[#e9c982]" x-text="dutyRequired ? 'สถานะเวร' : 'เวร'"></p>
+            <template x-if="dutyRequired && onDuty">
+              <div>
+                <p class="mt-0.5 text-3xl font-semibold tabular-nums tracking-wide" x-text="elapsed"></p>
+                <p class="mt-0.5 text-sm text-[#cfe2ec]" x-text="'เข้าเวรเมื่อ ' + startedAt + ' · นับตั้งแต่กดเข้าเวร'"></p>
+              </div>
+            </template>
+            <p x-show="dutyRequired && !onDuty" class="mt-0.5">ยังไม่ได้เข้าเวร</p>
+            <p x-show="!dutyRequired" class="mt-0.5">ไม่ต้องเข้าเวร</p>
+          </div>
+
+          <p x-show="err" x-text="err" class="mt-3 text-sm text-[#f2907c]"></p>
+
+          <div class="mt-7 flex flex-wrap gap-3" x-show="dutyRequired">
+            <button type="button" x-show="!onDuty" @click="toggleDuty()" :disabled="busy" class="rounded-xl bg-[#7fd2ef] px-6 py-2.5 font-semibold text-[#06222f] transition hover:brightness-110 disabled:opacity-60" x-text="busy ? 'กำลังดำเนินการ...' : 'เข้าเวร'"></button>
+            <button type="button" x-show="onDuty" @click="toggleDuty()" :disabled="busy" class="rounded-xl border border-[#f2907c]/60 px-6 py-2.5 font-semibold text-[#f6b7a8] transition hover:border-[#f2907c] disabled:opacity-60" x-text="busy ? 'กำลังดำเนินการ...' : 'ออกเวร'"></button>
+          </div>
+        </div>
+
+        <!-- ผู้เยี่ยมชม / แก๊ง / ครอบครัว -->
+        <div x-show="!loading && !council()" x-cloak>
+          <p class="eyebrow-gold">WAVEVY CITY / COUNCIL</p>
+          <h1 class="font-display mt-4 text-2xl font-semibold sm:text-3xl">ยินดีต้อนรับสู่</h1>
+          <p class="font-display mt-1 text-4xl font-bold tracking-wide text-[#7fd2ef] sm:text-5xl">WAVEVY COUNCIL</p>
+          <div class="hero-rule mt-6 max-w-md"></div>
+
+          <p class="mt-6 text-[#cfe2ec]">ก่อนติดต่อสภา ทำธุรกรรม หรือดำเนินสตอรี่<br>โปรดอ่านกฎและข้อปฏิบัติ เพื่อให้ทุกฝ่ายเข้าใจแนวทางเดียวกัน</p>
+
+          <div class="hero-notice mt-6 max-w-lg">
+            <p class="text-xs font-semibold text-[#e9c982]">ข้อปฏิบัติของสภา</p>
+            <p class="mt-0.5">คำตัดสินของสภาถือเป็นที่สุด</p>
+          </div>
+
+          <div class="mt-7 flex flex-wrap gap-3">
+            <a href="/rules.html" class="rounded-xl bg-[#7fd2ef] px-5 py-2.5 font-semibold text-[#06222f] transition hover:brightness-110">อ่านกฎและข้อปฏิบัติ</a>
+            <a href="/groups.html" class="rounded-xl border border-[#7fd2ef]/40 px-5 py-2.5 font-semibold text-[#e7f1f7] transition hover:border-[#7fd2ef]">ดูทำเนียบ</a>
+          </div>
+        </div>
+
+        <div class="flex justify-center">
+          <img src="/img/logo.png" alt="WAVEVY COUNCIL" class="h-52 w-auto drop-shadow-[0_10px_40px_rgba(127,210,239,0.25)] sm:h-64 lg:h-80">
+        </div>
+      </div>
+    </section>
+
+    <!-- ═════════ สภา: เมนูงาน ═════════ -->
+    <template x-if="!loading && council()">
+      <div>
+        <h2 class="section-title mt-12">เมนูสภา</h2>
+        <p class="mt-1 text-sm text-muted">งานของสภา เปิดได้เมื่อเข้าสู่ระบบ</p>
+
+        <section class="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <a href="/rules.html" class="card card-link p-6">
+            <p class="eyebrow">Rulebook</p>
+            <h3 class="mt-2 text-lg font-semibold">กฎ</h3>
+            <p class="mt-1 text-sm text-muted">กฎสภา บทลงโทษ มาตรการสูงสุด Blacklist และการคว่ำบาตร</p>
+          </a>
+
+          <template x-if="open">
+            <a href="/transactions.html" class="card card-link p-6">
+              <p class="eyebrow">Transactions</p>
+              <h3 class="mt-2 text-lg font-semibold">ธุรกรรม</h3>
+              <p class="mt-1 text-sm text-muted">จัดการแก๊ง/ครอบครัว · ลงชุดเพิ่ม/แก้ไขชุด · สตอรี่</p>
+            </a>
+          </template>
+          <template x-if="open">
+            <a href="/announcements.html" class="card card-link p-6">
+              <p class="eyebrow">Announcements</p>
+              <h3 class="mt-2 text-lg font-semibold">ประกาศเรียก</h3>
+              <p class="mt-1 text-sm text-muted">สร้างและเผยแพร่ประกาศของสภา</p>
+            </a>
+          </template>
+          <template x-if="open">
+            <a href="/tasks.html" class="card card-link p-6">
+              <p class="eyebrow">Pending</p>
+              <h3 class="mt-2 flex items-center gap-2 text-lg font-semibold">
+                แจ้งเตือนงานค้าง
+                <span x-show="alertCount > 0" x-text="alertCount" class="nav-badge"></span>
+              </h3>
+              <p class="mt-1 text-sm text-muted" x-text="alertCount > 0 ? 'มี ' + alertCount + ' รายการที่ต้องจัดการ' : 'ไม่มีงานค้างในขณะนี้'"></p>
+            </a>
+          </template>
+          <template x-if="open && admin()">
+            <a href="/users.html" class="card card-link p-6">
+              <p class="eyebrow">Administration</p>
+              <h3 class="mt-2 text-lg font-semibold">จัดการผู้ใช้</h3>
+              <p class="mt-1 text-sm text-muted">เพิ่ม Discord ID และกำหนดบทบาท</p>
+            </a>
+          </template>
+          <template x-if="open && admin()">
+            <a href="/duty-report.html" class="card card-link p-6">
+              <p class="eyebrow">Duty</p>
+              <h3 class="mt-2 text-lg font-semibold">สรุปชั่วโมงเวร</h3>
+              <p class="mt-1 text-sm text-muted">ชั่วโมงเวรของสภาแต่ละคน ออกก่อนเวลา และถูกบังคับออกเวร</p>
+            </a>
+          </template>
+          <template x-if="open && admin()">
+            <a href="/logs.html" class="card card-link p-6">
+              <p class="eyebrow">Audit</p>
+              <h3 class="mt-2 text-lg font-semibold">บันทึกกิจกรรม</h3>
+              <p class="mt-1 text-sm text-muted">ตรวจสอบการใช้งานและการแก้ไขข้อมูลในระบบ</p>
+            </a>
+          </template>
+
+          <!-- ยังไม่เข้าเวร: เมนูอื่นถูกล็อก -->
+          <template x-for="item in (open ? [] : ['ธุรกรรม', 'ประกาศเรียก', 'แจ้งเตือนงานค้าง'])" :key="item">
+            <div class="card nav-locked p-6" aria-disabled="true">
+              <p class="eyebrow">🔒 ล็อก</p>
+              <h3 class="mt-2 text-lg font-semibold" x-text="item"></h3>
+              <p class="mt-1 text-sm text-muted">ต้องเข้าเวรก่อนจึงจะเปิดได้</p>
+            </div>
+          </template>
+        </section>
+
+        <!-- งานค้างล่าสุด -->
+        <template x-if="open && topAlerts.length">
+          <div class="mt-10">
+            <div class="flex items-baseline justify-between gap-3">
+              <h2 class="section-title">งานค้างที่ควรทำก่อน</h2>
+              <a href="/tasks.html" class="text-sm text-accent hover:underline">ดูทั้งหมด →</a>
+            </div>
+            <ul class="mt-4 space-y-2">
+              <template x-for="a in topAlerts" :key="a.id">
+                <li>
+                  <a :href="a.link" class="card card-link flex items-start gap-3 px-4 py-3">
+                    <span :class="sev(a.severity).cls" class="mt-0.5 shrink-0" x-text="sev(a.severity).label"></span>
+                    <span class="min-w-0 flex-1">
+                      <span class="block font-medium" x-text="a.title"></span>
+                      <span class="block text-sm text-muted" x-text="a.detail"></span>
+                    </span>
+                    <span class="shrink-0 text-sm text-accent">จัดการ →</span>
+                  </a>
+                </li>
+              </template>
+            </ul>
+          </div>
+        </template>
+      </div>
+    </template>
+
+    <!-- ═════════ สาธารณะ ═════════ -->
+    <template x-if="!loading && !council()">
+      <div>
+        <h2 class="section-title mt-12">เมนูหลัก</h2>
+        <p class="mt-1 text-sm text-muted">ข้อมูลสาธารณะ ไม่ต้องเข้าสู่ระบบก็เปิดดูได้</p>
+
+        <section class="mt-5 grid gap-4 sm:grid-cols-2">
+          <a href="/rules.html" class="card card-link p-6">
+            <p class="eyebrow">Rulebook</p>
+            <h3 class="mt-2 text-lg font-semibold">กฎและข้อปฏิบัติ</h3>
+            <p class="mt-1 text-sm text-muted">กฎสภา บทลงโทษ มาตรการสูงสุด Blacklist และการคว่ำบาตร</p>
+          </a>
+          <a href="/groups.html" class="card card-link p-6">
+            <p class="eyebrow">Registry</p>
+            <h3 class="mt-2 text-lg font-semibold">ทำเนียบแก๊งและครอบครัว</h3>
+            <p class="mt-1 text-sm text-muted">รายชื่อแก๊งและครอบครัวที่อยู่ภายใต้สภา พร้อมสถานะปัจจุบัน</p>
+          </a>
+        </section>
+      </div>
+    </template>
+  </main>
+
+  <footer class="container-app pb-10 pt-4 text-xs tracking-[0.2em] text-muted">
+    WAVEVY CITY / COUNCIL
+  </footer>
+</body>
+</html>

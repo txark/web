@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="th" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>เข้าสู่ระบบ | WAVEVY COUNCIL</title>
+  <link rel="icon" href="/img/favicon.png">
+  <script src="/js/theme.js"></script>
+  <!-- หน้าเข้าสู่ระบบเป็นโทนมืดเสมอ (ภาพลักษณ์ของสภา) โดยไม่ไปเปลี่ยนค่าธีมที่ผู้ใช้เลือกไว้ -->
+  <script>document.documentElement.setAttribute('data-theme', 'dark');</script>
+  <link rel="stylesheet" href="/css/output.css">
+  <script src="/js/config.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script defer src="/js/vendor/alpine.min.js"></script>
+</head>
+<body>
+  <main class="login-wrap">
+    <!-- ฝั่งซ้าย: แบรนด์ -->
+    <section class="login-brand" aria-label="WAVEVY COUNCIL">
+      <img src="/img/logo.png" alt="WAVEVY COUNCIL" class="login-logo">
+      <div class="login-brand-text">
+        <p class="login-eyebrow">WAVEVY CITY / COUNCIL</p>
+        <h1 class="login-title">พื้นที่ทำงาน<br>ของสภาเมืองคลื่น</h1>
+        <p class="login-lead">ทะเบียนแก๊งและครอบครัว<br>ธุรกรรมและการปฏิบัติงานของสภา</p>
+        <p class="login-foot">WAVEVY COUNCIL · MEMBER ACCESS</p>
+      </div>
+    </section>
+
+    <!-- ฝั่งขวา: การ์ดเข้าสู่ระบบ -->
+    <section class="login-card" x-data="{ tab: 'login' }">
+      <a href="/rules.html" class="login-back">กลับหน้ากฎ</a>
+
+      <p class="login-eyebrow mt-5">COUNCIL ACCESS</p>
+      <h2 class="login-card-title">เข้าสู่ระบบสภา</h2>
+      <p class="login-sub" x-text="tab === 'login' ? 'เข้าด้วยบัญชี Discord ที่สภาเพิ่มสิทธิ์ให้แล้ว' : 'วิธีขอสิทธิ์เข้าใช้งานระบบ'">เข้าด้วยบัญชี Discord ที่สภาเพิ่มสิทธิ์ให้แล้ว</p>
+
+      <div class="login-tabs" role="tablist" aria-label="เลือกรายการ">
+        <button type="button" role="tab" class="login-tab" aria-selected="true" :aria-selected="tab === 'login'" @click="tab = 'login'">เข้าสู่ระบบ</button>
+        <button type="button" role="tab" class="login-tab" aria-selected="false" :aria-selected="tab === 'access'" @click="tab = 'access'">ขอสิทธิ์ใช้งาน</button>
+      </div>
+
+      <!-- แท็บ: เข้าสู่ระบบ -->
+      <div x-show="tab === 'login'">
+        <p id="login-error" class="penalty-box mt-5 hidden text-left text-sm"></p>
+
+        <div id="my-id" class="login-idbox hidden">
+          <p class="text-xs text-muted">Discord ID ของคุณ (ส่งให้สภาเพื่อเพิ่มสิทธิ์)</p>
+          <div class="mt-1.5 flex items-center justify-between gap-2">
+            <code id="my-id-value" class="break-all font-mono text-sm"></code>
+            <button id="copy-id" type="button" class="login-copy">คัดลอก</button>
+          </div>
+        </div>
+
+        <a id="discord-login" class="login-btn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19.27 5.33A17.3 17.3 0 0 0 15.1 4l-.2.4c1.5.36 2.2.9 2.9 1.5a14.3 14.3 0 0 0-11.6 0c.7-.6 1.6-1.2 3-1.5L9 4a17.3 17.3 0 0 0-4.27 1.33C2.1 9.3 1.4 13.1 1.75 16.8a17.5 17.5 0 0 0 5.3 2.7l1.1-1.8c-.6-.2-1.2-.5-1.7-.9l.4-.3a12.3 12.3 0 0 0 10.3 0l.4.3c-.5.4-1.1.7-1.7.9l1.1 1.8a17.4 17.4 0 0 0 5.3-2.7c.4-4.3-.7-8.1-3.0-11.5zM8.7 14.6c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2zm6.6 0c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2z"/></svg>
+          เข้าสู่ระบบด้วย Discord
+        </a>
+
+        <p class="login-note">
+          สำหรับผู้ที่สภาเพิ่มสิทธิ์ให้แล้วเท่านั้น<br>
+          ยังไม่มีสิทธิ์? <button type="button" class="login-link" @click="tab = 'access'">ดูวิธีขอสิทธิ์</button>
+        </p>
+      </div>
+
+      <!-- แท็บ: ขอสิทธิ์ใช้งาน -->
+      <div x-show="tab === 'access'" x-cloak>
+        <ol class="login-steps">
+          <li>
+            <span class="login-step-no">1</span>
+            <span>หา <b>Discord ID</b> ของคุณ: ใน Discord เปิด การตั้งค่า → ขั้นสูง → โหมดนักพัฒนา แล้วคลิกขวาที่ชื่อของคุณ → คัดลอก ID ผู้ใช้</span>
+          </li>
+          <li>
+            <span class="login-step-no">2</span>
+            <span>ส่ง Discord ID พร้อมชื่อตัวละครให้ <b>แอดมิน ประธาน หรือรองประธาน</b></span>
+          </li>
+          <li>
+            <span class="login-step-no">3</span>
+            <span>เมื่อสภาเพิ่ม Discord ID และกำหนดบทบาทให้แล้ว กลับมาที่แท็บ "เข้าสู่ระบบ" แล้วกดเข้าด้วย Discord</span>
+          </li>
+        </ol>
+        <p class="login-note">ลองเข้าสู่ระบบด้วย Discord หนึ่งครั้ง ระบบจะแสดง Discord ID ของคุณให้คัดลอกส่งให้สภาได้เลย</p>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    document.getElementById('discord-login').href = API.loginUrl();
+
+    const messages = {
+      discord_failed: 'เข้าสู่ระบบกับ Discord ไม่สำเร็จ กรุณาลองใหม่',
+      not_in_guild: 'บัญชีนี้ไม่ได้อยู่ในเซิร์ฟเวอร์ Discord ของสภา',
+      not_registered: 'Discord ID นี้ยังไม่ได้รับสิทธิ์เข้าระบบ กรุณาติดต่อแอดมิน ประธาน หรือรองประธานเพื่อเพิ่ม Discord ID และกำหนดบทบาทให้คุณ',
+      disabled: 'บัญชีนี้ถูกระงับสิทธิ์ กรุณาติดต่อสภา',
+    };
+    const q = new URLSearchParams(location.search);
+    const err = q.get('error');
+    if (err) {
+      const el = document.getElementById('login-error');
+      el.textContent = messages[err] || 'เกิดข้อผิดพลาด';
+      el.classList.remove('hidden');
+
+      // ยังไม่ได้ถูกเพิ่ม: แสดง Discord ID ของตัวเองให้คัดลอกไปส่งให้สภา
+      const id = q.get('id');
+      if (err === 'not_registered' && /^\d{17,20}$/.test(id || '')) {
+        const box = document.getElementById('my-id');
+        document.getElementById('my-id-value').textContent = id;
+        box.classList.remove('hidden');
+        document.getElementById('copy-id').addEventListener('click', async (ev) => {
+          try {
+            await navigator.clipboard.writeText(id);
+            ev.target.textContent = 'คัดลอกแล้ว ✓';
+          } catch (e) {
+            ev.target.textContent = 'คัดลอกไม่ได้ — เลือกข้อความแล้วคัดลอกเอง';
+          }
+        });
+      }
+    }
+  </script>
+</body>
+</html>

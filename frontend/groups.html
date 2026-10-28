@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="th" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ทำเนียบแก๊งและครอบครัว | WAVEVY COUNCIL</title>
+  <link rel="icon" href="/img/favicon.png">
+  <script src="/js/theme.js"></script>
+  <link rel="stylesheet" href="/css/output.css">
+  <script src="/js/config.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/pages/groups.js"></script>
+  <script defer src="/js/layout.js"></script>
+  <script defer src="/js/vendor/alpine.min.js"></script>
+</head>
+<body x-data="groupsPage()" @keydown.escape.window="closeDetail()">
+  <div id="site-header"></div>
+
+  <main class="container-app py-8">
+    <h1 class="section-title">ทำเนียบแก๊งและครอบครัว</h1>
+    <p class="mt-1 text-sm text-muted">รายชื่อที่อยู่ภายใต้การดูแลของสภา</p>
+
+    <!-- ตัวกรอง -->
+    <div class="mt-6 flex flex-col gap-3 md:flex-row md:items-center">
+      <input type="search" x-model.debounce.300ms="q" placeholder="ค้นหาชื่อแก๊ง/ครอบครัว" class="input md:w-72" aria-label="ค้นหาชื่อ">
+
+      <div class="flex flex-wrap gap-2">
+        <template x-for="t in types" :key="t.value">
+          <button type="button" class="chip" :aria-pressed="type === t.value" @click="type = t.value; reload()" x-text="t.label"></button>
+        </template>
+      </div>
+
+      <select x-model="status" @change="reload()" class="input md:ml-auto md:w-44" aria-label="กรองตามสถานะ">
+        <option value="">ทุกสถานะ</option>
+        <option value="normal">ปกติ</option>
+        <option value="blacklist">Blacklist</option>
+        <option value="sanction">คว่ำบาตร</option>
+      </select>
+    </div>
+
+    <p x-show="error" x-text="error" class="penalty-box mt-8 text-center"></p>
+    <p x-show="loading" class="mt-12 text-center text-muted">กำลังโหลด...</p>
+    <p x-show="!loading && !error && groups.length === 0" class="mt-12 text-center text-muted">ไม่พบแก๊งหรือครอบครัว</p>
+
+    <!-- รายการ -->
+    <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4" x-show="groups.length > 0">
+      <template x-for="g in groups" :key="g.id">
+        <button type="button" @click="open(g)" class="card card-link flex items-start gap-3 p-4 text-left">
+          <template x-if="g.logo_url">
+            <img :src="g.logo_url" alt="" class="h-12 w-12 shrink-0 rounded-xl object-cover">
+          </template>
+          <template x-if="!g.logo_url">
+            <div class="toc-no !h-12 !w-12 !rounded-xl !text-lg" x-text="g.name.charAt(0).toUpperCase()"></div>
+          </template>
+
+          <div class="min-w-0 flex-1">
+            <p class="truncate font-semibold" x-text="g.name"></p>
+            <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
+              <span class="badge badge-muted" x-text="g.type_label"></span>
+              <span :class="statusClass(g.status)" x-text="g.status_label"></span>
+              <span x-show="g.slots_locked" class="badge badge-muted">ล็อก Slot</span>
+            </div>
+            <p class="mt-2 truncate text-sm text-muted">หัวหน้า: <span class="text-fg" x-text="g.leader || '-'"></span></p>
+            <p class="text-sm text-muted">สมาชิก <span class="text-fg" x-text="g.members_count"></span> คน</p>
+          </div>
+        </button>
+      </template>
+    </div>
+
+    <!-- แบ่งหน้า -->
+    <div class="mt-8 flex items-center justify-center gap-3 text-sm" x-show="meta && meta.last_page > 1">
+      <button class="btn-outline disabled:opacity-40" :disabled="page <= 1" @click="go(page - 1)">ก่อนหน้า</button>
+      <span class="text-muted">หน้า <span x-text="page"></span> / <span x-text="meta ? meta.last_page : 1"></span></span>
+      <button class="btn-outline disabled:opacity-40" :disabled="!meta || page >= meta.last_page" @click="go(page + 1)">ถัดไป</button>
+    </div>
+  </main>
+
+  <!-- รายละเอียด -->
+  <div x-show="detail || detailLoading" x-cloak class="fixed inset-0 z-40 grid place-items-center p-4">
+    <div class="modal-overlay absolute inset-0" @click="closeDetail()"></div>
+    <div class="panel relative max-h-[85vh] w-full max-w-lg overflow-y-auto p-6 shadow-2xl" role="dialog" aria-modal="true">
+      <button type="button" class="absolute right-4 top-4 text-muted hover:text-fg" @click="closeDetail()" aria-label="ปิด">✕</button>
+
+      <p x-show="detailLoading" class="py-8 text-center text-muted">กำลังโหลด...</p>
+
+      <template x-if="detail">
+        <div>
+          <p class="eyebrow" x-text="detail.type_label"></p>
+          <h2 class="mt-1 pr-8 text-xl font-bold" x-text="detail.name"></h2>
+          <div class="mt-2 flex flex-wrap items-center gap-1.5">
+            <span :class="statusClass(detail.status)" x-text="detail.status_label"></span>
+            <span x-show="detail.slots_locked" class="badge badge-muted">ล็อก Slot</span>
+          </div>
+
+          <p x-show="detail.description" class="mt-4 whitespace-pre-line text-sm text-muted" x-text="detail.description"></p>
+
+          <dl class="mt-4 grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <dt class="text-muted">อยู่ภายใต้สภาตั้งแต่</dt>
+              <dd x-text="fmtDate(detail.registered_at)"></dd>
+            </div>
+            <div x-show="detail.status !== 'normal' && detail.status_since">
+              <dt class="text-muted">สถานะนี้ตั้งแต่</dt>
+              <dd x-text="fmtDate(detail.status_since)"></dd>
+            </div>
+          </dl>
+
+          <h3 class="eyebrow mt-6">สมาชิก (<span x-text="detail.members_count"></span>)</h3>
+          <ul class="card mt-2 divide-y divide-line">
+            <template x-for="m in detail.members" :key="m.character_name + m.position">
+              <li class="flex items-center justify-between px-3 py-2 text-sm">
+                <span x-text="m.character_name"></span>
+                <span class="text-xs text-muted" x-text="m.position_label"></span>
+              </li>
+            </template>
+            <li x-show="detail.members.length === 0" class="px-3 py-2 text-sm text-muted">ยังไม่มีรายชื่อสมาชิก</li>
+          </ul>
+        </div>
+      </template>
+    </div>
+  </div>
+</body>
+</html>

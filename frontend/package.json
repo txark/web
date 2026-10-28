@@ -1,0 +1,22 @@
+{
+  "name": "council-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "css": "tailwindcss -i css/input.css -o css/output.css",
+    "css:watch": "tailwindcss -i css/input.css -o css/output.css --watch",
+    "vendor": "node scripts/copy-vendor.js",
+    "build": "npm run vendor && npm run css -- --minify",
+    "serve": "serve -l 3000 ."
+  },
+  "devDependencies": {
+    "@fontsource/noto-sans-thai-looped": "^5.3.0",
+    "@fontsource/prompt": "^5.3.0",
+    "@tailwindcss/cli": "^4.3.3",
+    "serve": "^14.2.6",
+    "tailwindcss": "^4.3.3"
+  },
+  "dependencies": {
+    "alpinejs": "^3.17.5"
+  }
+}

@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="th" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>สรุปชั่วโมงเวร | WAVEVY COUNCIL</title>
+  <link rel="icon" href="/img/favicon.png">
+  <script src="/js/theme.js"></script>
+  <link rel="stylesheet" href="/css/output.css">
+  <script src="/js/config.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/pages/duty-report.js"></script>
+  <script defer src="/js/layout.js"></script>
+  <script defer src="/js/vendor/alpine.min.js"></script>
+</head>
+<body>
+  <div id="site-header"></div>
+
+  <main class="container-app py-8" x-data="dutyReportPage()">
+    <div x-show="!ready" class="py-24 text-center text-muted">กำลังตรวจสอบสิทธิ์...</div>
+
+    <div x-show="ready" x-cloak>
+      <div class="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 class="section-title">สรุปชั่วโมงเวร</h1>
+          <p class="mt-1 text-sm text-muted">ชั่วโมงเวรของสภาแต่ละคนในช่วงที่เลือก · นับตามเวลาไทย · เวรที่คร่อมวันนับเฉพาะส่วนที่อยู่ในช่วง</p>
+        </div>
+        <button type="button" class="btn-outline" @click="downloadCsv()" :disabled="!rows.length">ดาวน์โหลด CSV</button>
+      </div>
+
+      <!-- ช่วงเวลา -->
+      <div class="mt-6 flex flex-wrap gap-2">
+        <template x-for="p in presets" :key="p.key">
+          <button type="button" class="chip" :aria-pressed="preset === p.key" @click="setPreset(p.key)" x-text="p.label"></button>
+        </template>
+      </div>
+      <form x-show="preset === 'custom'" x-cloak class="mt-3 flex flex-wrap items-end gap-3" @submit.prevent="applyCustom()">
+        <div>
+          <label class="mb-1 block text-sm text-muted" for="r-from">ตั้งแต่</label>
+          <input id="r-from" type="date" x-model="from" class="input">
+        </div>
+        <div>
+          <label class="mb-1 block text-sm text-muted" for="r-to">ถึง</label>
+          <input id="r-to" type="date" x-model="to" class="input">
+        </div>
+        <button type="submit" class="btn-outline" :disabled="!from || !to">ดูสรุป</button>
+      </form>
+
+      <p x-show="error" x-text="error" class="penalty-box mt-5"></p>
+
+      <!-- ภาพรวม -->
+      <section x-show="meta" x-cloak class="mt-6">
+        <p class="text-sm text-muted">ช่วงวันที่ <span class="text-fg" x-text="rangeLabel()"></span></p>
+        <div class="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div class="card px-4 py-3">
+            <p class="text-xs text-muted">สภาในรายการ</p>
+            <p class="mt-1 text-xl font-semibold" x-text="meta ? meta.members + ' คน' : ''"></p>
+          </div>
+          <div class="card px-4 py-3">
+            <p class="text-xs text-muted">ชั่วโมงเวรรวม</p>
+            <p class="mt-1 text-xl font-semibold" x-text="meta ? hm(meta.total_seconds) : ''"></p>
+          </div>
+          <div class="card px-4 py-3">
+            <p class="text-xs text-muted">เฉลี่ยต่อคน</p>
+            <p class="mt-1 text-xl font-semibold" x-text="meta ? hm(meta.avg_seconds_per_member) : ''"></p>
+          </div>
+          <div class="card px-4 py-3">
+            <p class="text-xs text-muted">ไม่มีเวรเลย</p>
+            <p class="mt-1 text-xl font-semibold" :class="meta && meta.zero_members ? 'text-[var(--warn)]' : ''" x-text="meta ? meta.zero_members + ' คน' : ''"></p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ค้นหา/เรียง -->
+      <div class="mt-6 flex flex-col gap-3 md:flex-row md:items-center">
+        <input type="search" x-model.debounce.200ms="q" class="input md:w-72" placeholder="ค้นหาชื่อ" aria-label="ค้นหา">
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="text-sm text-muted">เรียงตาม</span>
+          <button type="button" class="chip" :aria-pressed="sort === 'hours'" @click="sort = 'hours'">ชั่วโมงมาก→น้อย</button>
+          <button type="button" class="chip" :aria-pressed="sort === 'shifts'" @click="sort = 'shifts'">จำนวนเวร</button>
+          <button type="button" class="chip" :aria-pressed="sort === 'name'" @click="sort = 'name'">ชื่อ</button>
+        </div>
+      </div>
+
+      <p x-show="loading" class="mt-10 text-center text-muted">กำลังโหลด...</p>
+      <p x-show="!loading && !error && shown.length === 0" class="mt-10 text-center text-muted">ไม่พบรายการ</p>
+
+      <!-- รายการ -->
+      <div class="duty-cols duty-head mt-5 hidden lg:grid" x-show="shown.length > 0" aria-hidden="true">
+        <span>#</span>
+        <span>ชื่อ</span>
+        <span>ชั่วโมงรวม</span>
+        <span>เทียบกับคนที่สูงสุด</span>
+        <span class="text-right">หมายเหตุ</span>
+        <span></span>
+      </div>
+
+      <ul class="mt-2 space-y-2.5" x-show="shown.length > 0">
+        <template x-for="r in shown" :key="r.user.id">
+          <li class="card overflow-hidden transition-colors hover:border-[var(--accent)]" :class="open === r.user.id ? 'border-[var(--accent)]' : ''">
+            <button type="button" class="block w-full px-4 py-3.5 text-left" @click="toggle(r)" :aria-expanded="open === r.user.id">
+              <div class="duty-cols">
+                <!-- อันดับ -->
+                <span class="duty-rank" :class="rank(r) && rank(r) <= 3 ? 'duty-rank-top' : ''" x-text="rank(r) || '–'" :title="rank(r) ? 'อันดับตามชั่วโมงรวม' : 'ยังไม่มีเวร'"></span>
+
+                <!-- ชื่อ -->
+                <div class="flex min-w-0 items-center gap-3">
+                  <img x-show="r.user.avatar" :src="r.user.avatar" alt="" class="h-10 w-10 shrink-0 rounded-full">
+                  <div x-show="!r.user.avatar" class="toc-no !h-10 !w-10 !rounded-full !text-sm" x-text="r.user.display_name.charAt(0).toUpperCase()"></div>
+                  <div class="min-w-0">
+                    <p class="flex min-w-0 items-center gap-2">
+                      <span class="truncate font-medium" x-text="r.user.display_name"></span>
+                      <span x-show="r.on_duty" class="badge badge-normal shrink-0">อยู่ในเวร</span>
+                      <span x-show="r.user.disabled" class="badge badge-muted shrink-0">ถูกระงับ</span>
+                    </p>
+                    <p class="text-xs text-muted" x-text="r.user.role_label"></p>
+                  </div>
+                </div>
+
+                <!-- ชั่วโมงรวม -->
+                <div class="duty-hours">
+                  <p class="text-lg font-semibold leading-tight tabular-nums" :class="r.total_seconds ? '' : 'text-muted'" x-text="hm(r.total_seconds)"></p>
+                  <p class="mt-0.5 text-xs text-muted"><span x-text="r.shifts"></span> เวร · เฉลี่ย <span x-text="hm(r.avg_seconds)"></span></p>
+                </div>
+
+                <!-- แถบเทียบกับคนที่ชั่วโมงสูงสุด -->
+                <div class="duty-bar" role="img" :aria-label="'สัดส่วนชั่วโมงเทียบคนสูงสุด ' + bar(r)">
+                  <div class="duty-bar-fill" :style="'width:' + bar(r)"></div>
+                </div>
+
+                <!-- ป้ายหมายเหตุ -->
+                <div class="duty-flags">
+                  <span x-show="r.short_count" class="badge badge-blacklist" :title="'ออกเวรก่อนครบ ' + (meta ? meta.short_shift_hours : 3) + ' ชั่วโมง'" x-text="'ออกก่อนเวลา ' + r.short_count"></span>
+                  <span x-show="r.forced_count" class="badge badge-sanction" title="ปิดเว็บ/เบราว์เซอร์/คอมโดยไม่ออกเวร" x-text="'บังคับออก ' + r.forced_count"></span>
+                  <span x-show="!r.short_count && !r.forced_count" class="text-xs text-muted">—</span>
+                </div>
+
+                <span class="duty-chevron" :class="open === r.user.id ? 'rotate-180' : ''" aria-hidden="true">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                </span>
+              </div>
+            </button>
+
+            <!-- รายละเอียดเวรของคนนี้ -->
+            <div x-show="open === r.user.id" x-cloak class="border-t border-line bg-[var(--panel-2)] px-4 py-3">
+              <p x-show="detailLoading" class="text-sm text-muted">กำลังโหลด...</p>
+              <p x-show="detailError" x-text="detailError" class="text-sm text-danger"></p>
+              <p x-show="!detailLoading && detail && detail.length === 0" class="text-sm text-muted">ไม่มีเวรในช่วงนี้</p>
+              <ul class="divide-y divide-[var(--line)]" x-show="detail && detail.length">
+                <template x-for="s in (open === r.user.id ? detail : [])" :key="s.id">
+                  <li class="grid gap-x-4 gap-y-1 py-2 text-sm md:grid-cols-[minmax(0,1.3fr)_7rem_9rem_minmax(0,1fr)] md:items-start">
+                    <span class="tabular-nums">
+                      <span x-text="dt(s.started_at)"></span> – <span x-text="s.ended_at ? dt(s.ended_at, new Date(s.ended_at).toDateString() !== new Date(s.started_at).toDateString()) : 'ปัจจุบัน'"></span>
+                    </span>
+                    <span class="font-medium tabular-nums" x-text="hms(s.seconds)"></span>
+                    <span><span :class="shiftStatus(s).cls" x-text="shiftStatus(s).label"></span></span>
+                    <span class="text-muted" x-text="s.note ? 'หมายเหตุ: ' + s.note : ''"></span>
+                  </li>
+                </template>
+              </ul>
+              <p x-show="detail && detail.some((s) => s.counted_seconds !== s.seconds)" class="mt-2 text-xs text-muted">เวรที่คร่อมวันเริ่มต้น/สิ้นสุด จะนับในสรุปเฉพาะส่วนที่อยู่ในช่วงที่เลือก</p>
+            </div>
+          </li>
+        </template>
+      </ul>
+    </div>
+  </main>
+</body>
+</html>

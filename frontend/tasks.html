@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="th" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>แจ้งเตือนงานค้าง | WAVEVY COUNCIL</title>
+  <link rel="icon" href="/img/favicon.png">
+  <script src="/js/theme.js"></script>
+  <link rel="stylesheet" href="/css/output.css">
+  <script src="/js/config.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/pages/tasks.js"></script>
+  <script defer src="/js/layout.js"></script>
+  <script defer src="/js/vendor/alpine.min.js"></script>
+</head>
+<body>
+  <div id="site-header"></div>
+
+  <main class="container-app py-8" x-data="tasksPage()">
+    <div x-show="!ready" class="py-24 text-center text-muted">กำลังตรวจสอบสิทธิ์...</div>
+
+    <div x-show="ready" x-cloak>
+      <div class="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 class="section-title">แจ้งเตือนงานค้าง</h1>
+          <p class="mt-1 text-sm text-muted">คำนวณจากข้อมูลจริงทุกครั้งที่เปิดหน้า — แก้ปัญหาแล้วรายการจะหายไปเอง</p>
+        </div>
+        <button type="button" class="btn-outline" @click="load()" :disabled="loading" x-text="loading ? 'กำลังโหลด...' : 'รีเฟรช'"></button>
+      </div>
+
+      <p x-show="error" x-text="error" class="penalty-box mt-5"></p>
+
+      <div x-show="!error && !loading && items.length === 0" class="panel mt-6 p-8 text-center">
+        <p class="type-sub">ไม่มีงานค้าง 🎉</p>
+        <p class="mt-1 text-sm text-muted">แก๊งและครอบครัวทุกกลุ่มมีหัวหน้าและครบขั้นต่ำแล้ว</p>
+      </div>
+
+      <!-- ตัวกรองตามความเร่งด่วน -->
+      <div class="mt-6 flex flex-wrap gap-2" x-show="items.length > 0">
+        <template x-for="f in filters" :key="f.value">
+          <button type="button" class="chip" :aria-pressed="filter === f.value" @click="filter = f.value">
+            <span x-text="f.label"></span>
+            <span class="ml-1 text-muted" x-text="countOf(f.value)"></span>
+          </button>
+        </template>
+      </div>
+
+      <ul class="mt-4 space-y-2" x-show="items.length > 0">
+        <template x-for="a in shown" :key="a.id">
+          <li>
+            <a :href="a.link" class="card card-link flex items-start gap-3 px-4 py-3">
+              <span :class="sev(a.severity).cls" class="mt-0.5 shrink-0" x-text="sev(a.severity).label"></span>
+              <span class="min-w-0 flex-1">
+                <span class="block font-medium" x-text="a.title"></span>
+                <span class="block text-sm text-muted" x-text="a.detail"></span>
+                <span class="mt-1 block text-xs text-muted" x-text="'ค้างตั้งแต่ ' + when(a.since)"></span>
+              </span>
+              <span class="shrink-0 text-sm text-accent">จัดการ →</span>
+            </a>
+          </li>
+        </template>
+      </ul>
+    </div>
+  </main>
+</body>
+</html>

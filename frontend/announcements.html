@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="th" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ประกาศ | WAVEVY COUNCIL</title>
+  <link rel="icon" href="/img/favicon.png">
+  <script src="/js/theme.js"></script>
+  <link rel="stylesheet" href="/css/output.css">
+  <script src="/js/config.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/pages/announcements.js"></script>
+  <script defer src="/js/layout.js"></script>
+  <script defer src="/js/vendor/alpine.min.js"></script>
+</head>
+<body>
+  <div id="site-header"></div>
+
+  <main class="container-app py-8" x-data="announcementsPage()">
+    <div x-show="!ready" class="py-24 text-center text-muted">กำลังโหลด...</div>
+
+    <div x-show="ready" x-cloak>
+      <div class="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 class="section-title">ประกาศเรียก</h1>
+          <p class="mt-1 text-sm text-muted">สร้างและจัดการประกาศของสภา · เห็นได้เฉพาะสภา ผู้เยี่ยมชมและแก๊ง/ครอบครัวไม่เห็น</p>
+        </div>
+        <button x-show="isCouncil" type="button" class="btn-outline" @click="showForm ? (showForm = false) : newForm()" x-text="showForm ? 'ยกเลิก' : '+ สร้างประกาศ'"></button>
+      </div>
+
+      <p x-show="error" x-text="error" class="penalty-box mt-5"></p>
+      <p x-show="msg" x-text="msg" class="note-box mt-5"></p>
+
+      <!-- ฟอร์ม (สภา) -->
+      <form x-show="isCouncil && showForm" x-cloak class="panel mt-5 p-4 sm:p-5" @submit.prevent="save(true)" novalidate>
+        <h2 class="type-sub" x-text="form.id ? 'แก้ไขประกาศ' : 'สร้างประกาศใหม่'"></h2>
+
+        <div class="mt-4 grid gap-4 md:grid-cols-[12rem_1fr]">
+          <div>
+            <label class="mb-1 block text-sm text-muted" for="a-type">ประเภท</label>
+            <select id="a-type" x-model="form.type" class="input">
+              <option value="general">ประกาศทั่วไป</option>
+              <option value="summon">ประกาศเรียก</option>
+              <option value="event">กิจกรรม</option>
+            </select>
+            <p x-show="formErrors.type" x-text="formErrors.type" class="mt-1 text-sm text-danger"></p>
+          </div>
+          <div>
+            <label class="mb-1 block text-sm text-muted" for="a-title">หัวข้อ</label>
+            <input id="a-title" x-model="form.title" maxlength="150" autocomplete="off" class="input" :aria-invalid="!!formErrors.title">
+            <p x-show="formErrors.title" x-text="formErrors.title" class="mt-1 text-sm text-danger"></p>
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <label class="mb-1 block text-sm text-muted" for="a-body">เนื้อหา</label>
+          <textarea id="a-body" x-model="form.body" rows="6" maxlength="5000" class="input" :aria-invalid="!!formErrors.body"></textarea>
+          <p x-show="formErrors.body" x-text="formErrors.body" class="mt-1 text-sm text-danger"></p>
+        </div>
+
+        <div class="mt-4 grid gap-4 md:grid-cols-2">
+          <div>
+            <label class="mb-1 block text-sm text-muted" for="a-group" x-text="form.type === 'summon' ? 'เรียกกลุ่ม (ถ้ามี)' : 'เกี่ยวกับกลุ่ม (ถ้ามี)'"></label>
+            <select id="a-group" x-model="form.group_id" class="input">
+              <option value="">— ไม่ระบุ —</option>
+              <template x-for="g in groups" :key="g.id">
+                <option :value="g.id" x-text="g.name + ' (' + g.type_label + ')'"></option>
+              </template>
+            </select>
+            <p x-show="formErrors.group_id" x-text="formErrors.group_id" class="mt-1 text-sm text-danger"></p>
+          </div>
+          <div>
+            <label class="mb-1 block text-sm text-muted" for="a-due" x-text="form.type === 'summon' ? 'นัดพบวันเวลา (ถ้ามี)' : 'กำหนดวันเวลา (ถ้ามี)'"></label>
+            <input id="a-due" type="datetime-local" x-model="form.due_at" class="input">
+            <p x-show="formErrors.due_at" x-text="formErrors.due_at" class="mt-1 text-sm text-danger"></p>
+          </div>
+        </div>
+
+        <p x-show="formErrors._" x-text="formErrors._" class="mt-3 text-sm text-danger"></p>
+        <div class="mt-5 flex flex-wrap gap-3">
+          <button type="submit" class="btn-outline" :disabled="saving || !form.title.trim() || !form.body.trim()" x-text="saving ? 'กำลังบันทึก...' : (form.id && form.is_published ? 'บันทึกการแก้ไข' : 'เผยแพร่')"></button>
+          <button type="button" class="btn-outline" :disabled="saving || !form.title.trim() || !form.body.trim()" @click="save(false)" x-text="form.id && !form.is_published ? 'บันทึกฉบับร่าง' : 'บันทึกเป็นฉบับร่าง'"></button>
+        </div>
+      </form>
+
+      <!-- ตัวกรอง -->
+      <div class="mt-6 flex flex-wrap gap-2">
+        <template x-for="t in types" :key="t.value">
+          <button type="button" class="chip" :aria-pressed="type === t.value" @click="type = t.value" x-text="t.label"></button>
+        </template>
+        <template x-if="isCouncil">
+          <span class="flex flex-wrap gap-2">
+            <span class="hidden w-px bg-[var(--line)] md:block"></span>
+            <template x-for="s in statuses" :key="s.value">
+              <button type="button" class="chip" :aria-pressed="status === s.value" @click="status = s.value" x-text="s.label"></button>
+            </template>
+          </span>
+        </template>
+      </div>
+
+      <p x-show="loading" class="mt-10 text-center text-muted">กำลังโหลด...</p>
+      <p x-show="!loading && !error && items.length === 0" class="mt-10 text-center text-muted">ยังไม่มีประกาศ</p>
+
+      <ul class="mt-4 space-y-3" x-show="items.length > 0">
+        <template x-for="a in items" :key="a.id">
+          <li>
+            <article class="card p-4 sm:p-5">
+              <div class="flex flex-wrap items-center gap-2">
+                <span :class="badge(a.type)" x-text="a.type_label"></span>
+                <span x-show="isCouncil && !a.is_published" class="badge badge-muted">ฉบับร่าง</span>
+                <span x-show="a.group" class="badge badge-muted" x-text="a.group ? a.group.name : ''"></span>
+                <span class="ml-auto text-xs text-muted" x-text="a.published_at ? when(a.published_at) : 'ยังไม่เผยแพร่'"></span>
+              </div>
+              <h2 class="type-sub mt-2" x-text="a.title"></h2>
+              <p class="type-rule mt-2 whitespace-pre-line break-words" x-text="a.body"></p>
+              <p x-show="a.due_at" class="note-box type-meta mt-3"><b>กำหนด :</b> <span x-text="when(a.due_at, true)"></span></p>
+
+              <div x-show="isCouncil" class="mt-3 flex flex-wrap items-center gap-4 border-t border-line pt-3 text-sm">
+                <span class="mr-auto text-xs text-muted" x-text="a.author ? 'โดย ' + a.author : ''"></span>
+                <button type="button" class="text-accent hover:underline" @click="edit(a)">แก้ไข</button>
+                <button type="button" class="text-accent hover:underline" @click="toggleStatus(a)" x-text="a.is_published ? 'ถอนกลับเป็นฉบับร่าง' : 'เผยแพร่'"></button>
+                <button type="button" x-show="canDelete(a)" class="text-danger hover:underline" @click="remove(a)">ลบ</button>
+              </div>
+            </article>
+          </li>
+        </template>
+      </ul>
+
+      <div class="mt-8 flex items-center justify-center gap-3 text-sm" x-show="meta && meta.last_page > 1">
+        <button class="btn-outline disabled:opacity-40" :disabled="page <= 1" @click="go(page - 1)">ก่อนหน้า</button>
+        <span class="text-muted">หน้า <span x-text="page"></span> / <span x-text="meta ? meta.last_page : 1"></span></span>
+        <button class="btn-outline disabled:opacity-40" :disabled="!meta || page >= meta.last_page" @click="go(page + 1)">ถัดไป</button>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

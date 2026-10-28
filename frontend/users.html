@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="th" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>จัดการผู้ใช้ | WAVEVY COUNCIL</title>
+  <link rel="icon" href="/img/favicon.png">
+  <script src="/js/theme.js"></script>
+  <link rel="stylesheet" href="/css/output.css">
+  <script src="/js/config.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/pages/users.js"></script>
+  <script defer src="/js/layout.js"></script>
+  <script defer src="/js/vendor/alpine.min.js"></script>
+</head>
+<body>
+  <div id="site-header"></div>
+
+  <main class="container-app py-8" x-data="usersPage()">
+    <div x-show="!ready" class="py-24 text-center text-muted">กำลังตรวจสอบสิทธิ์...</div>
+
+    <div x-show="ready" x-cloak>
+      <h1 class="section-title">จัดการผู้ใช้</h1>
+      <p class="mt-1 text-sm text-muted">เพิ่ม Discord ID และกำหนดบทบาท · <b class="font-medium text-fg">ผู้ที่ไม่ได้ถูกเพิ่มจะเข้าระบบไม่ได้</b></p>
+
+      <p x-show="error" x-text="error" class="penalty-box mt-5"></p>
+
+      <!-- เพิ่มผู้ใช้ -->
+      <form class="panel mt-6 p-4 sm:p-5" @submit.prevent="add()" novalidate>
+        <h2 class="type-sub">เพิ่มผู้ใช้</h2>
+
+        <div class="mt-4 grid gap-4 md:grid-cols-[1.2fr_1fr_1fr_auto] md:items-start">
+          <div>
+            <label class="mb-1 block text-sm text-muted" for="f-id">Discord ID</label>
+            <input id="f-id" x-model="form.discord_id" inputmode="numeric" autocomplete="off" placeholder="เช่น 509929220743495693" class="input font-mono" :aria-invalid="!!formErrors.discord_id">
+            <p x-show="formErrors.discord_id" x-text="formErrors.discord_id" class="mt-1 text-sm text-danger"></p>
+          </div>
+          <div>
+            <label class="mb-1 block text-sm text-muted" for="f-name">ชื่อตัวละคร</label>
+            <input id="f-name" x-model="form.character_name" autocomplete="off" placeholder="ชื่อในเกม" class="input" :aria-invalid="!!formErrors.character_name">
+            <p x-show="formErrors.character_name" x-text="formErrors.character_name" class="mt-1 text-sm text-danger"></p>
+          </div>
+          <div>
+            <label class="mb-1 block text-sm text-muted" for="f-role">บทบาท</label>
+            <select id="f-role" x-model="form.role" class="input" :aria-invalid="!!formErrors.role">
+              <template x-for="r in assignable" :key="r.value">
+                <option :value="r.value" x-text="r.label + ' — ' + r.name"></option>
+              </template>
+            </select>
+            <p x-show="formErrors.role" x-text="formErrors.role" class="mt-1 text-sm text-danger"></p>
+          </div>
+          <button type="submit" class="btn-outline justify-center md:mt-[1.65rem]" :disabled="saving || !form.discord_id || !form.character_name">
+            <span x-text="saving ? 'กำลังเพิ่ม...' : 'เพิ่มผู้ใช้'"></span>
+          </button>
+        </div>
+
+        <p x-show="formErrors._" x-text="formErrors._" class="mt-3 text-sm text-danger"></p>
+        <p x-show="flash" x-text="flash" class="note-box mt-3"></p>
+        <p class="mt-3 text-xs text-muted">
+          หา Discord ID: ใน Discord เปิด การตั้งค่า → ขั้นสูง → โหมดนักพัฒนา แล้วคลิกขวาที่ชื่อผู้ใช้ → คัดลอก ID ผู้ใช้
+          · กำหนดได้เฉพาะบทบาทที่ต่ำกว่าของคุณ
+        </p>
+      </form>
+
+      <!-- ตัวกรอง -->
+      <div class="mt-6 flex flex-col gap-3 md:flex-row md:items-center">
+        <input type="search" x-model.debounce.300ms="q" class="input md:w-80" placeholder="ค้นหาชื่อ / ชื่อตัวละคร / Discord ID" aria-label="ค้นหา">
+        <div class="flex flex-wrap gap-2">
+          <template x-for="s in statuses" :key="s.value">
+            <button type="button" class="chip" :aria-pressed="status === s.value" @click="status = s.value" x-text="s.label"></button>
+          </template>
+        </div>
+      </div>
+
+      <p x-show="loading" class="mt-10 text-center text-muted">กำลังโหลด...</p>
+      <p x-show="!loading && !error && rows.length === 0" class="mt-10 text-center text-muted">ไม่พบผู้ใช้ตามเงื่อนไข</p>
+      <p class="mt-5 text-sm text-muted" x-show="meta && rows.length > 0">
+        ทั้งหมด <span class="text-fg" x-text="meta ? meta.total.toLocaleString('th-TH') : 0"></span> คน
+      </p>
+
+      <!-- รายการ -->
+      <div class="user-cols user-head mt-4 hidden lg:grid" x-show="rows.length > 0" aria-hidden="true">
+        <span>ผู้ใช้</span>
+        <span>บทบาท</span>
+        <span>สถานะ</span>
+        <span class="text-right">จัดการ</span>
+      </div>
+
+      <ul class="mt-2 space-y-2.5" x-show="rows.length > 0">
+        <template x-for="u in rows" :key="u.id">
+          <li class="card px-4 py-3.5 transition-colors hover:border-[var(--accent)]">
+            <div class="user-cols">
+              <!-- ใคร -->
+              <div class="flex min-w-0 items-center gap-3">
+                <img x-show="u.avatar" :src="u.avatar" alt="" class="h-10 w-10 shrink-0 rounded-full">
+                <div x-show="!u.avatar" class="toc-no !h-10 !w-10 !rounded-full !text-sm" x-text="initial(u)"></div>
+                <div class="min-w-0">
+                  <p class="truncate font-medium">
+                    <span x-text="u.character_name || u.name"></span>
+                    <span x-show="u.id === (me && me.id)" class="ml-1 text-xs text-muted">(คุณ)</span>
+                  </p>
+                  <p class="truncate text-xs text-muted">
+                    Discord : <span class="text-fg" x-show="u.last_login_at" x-text="u.name"></span><span x-show="!u.last_login_at">ยังไม่เข้าระบบ</span>
+                  </p>
+                  <p class="text-xs text-muted">
+                    Discord ID : <button type="button" class="font-mono text-fg hover:text-accent" @click="copy(u.discord_id, $event)" title="คัดลอก Discord ID" x-text="u.discord_id"></button>
+                  </p>
+                </div>
+              </div>
+
+              <!-- บทบาท -->
+              <div>
+                <template x-if="u.can_manage">
+                  <select class="input !py-1.5 text-sm" @change="changeRole(u, $event.target.value, $event.target)" :aria-label="'บทบาทของ ' + (u.character_name || u.name)">
+                    <!-- บทบาทปัจจุบัน (ถ้าอยู่ต่ำกว่าเรา ก็อยู่ในตัวเลือกอยู่แล้ว) -->
+                    <template x-for="r in assignable" :key="r.value">
+                      <option :value="r.value" :selected="r.value === u.role" x-text="r.label"></option>
+                    </template>
+                  </select>
+                </template>
+                <span x-show="!u.can_manage" class="badge badge-info" :title="u.role_name" x-text="u.role_label"></span>
+              </div>
+
+              <!-- สถานะ -->
+              <div class="min-w-0 text-sm">
+                <span :class="statusInfo(u.status).cls" x-text="statusInfo(u.status).label"></span>
+                <p class="mt-1 text-xs text-muted">
+                  <span x-show="u.last_login_at" x-text="'เข้าล่าสุด ' + when(u.last_login_at)"></span>
+                  <span x-show="!u.last_login_at">ยังไม่เคยเข้าระบบ</span>
+                  <span x-show="u.added_by" x-text="' · เพิ่มโดย ' + (u.added_by ? u.added_by.name : '')"></span>
+                </p>
+              </div>
+
+              <!-- ปุ่ม: มีเฉพาะแถวที่แก้ไขได้ (ช่องยังอยู่เสมอ เพื่อให้คอลัมน์ตรงกัน) -->
+              <div class="user-actions">
+                <template x-if="u.can_manage">
+                  <button type="button" class="row-btn" @click="toggleDisabled(u)"
+                          x-text="u.status === 'disabled' ? 'เปิดใช้งาน' : 'ระงับ'"></button>
+                </template>
+                <template x-if="u.can_manage && u.status === 'pending'">
+                  <button type="button" class="row-btn row-btn-danger" @click="remove(u)">ลบ</button>
+                </template>
+              </div>
+            </div>
+          </li>
+        </template>
+      </ul>
+
+      <!-- แบ่งหน้า -->
+      <div class="mt-8 flex items-center justify-center gap-3 text-sm" x-show="meta && meta.last_page > 1">
+        <button class="btn-outline disabled:opacity-40" :disabled="page <= 1" @click="go(page - 1)">ก่อนหน้า</button>
+        <span class="text-muted">หน้า <span x-text="page"></span> / <span x-text="meta ? meta.last_page : 1"></span></span>
+        <button class="btn-outline disabled:opacity-40" :disabled="!meta || page >= meta.last_page" @click="go(page + 1)">ถัดไป</button>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="th" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ธุรกรรม | WAVEVY COUNCIL</title>
+  <link rel="icon" href="/img/favicon.png">
+  <script src="/js/theme.js"></script>
+  <link rel="stylesheet" href="/css/output.css">
+  <script src="/js/config.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script defer src="/js/layout.js"></script>
+  <script defer src="/js/txnav.js"></script>
+  <script defer src="/js/vendor/alpine.min.js"></script>
+</head>
+<body>
+  <div id="site-header"></div>
+
+  <main class="container-app py-8" x-data="{ ready: false, async init() { await authState().require('member'); this.ready = true; } }">
+    <div x-show="!ready" class="py-24 text-center text-muted">กำลังตรวจสอบสิทธิ์...</div>
+
+    <div x-show="ready" x-cloak class="tx-layout">
+      <aside id="tx-sidebar" x-data="txSidebar()"></aside>
+
+      <!-- หน้าหลักของธุรกรรม: ให้เลือกรายการจากแถบด้านข้าง -->
+      <section class="tx-empty">
+        <div class="tx-empty-icon" aria-hidden="true">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg>
+        </div>
+        <h1 class="tx-empty-title">เลือกรายการที่จะทำ</h1>
+        <p class="mt-2 text-sm text-muted">เลือกรายการจากเมนูธุรกรรม<span class="hidden lg:inline">ด้านซ้าย</span><span class="lg:hidden">ด้านบน</span></p>
+      </section>
+    </div>
+  </main>
+</body>
+</html>
