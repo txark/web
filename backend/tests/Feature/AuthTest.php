@@ -150,7 +150,7 @@ class AuthTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.role', 'vice_president')
             ->assertJsonPath('data.role_label', 'Sub-CC')
-            ->assertJsonPath('data.role_name', 'รองประธาน');
+            ->assertJsonPath('data.role_name', 'รองประธานสภา');
     }
 
     public function test_role_middleware_enforces_minimum_role(): void

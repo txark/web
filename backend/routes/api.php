@@ -12,6 +12,8 @@ use App\Http\Controllers\Public\GroupController;
 use App\Http\Controllers\Public\RuleController;
 use App\Http\Controllers\UserController;
 use App\Http\Resources\UserResource;
+use App\Http\Controllers\Council\GroupRecordController;
+use App\Http\Controllers\Council\TransactionController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -27,7 +29,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::post('/logout', [DiscordController::class, 'logout']);
 
     // จัดการผู้ใช้ (เพิ่ม Discord ID + กำหนดบทบาท): รองประธานขึ้นไป
-    Route::prefix('users')->middleware(['role:vice_president', 'duty', 'log.access:จัดการผู้ใช้'])->group(function () {
+    Route::prefix('users')->middleware(['role:vice_president,admin', 'duty', 'log.access:จัดการผู้ใช้'])->group(function () {
         Route::get('/', [UserController::class, 'index']);
         Route::post('/', [UserController::class, 'store']);
         Route::patch('{user}', [UserController::class, 'update']);
@@ -65,6 +67,8 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::post('/', [CouncilGroupController::class, 'store']);
         Route::get('{group}', [CouncilGroupController::class, 'show']);
         Route::get('{group}/files/{kind}', [CouncilGroupController::class, 'file']);
+        Route::get('{group}/records', [GroupRecordController::class, 'index']);
+        Route::post('{group}/records', [GroupRecordController::class, 'store']);
         Route::patch('{group}', [CouncilGroupController::class, 'update']);
         Route::patch('{group}/status', [CouncilGroupController::class, 'updateStatus']);
         Route::patch('{group}/lock', [CouncilGroupController::class, 'updateLock']);
@@ -75,7 +79,17 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::delete('{group}/members/{member}', [GroupMemberController::class, 'destroy']);
     });
 
+    // ธุรกรรมของแก๊ง/ครอบครัว: สภา (สภาฝึกหัดขึ้นไป) ที่เข้าเวรอยู่
+    Route::prefix('council/transactions')->middleware(['role:trainee', 'duty', 'log.access:ธุรกรรม'])->group(function () {
+        Route::get('/', [TransactionController::class, 'index']);
+        Route::post('/', [TransactionController::class, 'store']);
+        Route::get('{transaction}', [TransactionController::class, 'show']);
+        Route::post('{transaction}/approve', [TransactionController::class, 'approve']);
+        Route::post('{transaction}/reject', [TransactionController::class, 'reject']);
+        Route::post('{transaction}/cancel', [TransactionController::class, 'cancel']);
+    });
+
     // บันทึกกิจกรรมทั้งหมด: รองประธานขึ้นไป (และการเปิดดูก็ถูกบันทึกด้วย)
     Route::get('/logs', [LogController::class, 'index'])
-        ->middleware(['role:vice_president', 'duty', 'log.access:บันทึกกิจกรรม']);
+        ->middleware(['role:vice_president,admin', 'duty', 'log.access:บันทึกกิจกรรม']);
 });

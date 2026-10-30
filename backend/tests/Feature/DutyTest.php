@@ -139,8 +139,8 @@ class DutyTest extends TestCase
 
     public function test_exempt_roles_and_disabled_enforcement(): void
     {
-        config(['council.duty.exempt_roles' => ['admin']]);
-        $this->actAs(Role::Admin);
+        config(['council.duty.exempt_roles' => ['secretary']]);
+        $this->actAs(Role::Secretary);
         $this->getJson('/api/council/groups')->assertOk();
         $this->getJson('/api/duty')->assertOk()->assertJsonPath('data.required', false);
 

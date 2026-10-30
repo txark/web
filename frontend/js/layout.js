@@ -22,6 +22,12 @@
     ['/duty-report.html', 'สรุปชั่วโมงเวร'],
     ['/logs.html', 'บันทึกกิจกรรม'],
   ];
+  // Admin: จัดการผู้ใช้ · บันทึกกิจกรรม · ตั้งค่าระบบ (ไม่มีเมนูงานสภา)
+  const adminManage = [
+    ['/users.html', 'จัดการผู้ใช้'],
+    ['/logs.html', 'บันทึกกิจกรรม'],
+    ['/system-settings.html', 'ตั้งค่าระบบ'],
+  ];
   const manageActive = manage.some(([href]) => href === here);
   const manageItems = manage
     .map(([href, label]) => `<a href="${href}" role="menuitem" class="menu-item"${cur(href === here)}>${label}</a>`)
@@ -33,7 +39,7 @@
   const councilNav = `
     <a href="/rules.html" class="nav-pill"${cur(here === '/rules.html')}>กฎ</a>
     <template x-if="duty && dutyOk"><span class="contents">
-      <a href="/transactions.html" class="nav-pill"${cur(here === '/transactions.html' || here === '/manage-groups.html')}>ธุรกรรม</a>
+      <a href="/transactions.html" class="nav-pill"${cur(here === '/transactions.html' || here === '/manage-groups.html' || here === '/outfits.html')}>ธุรกรรม</a>
       <a href="/announcements.html" class="nav-pill"${cur(here === '/announcements.html')}>ประกาศเรียก</a>
       <a href="/tasks.html" class="nav-pill inline-flex items-center gap-1.5" x-data="alertBadge()"${cur(here === '/tasks.html')}>
         <span class="lg:hidden">งานค้าง</span><span class="hidden lg:inline">แจ้งเตือนงานค้าง</span>
@@ -50,9 +56,23 @@
     </span></template>
     <template x-if="duty && !dutyOk"><span class="contents">${locked('ธุรกรรม')}${locked('ประกาศเรียก')}${locked('งานค้าง')}</span></template>`;
 
+  const adminItems = adminManage
+    .map(([href, label]) => `<a href="${href}" role="menuitem" class="menu-item"${cur(href === here)}>${label}</a>`)
+    .join('');
+  const adminActive = adminManage.some(([href]) => href === here);
+  const adminNav = `
+    <a href="/rules.html" class="nav-pill"${cur(here === '/rules.html')}>กฎ</a>
+    <div class="relative" x-data="menuDropdown()" @keydown.escape.window="open = false" @click.outside="open = false">
+      <button type="button" x-ref="btn" class="nav-pill inline-flex items-center gap-1" :aria-expanded="open" aria-haspopup="menu" @click="toggle()"${adminActive ? ' aria-current="page"' : ''}>
+        จัดการ <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div x-show="open" x-cloak role="menu" class="menu-panel" :style="'top:' + top + 'px; left:' + left + 'px'" @click="open = false">${adminItems}</div>
+    </div>`;
+
   const nav = `
     <template x-if="!user"><span class="contents" :class="loading ? 'invisible' : ''">${publicNav}</span></template>
-    <template x-if="user && !can('member')"><span class="contents">${publicNav}</span></template>
+    <template x-if="user && !can('member') && !isAdmin"><span class="contents">${publicNav}</span></template>
+    <template x-if="user && isAdmin"><span class="contents">${adminNav}</span></template>
     <template x-if="user && can('member')"><span class="contents">${councilNav}</span></template>`;
 
   const moon = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';

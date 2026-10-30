@@ -114,6 +114,22 @@ class DutyReportTest extends TestCase
         $this->assertGreaterThanOrEqual(1, $r['meta']['zero_members']);
     }
 
+    public function test_exempt_roles_such_as_admin_are_left_out_even_with_old_shifts(): void
+    {
+        config(['council.duty.exempt_roles' => ['admin']]);
+        $this->actAs(Role::VicePresident);
+        $admin = User::factory()->role(Role::Admin)->create();
+        $member = User::factory()->role(Role::Member)->create();
+        $this->shift($admin, '2026-06-10 10:00:00', '2026-06-10 12:00:00');
+        $this->shift($member, '2026-06-10 10:00:00', '2026-06-10 11:00:00');
+
+        $r = $this->getJson(self::URL.'?from=2026-06-01&to=2026-06-15')->json();
+
+        $this->assertNull($this->row($r, $admin), 'Admin ไม่ต้องเข้าเวร จึงไม่นับในสรุป');
+        $this->assertSame(3600, $this->row($r, $member)['total_seconds']);
+        $this->assertSame(3600, $r['meta']['total_seconds'], 'ชั่วโมงรวมต้องไม่รวมของ Admin');
+    }
+
     public function test_former_member_with_shifts_in_range_is_still_listed(): void
     {
         $this->actAs(Role::VicePresident);

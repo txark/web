@@ -36,7 +36,7 @@ function usersPage() {
 
     async init() {
       const auth = authState();
-      await auth.require('vice_president');
+      await auth.require('vice_president', { also: ['admin'] });
       this.me = auth.user;
       this.ready = true;
       await this.load();
@@ -69,7 +69,7 @@ function usersPage() {
         this.assignable = res.assignable_roles;
         if (!this.form.role && this.assignable.length) {
           // ค่าเริ่มต้นของฟอร์ม: บทบาทต่ำสุดที่กำหนดได้ (ปลอดภัยที่สุด)
-          this.form.role = this.assignable[this.assignable.length - 1].value;
+          this.form.role = (this.assignable.find((r) => r.value === 'member') || this.assignable[this.assignable.length - 1]).value;
         }
       } catch (e) {
         this.rows = [];

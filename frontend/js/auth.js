@@ -1,5 +1,6 @@
 // สถานะผู้ใช้ปัจจุบัน + guard หน้า. ใช้ผ่าน Alpine: x-data="authState()"
-const ROLE_LEVEL = { gang: 1, family: 1, member: 2, vice_president: 3, president: 4, admin: 5 };
+// Admin อยู่นอกลำดับสภา: ไม่ผ่านการตรวจสิทธิ์ระดับใด ๆ (ใช้ can('admin') หรือ require(..., { also: ['admin'] }))
+const ROLE_LEVEL = { gang: 1, family: 1, trainee: 2, member: 2, operations: 2, senior: 2, secretary: 2, vice_president: 3, president: 4, admin: 0 };
 
 // เข้า/ออกเวรของสภา: สถานะกลางที่ทุกส่วนของหน้าใช้ร่วมกัน (เมนูบน หน้าแรก ตัวตรวจสิทธิ์)
 // เวลานับจากนาฬิกาเซิร์ฟเวอร์ (offset) ไม่ใช่นาฬิกาเครื่องผู้ใช้ จึงแก้เวลาเครื่องเพื่อโกงชั่วโมงเวรไม่ได้
@@ -113,7 +114,13 @@ function authState() {
     },
 
     can(minRole) {
-      return !!this.user && (ROLE_LEVEL[this.user.role] ?? 0) >= ROLE_LEVEL[minRole];
+      if (!this.user) return false;
+      if (this.user.role === 'admin' || minRole === 'admin') return this.user.role === minRole;
+      return (ROLE_LEVEL[this.user.role] ?? 0) >= ROLE_LEVEL[minRole];
+    },
+
+    get isAdmin() {
+      return !!this.user && this.user.role === 'admin';
     },
 
     // เข้าเวรอยู่ หรือไม่ถูกบังคับให้เข้าเวร (ยังไม่รู้สถานะ = false; เมนูรอจน duty โหลดเสร็จก่อนค่อยแสดง)
@@ -130,14 +137,15 @@ function authState() {
     // เรียกในหน้าที่ต้องล็อกอิน/ต้องมีสิทธิ์ขั้นต่ำ
     // สภาที่ยังไม่เข้าเวรจะถูกส่งกลับหน้าแรก (หน้าแรกและหน้ากฎไม่เรียกฟังก์ชันนี้)
     // เมื่อสั่งเปลี่ยนหน้าแล้ว จะไม่ resolve อีก เพื่อให้โค้ดโหลดข้อมูลของหน้านั้นไม่ทำงานต่อระหว่างรอเปลี่ยนหน้า
-    async require(minRole = 'gang') {
+    // opts.also = บทบาทที่ผ่านด้วยแม้ไม่ถึงระดับขั้นต่ำ (เช่น ['admin'] สำหรับหน้าจัดการผู้ใช้)
+    async require(minRole = 'gang', opts = {}) {
       await this.init();
       const go = (url) => {
         location.href = url;
         return new Promise(() => {});
       };
       if (!this.user) return go('/login.html');
-      if (!this.can(minRole)) return go('/index.html');
+      if (!this.can(minRole) && !(opts.also || []).includes(this.user.role)) return go('/index.html');
       if (this.duty && this.duty.required && !this.duty.on_duty) return go('/index.html?duty=required');
     },
 

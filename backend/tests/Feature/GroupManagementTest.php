@@ -7,6 +7,7 @@ use App\Enums\MemberPosition;
 use App\Enums\Role;
 use App\Models\Group;
 use App\Models\GroupMember;
+use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -170,12 +171,8 @@ class GroupManagementTest extends TestCase
         Storage::fake('local');
         $this->actAs(Role::Member);
 
-        $this->register(['declared_members' => 9])->assertUnprocessable()->assertJsonValidationErrors('declared_members');
-        $this->register(['type' => 'family', 'declared_members' => 5, 'name' => 'Home'])->assertUnprocessable()->assertJsonValidationErrors('declared_members');
-        $this->register(['declared_members' => 31])->assertUnprocessable()->assertJsonValidationErrors('declared_members');
 
         $dep = fn ($i) => ['ic_name' => "Deputy $i", 'discord_id' => '22345678901234567'.$i];
-        $this->register(['co_leaders' => []])->assertUnprocessable()->assertJsonValidationErrors('co_leaders');
         $this->register(['co_leaders' => [$dep(1), $dep(2), $dep(3)]])->assertUnprocessable()->assertJsonValidationErrors('co_leaders');
         $this->register(['co_leaders' => [$dep(1), $dep(2)]])->assertCreated()->assertJsonPath('data.members_count', 3);
     }
@@ -190,9 +187,124 @@ class GroupManagementTest extends TestCase
         $this->register(['short_name' => 'ไทย'])->assertUnprocessable()->assertJsonValidationErrors('short_name');
         $this->register(['color_hex' => 'red'])->assertUnprocessable()->assertJsonValidationErrors('color_hex');
         $this->register(['leader' => ['ic_name' => 'Boss', 'discord_id' => '123']])->assertUnprocessable()->assertJsonValidationErrors('leader.discord_id');
-        $this->register(['temp_outfit_male' => null, 'temp_outfit_female' => null])->assertUnprocessable()->assertJsonValidationErrors('temp_outfit_male');
         $this->register(['co_leaders' => [['ic_name' => 'Boss One', 'discord_id' => '223456789012345678']]])
             ->assertUnprocessable()->assertJsonValidationErrors('co_leaders');
+    }
+
+    public function test_gang_deputies_max_two_and_family_deputy_max_one(): void
+    {
+        Storage::fake('public');
+        Storage::fake('local');
+        $this->actAs(Role::Member);
+        $dep = fn ($i) => ['ic_name' => "Deputy $i", 'discord_id' => '22345678901234567'.$i];
+
+        // แก๊ง: 2 คนได้ 3 คนไม่ได้
+        $this->register(['co_leaders' => [$dep(1), $dep(2), $dep(3)]])->assertUnprocessable()->assertJsonValidationErrors('co_leaders');
+        $this->register(['co_leaders' => [$dep(1), $dep(2)]])->assertCreated()->assertJsonPath('data.members_count', 3);
+
+        // ครอบครัว: 1 คนเท่านั้น
+        $family = ['type' => 'family', 'declared_members' => 8];
+        $this->register($family + ['name' => 'Home', 'co_leaders' => [$dep(1), $dep(2)]])->assertUnprocessable()->assertJsonValidationErrors('co_leaders');
+        $this->register($family + ['name' => 'Home', 'co_leaders' => [$dep(1)]])->assertCreated()->assertJsonPath('data.members_count', 2);
+    }
+
+    public function test_family_deputy_limit_also_applies_when_adding_members_later(): void
+    {
+        $this->actAs(Role::Member);
+        $family = $this->group([], 'family');
+        $this->postJson($this->url($family, '/members'), ['character_name' => 'Dep One', 'position' => 'co_leader'])->assertOk();
+        $this->postJson($this->url($family, '/members'), ['character_name' => 'Dep Two', 'position' => 'co_leader'])->assertUnprocessable();
+
+        $gang = $this->group();
+        $this->postJson($this->url($gang, '/members'), ['character_name' => 'Dep One', 'position' => 'co_leader'])->assertOk();
+        $this->postJson($this->url($gang, '/members'), ['character_name' => 'Dep Two', 'position' => 'co_leader'])->assertOk();
+        $this->postJson($this->url($gang, '/members'), ['character_name' => 'Dep Three', 'position' => 'co_leader'])->assertUnprocessable();
+    }
+
+    public function test_deputies_are_optional(): void
+    {
+        Storage::fake('public');
+        Storage::fake('local');
+        $this->actAs(Role::Member);
+
+        $this->register(['co_leaders' => []])->assertCreated()->assertJsonPath('data.members_count', 1);
+        $this->register(['name' => 'Home', 'short_name' => 'HM', 'type' => 'family', 'declared_members' => 8, 'co_leaders' => null])
+            ->assertCreated()->assertJsonPath('data.members_count', 1);
+    }
+
+    public function test_deputy_discord_id_and_temp_outfit_numbers_are_optional(): void
+    {
+        Storage::fake('public');
+        Storage::fake('local');
+        $this->actAs(Role::Member);
+
+        // รองไม่กรอก Discord ID + ไม่กรอกเลขชุดชั่วคราวเลย → ผ่าน
+        $this->register([
+            'co_leaders' => [['ic_name' => 'Deputy One', 'ic_phone' => '', 'discord_id' => '']],
+            'temp_outfit_male' => null,
+            'temp_outfit_female' => null,
+        ])->assertCreated()->assertJsonPath('data.members_count', 2);
+        $this->assertNull(GroupMember::where('character_name', 'Deputy One')->first()->discord_id);
+
+        // แต่ถ้ากรอกต้องถูกรูปแบบ และ Discord ID ของหัวหน้ายังบังคับ
+        $this->register(['name' => 'Other', 'short_name' => 'OTH', 'co_leaders' => [['ic_name' => 'Dep', 'discord_id' => '123']]])
+            ->assertUnprocessable()->assertJsonValidationErrors('co_leaders.0.discord_id');
+        $this->register(['name' => 'Other', 'short_name' => 'OTH', 'leader' => ['ic_name' => 'Boss', 'discord_id' => '']])
+            ->assertUnprocessable()->assertJsonValidationErrors('leader.discord_id');
+    }
+
+    public function test_registry_list_counts_filters_and_search(): void
+    {
+        $user = $this->actAs(Role::Member);
+        $gang = $this->group(['name' => 'Ravens', 'short_name' => 'RVN']);
+        $gang->members()->create(['character_name' => 'Night Raven', 'position' => MemberPosition::Leader, 'joined_at' => now()]);
+        $lady = $this->group(['name' => 'Roses', 'short_name' => 'RSE', 'is_lady' => true]);
+        $family = $this->group(['name' => 'Phoenix', 'short_name' => 'PHX'], 'family');
+
+        $r = $this->getJson($this->url().'')->assertOk();
+        $this->assertSame(['active' => 3, 'gang' => 1, 'lady' => 1, 'family' => 1, 'dissolved' => 0, 'deleted' => 0], $r->json('counts'));
+
+        $this->getJson($this->url().'?kind=gang')->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.name', 'Ravens');
+        $this->getJson($this->url().'?kind=lady')->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.name', 'Roses');
+        $this->getJson($this->url().'?kind=family')->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.name', 'Phoenix');
+        $this->getJson($this->url().'?q=rvn')->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.name', 'Ravens');
+        $this->getJson($this->url().'?q=night')->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.name', 'Ravens');
+        $this->getJson($this->url().'?q=zzz')->assertOk()->assertJsonCount(0, 'data');
+
+        // ยุบด้วยธุรกรรม vs ลบด้วยวิธีอื่น: แยกกันนับ และไม่ปนกับรายการที่ใช้งานอยู่
+        Transaction::create(['number' => 'WC-20261029-AAAAAA', 'group_id' => $lady->id, 'kind' => 'dissolve', 'payload' => ['reason' => 'x'], 'status' => 'approved', 'requested_by' => $user->id, 'requested_role' => 'member']);
+        $lady->delete();
+        $family->delete();
+
+        $r = $this->getJson($this->url())->assertOk()->assertJsonCount(1, 'data');
+        $this->assertSame(['active' => 1, 'gang' => 1, 'lady' => 0, 'family' => 0, 'dissolved' => 1, 'deleted' => 1], $r->json('counts'));
+        $this->getJson($this->url().'?scope=dissolved')->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.name', 'Roses');
+        $this->getJson($this->url().'?scope=deleted')->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.name', 'Phoenix');
+        $this->getJson($this->url().'?scope=nope')->assertUnprocessable();
+    }
+
+    public function test_registration_names_must_be_english_and_short_name_uppercase_and_color_name_match_the_hex(): void
+    {
+        Storage::fake('public');
+        Storage::fake('local');
+        $this->actAs(Role::Member);
+
+        // ชื่อเต็ม: ภาษาอังกฤษเท่านั้น และต้องมีตัวอักษรอย่างน้อย 1 ตัว
+        $this->register(['name' => 'ชื่อไทย'])->assertUnprocessable()->assertJsonValidationErrors('name');
+        $this->register(['name' => '12345'])->assertUnprocessable()->assertJsonValidationErrors('name');
+
+        // ชื่อย่อ: ตัวพิมพ์ใหญ่หรือตัวเลขเท่านั้น (ตัวพิมพ์เล็ก/ไทย/อักขระพิเศษไม่ได้)
+        foreach (['wlv', 'Wlv', 'ไทย', 'W-L', 'W L'] as $bad) {
+            $this->register(['short_name' => $bad])->assertUnprocessable()->assertJsonValidationErrors('short_name');
+        }
+
+        // ชื่อสีต้องตรงกับโค้ด HEX
+        $this->register(['color_hex' => '#FF0000', 'color_name' => 'เขียว'])->assertUnprocessable()->assertJsonValidationErrors('color_name');
+        $this->register(['color_hex' => '#FF0000', 'color_name' => 'มรกต'])->assertUnprocessable()->assertJsonValidationErrors('color_name');
+        $this->assertDatabaseCount('groups', 0);
+
+        $this->register(['name' => 'Wolves 2', 'short_name' => 'WL2', 'color_hex' => '#00ff00', 'color_name' => 'เขียวสด'])->assertCreated()
+            ->assertJsonPath('data.short_name', 'WL2')->assertJsonPath('data.color_name', 'เขียวสด');
     }
 
     public function test_protect_option_counts_fourteen_days_from_registration(): void
@@ -204,6 +316,7 @@ class GroupManagementTest extends TestCase
         $this->register(['protect' => true])->assertCreated()
             ->assertJsonPath('data.protect_requested', true)->assertJsonPath('data.protect_days_left', 14);
         $this->assertEqualsWithDelta(now()->addDays(14)->timestamp, Group::first()->protect_until->timestamp, 5);
+        $this->assertEqualsWithDelta(now()->timestamp, Group::first()->protect_from->timestamp, 5, 'เริ่ม Protect = เวลาที่กดขึ้นทะเบียน');
 
         $this->register(['name' => 'Other', 'short_name' => 'OTH'])->assertCreated()
             ->assertJsonPath('data.protect_requested', false)->assertJsonPath('data.protect_days_left', 0);

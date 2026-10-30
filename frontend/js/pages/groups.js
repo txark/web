@@ -76,6 +76,7 @@ function groupsPage() {
         normal: 'badge badge-normal',
         blacklist: 'badge badge-blacklist',
         sanction: 'badge badge-sanction',
+        inactive: 'badge badge-muted',
       }[status] || 'badge badge-muted';
     },
 

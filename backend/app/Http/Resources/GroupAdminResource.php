@@ -29,6 +29,9 @@ class GroupAdminResource extends JsonResource
             'slots_locked' => $this->slots_locked,
             'locked_reason' => $this->locked_reason,
             'registered_at' => $this->registered_at,
+            'dissolved_at' => $this->deleted_at,
+            // รายงานตัวล่าสุด: ครั้งล่าสุดที่บันทึก ถ้ายังไม่เคยใช้วันขึ้นทะเบียน (มีเมื่อเปิดดูรายละเอียดกลุ่ม)
+            'last_report_at' => $this->when(array_key_exists('last_report_at', $this->getAttributes()), fn () => $this->getAttribute('last_report_at') ?? $this->registered_at),
             'short_name' => $this->short_name,
             'color_hex' => $this->color_hex,
             'color_name' => $this->color_name,
@@ -38,6 +41,10 @@ class GroupAdminResource extends JsonResource
             'has_temp_outfit' => (bool) $this->temp_outfit_path,
             'has_outfit_zip' => (bool) $this->outfit_zip_path,
             'protect_requested' => $this->protect_requested,
+            'protect_from' => $this->protect_from,
+            'outfit_counts' => $this->outfit_counts ?? [],
+            'outfit_limits' => $this->outfitLimits(),
+            'outfit_free_available' => $this->outfitFreeAvailable(),
             'protect_until' => $this->protect_until,
             'protect_days_left' => $this->protect_until && $this->protect_until->isFuture()
                 ? (int) ceil(now()->diffInSeconds($this->protect_until) / 86400) : 0,

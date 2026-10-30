@@ -38,7 +38,7 @@ class UserController extends Controller
         ]);
 
         // เรียงตามระดับสิทธิ์สูง→ต่ำ แล้วตามชื่อ (CASE สร้างจาก enum ล้วน ไม่มีค่าจากผู้ใช้)
-        $order = 'CASE role '.implode(' ', array_map(fn (Role $r) => "WHEN '{$r->value}' THEN {$r->level()}", Role::cases())).' ELSE 0 END';
+        $order = 'CASE role '.implode(' ', array_map(fn (Role $r) => "WHEN '{$r->value}' THEN {$r->sortWeight()}", Role::cases())).' ELSE 0 END';
 
         $users = User::query()
             ->with('addedBy')
@@ -60,7 +60,7 @@ class UserController extends Controller
         return UserAdminResource::collection($users)->additional([
             // บทบาทที่ผู้ใช้งานคนนี้กำหนดให้คนอื่นได้ (ใช้ทำตัวเลือกในฟอร์ม)
             'assignable_roles' => collect($request->user()->role->assignable())
-                ->sortByDesc(fn (Role $r) => $r->level())
+                ->sortByDesc(fn (Role $r) => $r->sortWeight())
                 ->map(fn (Role $r) => ['value' => $r->value, 'label' => $r->label(), 'name' => $r->thaiName()])
                 ->values(),
         ]);
@@ -142,7 +142,7 @@ class UserController extends Controller
             abort(403, 'ไม่สามารถแก้ไขบัญชีของตัวเอง');
         }
 
-        if ($actor->role->level() <= $target->role->level()) {
+        if (! $actor->role->canManage($target->role)) {
             abort(403, 'บัญชีนี้มีสิทธิ์เท่ากับหรือสูงกว่าคุณ จึงแก้ไขไม่ได้');
         }
     }

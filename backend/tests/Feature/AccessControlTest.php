@@ -153,7 +153,7 @@ class AccessControlTest extends TestCase
 
     public function test_only_vice_president_and_above_can_manage_users(): void
     {
-        foreach ([Role::Gang, Role::Family, Role::Member] as $role) {
+        foreach ([Role::Gang, Role::Family, Role::Trainee, Role::Member, Role::Operations, Role::Senior, Role::Secretary] as $role) {
             $this->actingAs($this->as($role))->getJson('/api/users')->assertForbidden();
             $this->actingAs($this->as($role))->postJson('/api/users', [])->assertForbidden();
         }
@@ -168,10 +168,62 @@ class AccessControlTest extends TestCase
     {
         $values = fn (Role $role) => collect($this->actingAs($this->as($role))->getJson('/api/users')->json('assignable_roles'))->pluck('value')->all();
 
-        $this->assertSame('member', $values(Role::VicePresident)[0]); // เรียงสิทธิ์สูง→ต่ำ
-        $this->assertEqualsCanonicalizing(['member', 'gang', 'family'], $values(Role::VicePresident));
-        $this->assertEqualsCanonicalizing(['vice_president', 'member', 'gang', 'family'], $values(Role::President));
-        $this->assertEqualsCanonicalizing(['president', 'vice_president', 'member', 'gang', 'family'], $values(Role::Admin));
+        $council = ['secretary', 'senior', 'operations', 'member', 'trainee'];
+        $this->assertSame('secretary', $values(Role::VicePresident)[0]); // เรียงยศสูง→ต่ำ
+        $this->assertSame([...$council, 'family', 'gang'], $values(Role::VicePresident));
+        $this->assertEqualsCanonicalizing(['vice_president', ...$council, 'gang', 'family'], $values(Role::President));
+        $this->assertSame([], $values(Role::Admin), 'Admin ตั้งยศให้ใครไม่ได้');
+    }
+
+    // ───────── Admin อยู่นอกลำดับสภา ─────────
+
+    public function test_admin_opens_user_management_and_logs_but_not_council_work(): void
+    {
+        $admin = $this->as(Role::Admin);
+
+        $this->actingAs($admin)->getJson('/api/users')->assertOk();
+        $this->actingAs($admin)->getJson('/api/logs')->assertOk();
+
+        foreach (['/api/council/groups', '/api/council/alerts', '/api/council/announcements', '/api/council/duty-report', '/api/duty'] as $url) {
+            $this->actingAs($admin)->getJson($url)->assertForbidden();
+        }
+        $this->actingAs($admin)->postJson('/api/duty/start')->assertForbidden();
+    }
+
+    public function test_admin_manages_accounts_but_cannot_change_ranks_or_touch_other_admins(): void
+    {
+        $admin = $this->as(Role::Admin);
+        $member = $this->as(Role::Member);
+        $other = $this->as(Role::Admin);
+
+        $this->actingAs($admin)->patchJson("/api/users/{$member->id}", ['disabled' => true])->assertOk();
+        $this->actingAs($admin)->patchJson("/api/users/{$member->id}", ['role' => 'senior'])->assertUnprocessable()->assertJsonValidationErrors('role');
+        $this->actingAs($admin)->patchJson("/api/users/{$other->id}", ['disabled' => true])->assertForbidden();
+    }
+
+    public function test_president_and_vice_president_cannot_manage_or_appoint_admin(): void
+    {
+        $admin = $this->as(Role::Admin);
+
+        foreach ([Role::VicePresident, Role::President] as $role) {
+            $this->actingAs($this->as($role))->patchJson("/api/users/{$admin->id}", ['disabled' => true])->assertForbidden();
+            $this->actingAs($this->as($role))->patchJson("/api/users/{$admin->id}", ['role' => 'gang'])->assertForbidden();
+        }
+    }
+
+    public function test_only_president_and_vice_president_change_council_ranks(): void
+    {
+        $target = $this->as(Role::Member);
+
+        foreach ([Role::Gang, Role::Family, Role::Trainee, Role::Member, Role::Operations, Role::Senior, Role::Secretary] as $role) {
+            $this->actingAs($this->as($role))->patchJson("/api/users/{$target->id}", ['role' => 'senior'])->assertForbidden();
+        }
+        // Admin เข้าหน้าจัดการได้ แต่ตั้งยศไม่ได้
+        $this->actingAs($this->as(Role::Admin))->patchJson("/api/users/{$target->id}", ['role' => 'senior'])->assertUnprocessable();
+        foreach ([Role::VicePresident, Role::President] as $role) {
+            $this->actingAs($this->as($role))->patchJson("/api/users/{$target->id}", ['role' => 'senior'])->assertOk()->assertJsonPath('data.role', 'senior');
+            $target->refresh()->update(['role' => Role::Member]);
+        }
     }
 
     // ───────── เพิ่มผู้ใช้ ─────────
@@ -207,8 +259,8 @@ class AccessControlTest extends TestCase
         $this->actingAs($this->as(Role::President))->postJson('/api/users', $payload('vice_president'))->assertCreated();
         $this->actingAs($this->as(Role::President))->postJson('/api/users', $payload('president'))->assertUnprocessable();
 
-        $this->actingAs($this->as(Role::Admin))->postJson('/api/users', $payload('president'))->assertCreated();
-        $this->actingAs($this->as(Role::Admin))->postJson('/api/users', $payload('admin'))->assertUnprocessable();
+        $this->actingAs($this->as(Role::Admin))->postJson('/api/users', $payload('president'))->assertUnprocessable()->assertJsonValidationErrors('role');
+        $this->actingAs($this->as(Role::Admin))->postJson('/api/users', $payload('gang'))->assertUnprocessable();
     }
 
     public function test_store_validation_has_thai_messages(): void

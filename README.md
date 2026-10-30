@@ -5,6 +5,13 @@ backend/    Laravel 13 API (Sanctum, Socialite+Discord, activitylog)
 frontend/   HTML + Tailwind CLI + Alpine.js (static)
 ```
 
+## ความต้องการของระบบ
+
+- **PHP 8.4** ขึ้นไป (extension: `pdo_pgsql`, `mbstring`, `fileinfo`, `openssl`, `curl`, `zip`) และ Composer
+- PostgreSQL, Node.js (สำหรับ build frontend)
+- ฟอร์มขึ้นทะเบียนอัปโหลดไฟล์ชุด ZIP ได้ถึง 50 MB: ตั้งใน `php.ini` ให้ `upload_max_filesize = 60M` และ `post_max_size = 64M` (ค่าเริ่มต้นของ PHP คือ 2M/8M ซึ่งไม่พอ) และถ้าใช้ Nginx ตั้ง `client_max_body_size 64m;`
+- รัน `php artisan storage:link` หนึ่งครั้ง เพื่อให้โลโก้ที่อัปโหลดเปิดดูได้ (ไฟล์ชุดเก็บแบบส่วนตัวใน `storage/app/private` โหลดผ่าน API เฉพาะสภา)
+
 ## รันตอนพัฒนา
 
 ```bash

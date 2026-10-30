@@ -197,7 +197,7 @@ class AuditLogTest extends TestCase
         $this->assertSame('แก้ไขข้อมูล', $row['log_label']);
         $this->assertSame('Vee', $row['causer']['name']);
         $this->assertSame('Sub-CC', $row['causer']['role_label']);
-        $this->assertSame('รองประธาน', $row['causer']['role_name']);
+        $this->assertSame('รองประธานสภา', $row['causer']['role_name']);
         $this->assertNotNull($row['created_at']);
     }
 

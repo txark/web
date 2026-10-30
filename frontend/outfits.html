@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="th" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ลงชุดเพิ่ม/แก้ไขชุด | WAVEVY COUNCIL</title>
+  <link rel="icon" href="/img/favicon.png">
+  <script src="/js/theme.js"></script>
+  <link rel="stylesheet" href="/css/output.css">
+  <script src="/js/config.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/pages/outfits.js"></script>
+  <script defer src="/js/layout.js"></script>
+  <script defer src="/js/txnav.js"></script>
+  <script defer src="/js/vendor/alpine.min.js"></script>
+</head>
+<body>
+  <div id="site-header"></div>
+
+  <main class="container-app py-8" x-data="outfitsPage()">
+    <div x-show="!ready" class="py-24 text-center text-muted">กำลังตรวจสอบสิทธิ์...</div>
+
+    <div x-show="ready" x-cloak class="tx-layout">
+      <aside id="tx-sidebar" x-data="txSidebar()"></aside>
+      <div class="min-w-0">
+
+        <header class="rg-head">
+          <div class="min-w-0">
+            <p class="rg-eyebrow">WAVEVY COUNCIL / OUTFITS</p>
+            <h1 class="rg-title">ลงชุดเพิ่ม / แก้ไขชุด</h1>
+            <p class="rg-sub">ธุรกรรมชุดของแก๊งและครอบครัว · ทุกรายการมีเลขธุรกรรมและถูกบันทึกในบันทึกกิจกรรม</p>
+          </div>
+        </header>
+
+        <p x-show="msg" x-text="msg" class="note-box mt-5"></p>
+        <p x-show="errors._" x-text="errors._" class="penalty-box mt-5"></p>
+
+        <!-- ═════════ 1) เลือกแก๊ง/ครอบครัว ═════════ -->
+        <section x-show="!g" class="rg-panel mt-6">
+          <div class="rg-toolbar">
+            <label class="rg-search">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+              <input type="search" x-model.debounce.300ms="q" placeholder="ค้นหาชื่อแก๊ง ชื่อย่อ หรือ Leader" aria-label="ค้นหา" autocomplete="off">
+            </label>
+          </div>
+          <p class="rg-count px-4 pt-4" x-text="'เลือกแก๊ง/ครอบครัวที่จะทำธุรกรรมชุด'"></p>
+          <p x-show="searching && results.length === 0" class="rg-empty">กำลังโหลด...</p>
+          <p x-show="!searching && results.length === 0" class="rg-empty">ไม่พบรายการตามเงื่อนไข</p>
+          <div class="rg-grid" x-show="results.length > 0">
+            <template x-for="r in results" :key="r.id">
+              <button type="button" class="rg-card" @click="pick(r)">
+                <span class="rg-card-top">
+                  <span class="rg-kind" :class="'rg-kind-' + kindLabel(r).toLowerCase()" x-text="kindLabel(r)"></span>
+                  <svg class="rg-card-go" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+                </span>
+                <span class="rg-card-id">
+                  <span class="rg-logo">
+                    <img x-show="r.logo_url" :src="r.logo_url" :alt="'โลโก้ ' + r.name" loading="lazy" @error="$el.style.display = 'none'; $el.nextElementSibling.style.display = ''">
+                    <span :style="r.logo_url ? 'display:none' : ''" x-text="(r.short_name || r.name.slice(0, 3)).toUpperCase()"></span>
+                  </span>
+                  <span class="rg-card-name" x-text="r.name"></span>
+                </span>
+              </button>
+            </template>
+          </div>
+        </section>
+
+        <!-- ═════════ 2) ทำธุรกรรมชุด ═════════ -->
+        <section x-show="g" x-cloak class="rg-panel of-panel mt-6">
+          <template x-if="g">
+            <div>
+              <header class="of-head">
+                <div class="of-who">
+                  <span class="rg-logo">
+                    <img x-show="g.logo_url" :src="g.logo_url" :alt="'โลโก้ ' + g.name" @error="$el.style.display = 'none'; $el.nextElementSibling.style.display = ''">
+                    <span :style="g.logo_url ? 'display:none' : ''" x-text="(g.short_name || g.name.slice(0, 3)).toUpperCase()"></span>
+                  </span>
+                  <div class="min-w-0">
+                    <span class="rg-kind" :class="'rg-kind-' + kindLabel(g).toLowerCase()" x-text="kindLabel(g)"></span>
+                    <h2 class="of-name" x-text="g.name"></h2>
+                  </div>
+                </div>
+                <button type="button" class="btn-outline" @click="back()">เปลี่ยนแก๊ง/ครอบครัว</button>
+              </header>
+
+              <div class="of-body">
+                <!-- ชนิดธุรกรรม -->
+                <div class="of-modes" role="group" aria-label="ชนิดธุรกรรมชุด">
+                  <template x-for="m in modes" :key="m.value">
+                    <button type="button" class="of-mode" :aria-pressed="mode === m.value" @click="mode = m.value">
+                      <span class="of-mode-title" x-text="m.label"></span>
+                      <span class="of-mode-hint" x-text="m.hint"></span>
+                    </button>
+                  </template>
+                </div>
+
+                <form @submit.prevent="submit()" novalidate>
+
+                  <!-- ═══ แก้จำนวนชุด ═══ -->
+                  <div x-show="mode === 'outfit_counts'" x-cloak>
+                    <h3 class="reg-sec">จำนวนชุดที่ลงทะเบียน</h3>
+                    <div class="of-grid">
+                      <template x-for="o in outfitTypes" :key="'c' + o.key">
+                        <label class="of-tile" :class="errors['counts.' + o.key] ? 'of-tile-err' : ''">
+                          <span class="of-tile-name" x-text="o.label"></span>
+                          <span class="of-tile-now">
+                            <b x-text="current(o.key) === null ? '—' : current(o.key).toLocaleString('th-TH')"></b>
+                            <small x-text="current(o.key) === null ? 'ยังไม่ลงทะเบียน' : 'ชิ้นที่ลงไว้'"></small>
+                          </span>
+                          <span class="of-tile-limit" x-text="'ลงได้สูงสุด ' + limit(o.key) + ' ชิ้น'"></span>
+                          <input type="text" inputmode="numeric" x-model="form[o.key]" @input="clamp(o.key)" autocomplete="off" class="input" placeholder="จำนวนใหม่" :aria-label="'จำนวน ' + o.label" :aria-invalid="!!errors['counts.' + o.key]">
+                          <span class="of-tile-after" x-show="after(o.key) !== current(o.key)">
+                            หลังบันทึก <b x-text="numLabel(after(o.key))"></b>
+                          </span>
+                          <span class="reg-err" x-show="errors['counts.' + o.key]" x-text="errors['counts.' + o.key]"></span>
+                        </label>
+                      </template>
+                    </div>
+                    <p class="of-note">เว้นว่าง = ยังไม่ลงทะเบียน · ใส่ 0 = ลงทะเบียนแล้วแต่ไม่มีชุดชนิดนี้</p>
+                    <p class="reg-err mt-2" x-show="errors.counts" x-text="errors.counts"></p>
+                  </div>
+
+                  <!-- ═══ ลงชุด / แก้ไขชุด (ธุรกรรมเดียว) ═══ -->
+                  <div x-show="mode === 'outfit'" x-cloak>
+                    <p class="reg-err mt-3" x-show="errors.add" x-text="errors.add"></p>
+
+                    <!-- 1) ลงเพิ่ม -->
+                    <h3 class="reg-sec">1 · ลงชุดเพิ่ม <span class="reg-hint">(ไม่บังคับ)</span></h3>
+                    <div class="of-grid">
+                      <template x-for="o in outfitTypes" :key="'a' + o.key">
+                        <label class="of-tile" :class="errors['add.' + o.key] ? 'of-tile-err' : ''">
+                          <span class="of-tile-name" x-text="o.label"></span>
+                          <span class="of-tile-now">
+                            <b x-text="current(o.key) === null ? '—' : current(o.key).toLocaleString('th-TH')"></b>
+                            <small x-text="current(o.key) === null ? 'ยังไม่ลงทะเบียน' : 'ชิ้นที่ลงไว้'"></small>
+                          </span>
+                          <span class="of-tile-limit" x-text="types.includes(o.key) ? 'อยู่ในส่วนเปลี่ยน/แทนชุดแล้ว' : 'ลงได้สูงสุด ' + limit(o.key) + ' ชิ้น · เพิ่มได้อีก ' + room(o.key)"></span>
+                          <input type="text" inputmode="numeric" x-model="form[o.key]" @input="clamp(o.key)" autocomplete="off" class="input"
+                                 :disabled="types.includes(o.key) || room(o.key) === 0"
+                                 :placeholder="types.includes(o.key) ? 'ใช้ส่วนเปลี่ยน/แทน' : (room(o.key) ? '+ เพิ่มกี่ชิ้น' : 'ลงครบแล้ว')" :aria-label="'ลงเพิ่ม ' + o.label" :aria-invalid="!!errors['add.' + o.key]">
+                          <span class="of-tile-after" x-show="!types.includes(o.key) && after(o.key) !== current(o.key)">
+                            หลังบันทึก <b x-text="numLabel(after(o.key))"></b>
+                          </span>
+                          <span class="reg-err" x-show="errors['add.' + o.key]" x-text="errors['add.' + o.key]"></span>
+                        </label>
+                      </template>
+                    </div>
+
+                    <!-- 2) เปลี่ยน/แทน -->
+                    <h3 class="reg-sec">2 · เปลี่ยน / แทนชุดเดิม <span class="reg-hint">(ไม่บังคับ · ไฟล์ .ZIP ใหม่จะแทนไฟล์ชุดเดิมของกลุ่ม)</span></h3>
+                    <span class="reg-label" id="o-types-label">ชุดที่ถูกแทน <span class="reg-hint">(เลือกได้หลายชนิด)</span></span>
+                    <div class="of-types" role="group" aria-labelledby="o-types-label">
+                      <template x-for="o in outfitTypes" :key="'t' + o.key">
+                        <button type="button" class="chip" :aria-pressed="types.includes(o.key)" @click="toggleType(o.key)" x-text="o.label"></button>
+                      </template>
+                    </div>
+                    <p class="reg-err" x-show="errors['replace.types']" x-text="errors['replace.types']"></p>
+
+                    <div class="of-grid of-grid-wide mt-3" x-show="types.length">
+                      <template x-for="o in orderedTypes" :key="'r' + o.key">
+                        <label class="of-tile" :class="[errors['replace.counts.' + o.key] || errors['replace.swaps.' + o.key] ? 'of-tile-err' : '', swaps[o.key] ? 'of-tile-from' : '', isSwapTarget(o.key) ? 'of-tile-to' : '']">
+                          <span class="of-role of-role-from" x-show="swaps[o.key]" x-text="'ต้นทาง · เปลี่ยนเป็น ' + labelOf(swaps[o.key])"></span>
+                          <span class="of-role of-role-to" x-show="isSwapTarget(o.key)" x-text="'ปลายทาง · มาแทน ' + swapSources(o.key).map(labelOf).join(', ')"></span>
+                          <span class="of-tile-name" x-text="o.label"></span>
+                          <span class="of-tile-limit" x-text="'ลงไว้แล้ว ' + (current(o.key) === null ? 'ยังไม่ลงทะเบียน' : current(o.key) + ' ชิ้น') + ' · ลงได้สูงสุด ' + limit(o.key)"></span>
+                          <span class="of-swap" x-show="!isSwapTarget(o.key)" role="group" :aria-label="'ย้าย ' + o.label + ' ไปชนิดอื่น'">
+                            <span class="of-swap-label" x-text="'เปลี่ยน ' + o.label + ' เป็นชนิดอื่น (ไม่บังคับ)'"></span>
+                            <template x-for="t in outfitTypes.filter((x) => x.key !== o.key && !swaps[x.key])" :key="t.key">
+                              <button type="button" class="chip" :aria-pressed="swaps[o.key] === t.key" @click="setSwap(o.key, t.key)" x-text="t.label"></button>
+                            </template>
+                          </span>
+                          <input type="text" inputmode="numeric" x-model="rform[o.key]" @input="clampR(o.key)" :disabled="!!swaps[o.key]" autocomplete="off" class="input" placeholder="จำนวนหลังเปลี่ยน" :aria-label="'จำนวนหลังเปลี่ยน ' + o.label">
+                          <span class="reg-err" x-show="errors['replace.counts.' + o.key]" x-text="errors['replace.counts.' + o.key]"></span>
+                          <span class="reg-err" x-show="errors['replace.swaps.' + o.key]" x-text="errors['replace.swaps.' + o.key]"></span>
+                        </label>
+                      </template>
+                    </div>
+
+                    <!-- 3) ไฟล์ชุด (ไฟล์เดียวต่อธุรกรรม) -->
+                    <h3 class="reg-sec">3 · ไฟล์ชุด <span class="reg-hint">(บังคับ · ไฟล์เดียวต่อธุรกรรม)</span></h3>
+                    <div class="reg-rule">
+                      <p class="reg-rule-foot of-first" x-text="types.length ? (g.has_outfit_zip ? 'มีส่วนเปลี่ยน/แทนชุด: ไฟล์นี้จะแทนที่ไฟล์ชุดเดิมของกลุ่มเมื่อบันทึก' : 'มีส่วนเปลี่ยน/แทนชุด: ไฟล์นี้จะเป็นไฟล์ชุดของกลุ่ม (ยังไม่เคยมีไฟล์ชุด)') : 'ไม่มีส่วนเปลี่ยน/แทนชุด: ไฟล์จะเก็บไว้กับธุรกรรม ไม่แทนที่ไฟล์ชุดเดิมของกลุ่ม'"></p>
+                      <p class="reg-rule-foot">ขนาด 1024×1024 · โพลิกอนไม่เกิน 20,000 · ไฟล์ .ZIP ไม่เกิน 50 MB</p>
+                    </div>
+                    <div class="reg-field mt-3">
+                      <input id="o-zip" x-ref="zipInput" type="file" accept=".zip,application/zip,application/x-zip-compressed" class="reg-file" aria-label="ไฟล์ชุด .ZIP" @change="onZip($event)">
+                      <p x-show="zip" x-cloak class="reg-preview-name mt-2" x-text="zip ? 'ไฟล์ที่เลือก: ' + zip.name + ' · ' + size(zip) : ''"></p>
+                      <p class="reg-err" x-show="errors.outfit_zip" x-text="errors.outfit_zip"></p>
+                    </div>
+                    <div class="reg-field mt-3">
+                      <label class="reg-label" for="o-note">รายละเอียดเพิ่มเติม <span class="reg-hint">(ไม่บังคับ)</span></label>
+                      <textarea id="o-note" x-model="note" rows="2" maxlength="2000" class="input" placeholder="อธิบายสิ่งที่ลงหรือแก้ไข"></textarea>
+                    </div>
+
+                    <!-- สรุปการเปลี่ยนทั้งหมด -->
+                    <div class="of-changes" x-show="changeRows.length">
+                      <p class="of-changes-title">สรุปสิ่งที่ธุรกรรมนี้จะเปลี่ยน</p>
+                      <template x-for="r in changeRows" :key="r.id">
+                        <div class="of-change">
+                          <span class="of-side" :class="r.kind === 'add' ? 'of-side-to' : 'of-side-from'">
+                            <b x-text="r.from.label"></b>
+                            <small x-text="numLabel(r.from.before) + ' → ' + numLabel(r.from.after)"></small>
+                          </span>
+                          <template x-if="r.kind === 'swap'">
+                            <span class="of-change-flow">
+                              <span class="of-arrow" aria-hidden="true">➜</span>
+                              <span class="of-side of-side-to">
+                                <b x-text="r.to.label"></b>
+                                <small x-text="numLabel(r.to.before) + ' → ' + numLabel(r.to.after)"></small>
+                              </span>
+                            </span>
+                          </template>
+                          <span class="of-change-note" x-show="r.kind === 'add'" x-text="'ลงเพิ่ม +' + r.n + ' ชิ้น'"></span>
+                          <span class="of-change-note" x-show="r.kind === 'count'">เปลี่ยน/แทนชุดชนิดนี้ (แก้จำนวน)</span>
+                          <span class="of-change-note" x-show="r.kind === 'swap'" x-text="'เปลี่ยน ' + r.from.label + ' เป็น ' + r.to.label"></span>
+                        </div>
+                      </template>
+                    </div>
+                  </div>
+
+                  <!-- สรุป + บันทึก -->
+                  <div class="of-foot">
+                    <div class="of-fee">
+                      <span class="of-fee-label">ค่าบริการรวม</span>
+                      <b class="of-fee-total" x-text="money(feeTotal)"></b>
+                      <template x-for="l in feeLines" :key="l.label">
+                        <span class="of-fee-note" x-text="l.label + ' · ' + (l.amount ? money(l.amount) : 'ฟรี')"></span>
+                      </template>
+                      <span class="of-fee-note" x-show="mode === 'outfit' && !feeLines.length">ยังไม่มีรายการที่ต้องคิดค่าบริการ</span>
+                    </div>
+                    <div class="of-actions">
+                      <button type="button" class="btn-outline" @click="resetForm()">ล้างฟอร์ม</button>
+                      <button type="submit" class="btn-solid" :disabled="busy" x-text="busy ? 'กำลังบันทึก...' : 'บันทึกธุรกรรม'"></button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </template>
+        </section>
+
+      </div>
+    </div>
+  </main>
+</body>
+</html>

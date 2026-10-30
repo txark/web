@@ -31,7 +31,9 @@ class DutyReportController extends Controller
         $users = User::query()
             ->where(fn ($q) => $q->whereIn('role', $councilRoles)->whereNull('disabled_at'))
             ->orWhereIn('id', $shifts->keys())
-            ->get();
+            ->get()
+            // บทบาทที่ไม่ต้องเข้าเวร (เช่น Admin) ไม่นับในสรุป แม้เคยมีเวรเก่าค้างอยู่
+            ->reject(fn (User $u) => $u->role->isAdmin() || in_array($u->role->value, config('council.duty.exempt_roles'), true));
 
         $minSeconds = (int) (config('council.duty.short_shift_hours') * 3600);
         $rows = $users->map(function (User $u) use ($shifts, $from, $to, $minSeconds) {

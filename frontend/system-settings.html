@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="th" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ตั้งค่าระบบ | WAVEVY COUNCIL</title>
+  <link rel="icon" href="/img/favicon.png">
+  <script src="/js/theme.js"></script>
+  <link rel="stylesheet" href="/css/output.css">
+  <script src="/js/config.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script defer src="/js/layout.js"></script>
+  <script defer src="/js/vendor/alpine.min.js"></script>
+</head>
+<body>
+  <div id="site-header"></div>
+
+  <main class="container-app py-8" x-data="{ ready: false, async init() { await authState().require('admin'); this.ready = true; } }">
+    <div x-show="!ready" class="py-24 text-center text-muted">กำลังตรวจสอบสิทธิ์...</div>
+
+    <div x-show="ready" x-cloak>
+      <h1 class="section-title">ตั้งค่าระบบ</h1>
+      <p class="mt-1 text-sm text-muted">ค่ากลางของเว็บ · เห็นเฉพาะผู้ดูแลระบบ (Admin)</p>
+
+      <section class="tx-empty mt-8">
+        <h2 class="tx-empty-title">กำลังพัฒนา</h2>
+        <p class="mt-2 text-sm text-muted">ยังไม่มีค่าที่ตั้งได้ในหน้านี้ เมื่อมีฟีเจอร์ที่ต้องมีค่ากลาง จะมาอยู่ที่นี่</p>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

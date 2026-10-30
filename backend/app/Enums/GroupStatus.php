@@ -7,6 +7,7 @@ enum GroupStatus: string
     case Normal = 'normal';
     case Blacklist = 'blacklist';
     case Sanction = 'sanction';
+    case Inactive = 'inactive'; // ขาดการเคลื่อนไหว (ตั้งจากปุ่มรายงานตัว)
 
     public function label(): string
     {
@@ -14,6 +15,7 @@ enum GroupStatus: string
             self::Normal => 'ปกติ',
             self::Blacklist => 'Blacklist',
             self::Sanction => 'คว่ำบาตร',
+            self::Inactive => 'ขาดการเคลื่อนไหว',
         };
     }
 }

@@ -97,7 +97,7 @@ class GroupRules
     {
         $limit = match ($position) {
             MemberPosition::Leader => 1,
-            MemberPosition::CoLeader => config('council.groups.max_co_leaders'),
+            MemberPosition::CoLeader => $group->maxCoLeaders(),
             default => null,
         };
         if ($limit === null) {

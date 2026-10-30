@@ -60,7 +60,7 @@ class DiscordController extends Controller
         }
 
         // บัญชีตั้งต้นใน .env: เลื่อนขึ้นถ้าสิทธิ์สูงกว่าที่มี แต่ไม่ลดหรือทับ role ที่แก้ในระบบแล้ว
-        if ($bootstrap && $bootstrap->level() > $user->role->level()) {
+        if ($bootstrap && $bootstrap->sortWeight() > $user->role->sortWeight()) {
             $user->role = $bootstrap;
         }
 

@@ -80,6 +80,11 @@ function homePage() {
       return auth.can('vice_president');
     },
 
+    // Admin (ผู้ดูแลเว็บ) อยู่นอกลำดับสภา: เห็นเมนูจัดการผู้ใช้/บันทึกกิจกรรม/ตั้งค่าระบบ
+    isSiteAdmin() {
+      return !!this.user && this.user.role === 'admin'; // อ่านจาก this.user (reactive) เพื่อให้ข้อความที่ผูกอยู่อัปเดตตามเมื่อโหลดผู้ใช้เสร็จ
+    },
+
     // ต้องเข้าเวรไหม (บทบาทที่ตั้งยกเว้นไว้จะเป็น false)
     get dutyRequired() {
       return !!this.duty && this.duty.required;
