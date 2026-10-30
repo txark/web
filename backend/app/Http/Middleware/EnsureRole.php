@@ -7,14 +7,17 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-/** ใช้: ->middleware('role:member') = ต้องมีสิทธิ์ member ขึ้นไป */
+/**
+ * ใช้: ->middleware('role:member') = ต้องมีสิทธิ์ member ขึ้นไป
+ *      ->middleware('role:vice_president,admin') = รองประธานขึ้นไป หรือ Admin (Admin อยู่นอกลำดับสภา จึงต้องระบุเอง)
+ */
 class EnsureRole
 {
-    public function handle(Request $request, Closure $next, string $minRole): Response
+    public function handle(Request $request, Closure $next, string $minRole, string ...$alsoRoles): Response
     {
         $user = $request->user();
 
-        if (! $user || ! $user->atLeast(Role::from($minRole))) {
+        if (! $user || ! ($user->atLeast(Role::from($minRole)) || in_array($user->role->value, $alsoRoles, true))) {
             if ($user) {
                 activity('access')
                     ->causedBy($user)

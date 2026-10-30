@@ -1,11 +1,22 @@
 function logsPage() {
   const MONTHS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
-  const ROLE = { gang: 'Gang', family: 'Family', member: 'Council', vice_president: 'Sub-CC', president: 'Head-CC', admin: 'Admin' };
+  const ROLE = { gang: 'Gang', family: 'Family', trainee: 'Trainee', member: 'Council', operations: 'Operations', senior: 'Senior', secretary: 'Secretary', vice_president: 'Sub-CC', president: 'Head-CC', admin: 'Admin' };
   const FIELD = { name: 'ชื่อ', character_name: 'ชื่อตัวละคร', role: 'บทบาท', status: 'สถานะ', type: 'ประเภท', description: 'คำอธิบาย', body: 'เนื้อหา', note: 'หมายเหตุ', penalty: 'โทษ', is_published: 'เผยแพร่', slots_locked: 'ล็อก Slot', position: 'ตำแหน่ง', section: 'หมวด', sort_order: 'ลำดับ', kind: 'ชนิด', title: 'หัวข้อ', note_label: 'ป้ายหมายเหตุ', status_reason: 'เหตุผลสถานะ', logo_url: 'โลโก้' };
   const EVENT_BADGE = {
     login: 'badge badge-normal', logout: 'badge badge-muted', login_failed: 'badge badge-sanction',
     view: 'badge badge-info', denied: 'badge badge-sanction',
     created: 'badge badge-normal', updated: 'badge badge-blacklist', deleted: 'badge badge-sanction',
+    approved: 'badge badge-normal', rejected: 'badge badge-sanction', cancelled: 'badge badge-muted',
+    start: 'badge badge-normal', end: 'badge badge-muted', system_end: 'badge badge-blacklist',
+  };
+  // สถานะ (event) ที่มีในแต่ละหมวด: หมวดที่ไม่มีสถานะ (แก๊ง/ครอบครัว) จะไม่แสดงแถวสถานะ
+  const EVENTS = {
+    auth: [['login', 'เข้าสู่ระบบ'], ['logout', 'ออกจากระบบ'], ['login_failed', 'เข้าสู่ระบบไม่สำเร็จ']],
+    access: [['view', 'เปิดดู'], ['denied', 'ถูกปฏิเสธสิทธิ์']],
+    changes: [['created', 'สร้าง'], ['updated', 'แก้ไข'], ['deleted', 'ลบ']],
+    transactions: [['approved', 'อนุมัติ'], ['rejected', 'ไม่อนุมัติ'], ['cancelled', 'ยกเลิก']],
+    groups: [],
+    duty: [['start', 'เข้าเวร'], ['end', 'ออกเวร'], ['system_end', 'ระบบปิดเวร']],
   };
 
   return {
@@ -14,9 +25,13 @@ function logsPage() {
       { value: '', label: 'ทั้งหมด' },
       { value: 'auth', label: 'เข้า/ออกระบบ' },
       { value: 'access', label: 'การเข้าดู' },
-      { value: 'changes', label: 'แก้ไขข้อมูล' },
+      { value: 'transactions', label: 'ธุรกรรม' },
+      { value: 'groups', label: 'แก๊ง/ครอบครัว' },
+      { value: 'duty', label: 'เข้า/ออกเวร' },
+      { value: 'changes', label: 'แก้ไขข้อมูลอื่นๆ' },
     ],
     type: '',
+    event: '',
     q: '',
     from: '',
     to: '',
@@ -31,7 +46,7 @@ function logsPage() {
 
     async init() {
       // ให้เข้าได้เฉพาะรองประธานขึ้นไป (ที่ฝั่ง server ตรวจซ้ำอีกชั้นเสมอ)
-      await authState().require('vice_president');
+      await authState().require('vice_president', { also: ['admin'] });
       this.ready = true;
       await this.load();
       for (const k of ['q', 'from', 'to']) this.$watch(k, () => this.reload());
@@ -44,7 +59,19 @@ function logsPage() {
 
     setType(v) {
       this.type = v;
+      this.event = ''; // สถานะของหมวดเดิมใช้กับหมวดใหม่ไม่ได้
       this.reload();
+    },
+
+    setEvent(v) {
+      this.event = this.event === v ? '' : v;
+      this.reload();
+    },
+
+    /** สถานะให้เลือกตามหมวดที่เลือก (ยังไม่เลือกหมวด = ทุกสถานะ) */
+    get events() {
+      const list = this.type ? EVENTS[this.type] || [] : Object.values(EVENTS).flat();
+      return list.map(([value, label]) => ({ value, label }));
     },
 
     filterUser(causer) {
@@ -59,6 +86,7 @@ function logsPage() {
 
     clearAll() {
       this.type = '';
+      this.event = '';
       this.user = null;
       this.from = this.to = '';
       this.q = '';
@@ -66,7 +94,7 @@ function logsPage() {
     },
 
     get hasFilter() {
-      return !!(this.type || this.user || this.from || this.to || this.q);
+      return !!(this.type || this.event || this.user || this.from || this.to || this.q);
     },
 
     go(p) {
@@ -80,6 +108,7 @@ function logsPage() {
       this.error = '';
       const p = new URLSearchParams({ page: this.page });
       if (this.type) p.set('type', this.type);
+      if (this.event) p.set('event', this.event);
       if (this.user) p.set('user_id', this.user.id);
       if (this.q.trim()) p.set('q', this.q.trim());
       if (this.from) p.set('from', this.from);
@@ -161,7 +190,7 @@ function logsPage() {
     // ข้อมูลเสริมที่แสดงในรายละเอียด (ตัด key ที่แสดงแยกแล้ว)
     extras(row) {
       const p = row.properties || {};
-      const out = [];
+      const out = [...(row.details || [])]; // ธุรกรรม: ทำอะไรบ้าง
       if (p.ip) out.push(['IP', p.ip]);
       if (p.user_agent) out.push(['อุปกรณ์', this.device(p.user_agent)]);
       if (p.via === 'console') out.push(['ที่มา', 'คำสั่งบนเซิร์ฟเวอร์ (artisan)']);

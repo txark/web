@@ -5,10 +5,13 @@ namespace App\Http\Controllers\Council;
 use App\Enums\GroupStatus;
 use App\Enums\GroupType;
 use App\Enums\MemberPosition;
+use App\Enums\TransactionKind;
+use App\Enums\TransactionStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\GroupAdminResource;
 use App\Models\Group;
 use App\Services\GroupRules;
+use App\Support\ColorNameMatcher;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -21,12 +24,12 @@ use Illuminate\Validation\Rule;
 /** จัดการแก๊ง/ครอบครัวโดยสภา (ตั้งแต่ Council ขึ้นไป; ลบกลุ่ม = รองประธานขึ้นไป) */
 class GroupController extends Controller
 {
-    private const NAME_RULE = ['required', 'string', 'max:20', 'regex:/^[A-Za-z0-9][A-Za-z0-9 ._\-]*$/'];
+    private const NAME_RULE = ['required', 'string', 'max:20', 'regex:/^(?=.*[A-Za-z])[A-Za-z0-9][A-Za-z0-9 ._\-]*$/'];
 
     private const MESSAGES = [
         'name.required' => 'กรุณากรอกชื่อ',
         'name.max' => 'ชื่อต้องยาวไม่เกิน 20 ตัวอักษร',
-        'name.regex' => 'ชื่อต้องเป็นภาษาอังกฤษ/ตัวเลขเท่านั้น',
+        'name.regex' => 'ชื่อต้องเป็นภาษาอังกฤษ (ใช้ตัวเลขร่วมได้) และมีตัวอักษรอย่างน้อย 1 ตัว',
         'type.required' => 'กรุณาเลือกประเภท',
         'type.enum' => 'ประเภทไม่ถูกต้อง',
         'status.enum' => 'สถานะไม่ถูกต้อง',
@@ -40,22 +43,69 @@ class GroupController extends Controller
     {
         $f = $request->validate([
             'type' => ['nullable', Rule::enum(GroupType::class)],
+            'kind' => ['nullable', Rule::in(['gang', 'lady', 'family'])], // lady = แก๊งหญิงล้วน
             'status' => ['nullable', Rule::enum(GroupStatus::class)],
+            'scope' => ['nullable', Rule::in(['active', 'dissolved', 'deleted'])],
             'q' => ['nullable', 'string', 'max:100'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
+        $scope = $f['scope'] ?? 'active';
 
-        $groups = Group::query()
+        $query = match ($scope) {
+            'dissolved' => $this->dissolved(Group::onlyTrashed(), true),
+            'deleted' => $this->dissolved(Group::onlyTrashed(), false),
+            default => Group::query(),
+        };
+
+        $groups = $query
             ->with('leader')
             ->withCount('activeMembers')
             ->when($f['type'] ?? null, fn ($q, $v) => $q->where('type', $v))
+            ->when($f['kind'] ?? null, fn ($q, $v) => match ($v) {
+                'family' => $q->where('type', GroupType::Family->value),
+                'lady' => $q->where('type', GroupType::Gang->value)->where('is_lady', true),
+                default => $q->where('type', GroupType::Gang->value)->where('is_lady', false),
+            })
             ->when($f['status'] ?? null, fn ($q, $v) => $q->where('status', $v))
-            ->when($f['q'] ?? null, fn ($q, $v) => $q->whereLike('name', "%{$v}%"))
+            ->when($f['q'] ?? null, fn ($q, $v) => $q->where(function ($w) use ($v) {
+                $w->whereLike('name', "%{$v}%")
+                    ->orWhereLike('short_name', "%{$v}%")
+                    ->orWhereHas('members', fn ($m) => $m->where('position', MemberPosition::Leader->value)->whereLike('character_name', "%{$v}%"));
+            }))
             ->orderBy('name')
             ->paginate($f['per_page'] ?? 30)
             ->withQueryString();
 
-        return GroupAdminResource::collection($groups);
+        return GroupAdminResource::collection($groups)->additional(['counts' => $this->counts()]);
+    }
+
+    /** ถูกยุบด้วยธุรกรรม "ยุบ" ($viaTransaction = true) หรือถูกลบด้วยวิธีอื่น (false) — ทั้งสองเป็น soft delete */
+    private function dissolved($query, bool $viaTransaction)
+    {
+        $exists = fn ($q) => $q->select(DB::raw(1))->from('transactions')
+            ->whereColumn('transactions.group_id', 'groups.id')
+            ->where('transactions.kind', TransactionKind::Dissolve->value)
+            ->where('transactions.status', TransactionStatus::Approved->value);
+
+        return $viaTransaction ? $query->whereExists($exists) : $query->whereNotExists($exists);
+    }
+
+    /** @return array<string, int> จำนวนกลุ่มที่ใช้งาน แยกประเภท (ไม่ขึ้นกับตัวกรอง) + จำนวนที่ยุบ/ลบแล้ว */
+    private function counts(): array
+    {
+        $active = Group::query()->selectRaw('type, is_lady, count(*) as n')->groupBy('type', 'is_lady')->get();
+        $gang = $active->where('type', GroupType::Gang)->where('is_lady', false)->sum('n');
+        $lady = $active->where('type', GroupType::Gang)->where('is_lady', true)->sum('n');
+        $family = $active->where('type', GroupType::Family)->sum('n');
+
+        return [
+            'active' => (int) ($gang + $lady + $family),
+            'gang' => (int) $gang,
+            'lady' => (int) $lady,
+            'family' => (int) $family,
+            'dissolved' => $this->dissolved(Group::onlyTrashed(), true)->count(),
+            'deleted' => $this->dissolved(Group::onlyTrashed(), false)->count(),
+        ];
     }
 
     public function show(Group $group): GroupAdminResource
@@ -72,49 +122,45 @@ class GroupController extends Controller
         $min = $type ? (int) config("council.groups.min_members.{$type->value}") : 1;
         $slots = config("council.groups.slots.{$key}");
         $max = $slots['main'] + $slots['reserve'];
-        $maxCo = (int) config('council.groups.max_co_leaders');
+        $maxCo = $type ? Group::coLeaderLimit($type) : (int) config('council.groups.max_co_leaders');
 
-        $person = fn (string $p) => [
+        // Discord ID ของหัวหน้าบังคับ ส่วนของรองไม่บังคับ (แต่ถ้ากรอกต้องเป็นตัวเลข 17-20 หลัก)
+        $person = fn (string $p, bool $discordRequired = true) => [
             "{$p}.ic_name" => ['required', 'string', 'max:120'],
             "{$p}.ic_phone" => ['nullable', 'string', 'max:30', 'regex:/^[0-9 \-+]+$/'],
-            "{$p}.discord_id" => ['required', 'regex:/^\d{17,20}$/'],
+            "{$p}.discord_id" => [$discordRequired ? 'required' : 'nullable', 'regex:/^\d{17,20}$/'],
         ];
 
         $data = $request->validate([
             'type' => ['required', Rule::enum(GroupType::class)],
             'is_lady' => ['sometimes', 'boolean'],
-            'declared_members' => ['required', 'integer', "min:{$min}", "max:{$max}"],
             'name' => self::NAME_RULE,
-            'short_name' => ['required', 'string', 'max:4', 'regex:/^[A-Za-z0-9]+$/'],
+            'short_name' => ['required', 'string', 'max:4', 'regex:/^[A-Z0-9]+$/'],
             'color_hex' => ['required', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'color_name' => ['required', 'string', 'max:60'],
             'logo' => ['required', 'file', 'max:2048', $this->signature('png')],
             'leader' => ['required', 'array'],
             ...$person('leader'),
-            'co_leaders' => ['required', 'array', 'min:1', "max:{$maxCo}"],
+            'co_leaders' => ['nullable', 'array', "max:{$maxCo}"], // รองไม่บังคับ
             'co_leaders.*' => ['array'],
-            ...$person('co_leaders.*'),
+            ...$person('co_leaders.*', false),
             'temp_outfit_image' => ['required', 'file', 'max:4096', $this->signature('png')],
-            'temp_outfit_male' => ['nullable', 'string', 'max:30', 'required_without:temp_outfit_female'],
-            'temp_outfit_female' => ['nullable', 'string', 'max:30', 'required_without:temp_outfit_male'],
+            'temp_outfit_male' => ['nullable', 'string', 'max:30'],
+            'temp_outfit_female' => ['nullable', 'string', 'max:30'],
             'outfit_zip' => ['required', 'file', 'max:51200', $this->signature('zip')],
             'protect' => ['sometimes', 'boolean'],
         ], self::MESSAGES + [
-            'declared_members.min' => "ต้องมีสมาชิกอย่างน้อย {$min} คน",
-            'declared_members.max' => "สมาชิกสูงสุด {$max} คน",
-            'short_name.regex' => 'ชื่อย่อต้องเป็นภาษาอังกฤษ/ตัวเลข ไม่เกิน 4 ตัวอักษร',
+            'short_name.regex' => 'ชื่อย่อต้องเป็นตัวพิมพ์ใหญ่ภาษาอังกฤษหรือตัวเลขเท่านั้น ไม่เกิน 4 ตัวอักษร',
             'color_hex.regex' => 'โค้ดสีต้องเป็นรูปแบบ #RRGGBB',
-            'co_leaders.min' => 'ต้องมีรองอย่างน้อย 1 คน',
-            'co_leaders.max' => "มีรองได้ไม่เกิน {$maxCo} คน",
+            'co_leaders.max' => $type === GroupType::Family ? 'ครอบครัวมีรองได้ 1 คน' : "แก๊งมีรองได้ไม่เกิน {$maxCo} คน",
             '*.discord_id.regex' => 'Discord ID ต้องเป็นตัวเลข 17-20 หลัก',
             '*.ic_phone.regex' => 'เบอร์ IC ไม่ถูกต้อง',
-            'temp_outfit_male.required_without' => 'กรอกเลขชุดอย่างน้อยฝั่งชายหรือหญิง',
-            'temp_outfit_female.required_without' => 'กรอกเลขชุดอย่างน้อยฝั่งชายหรือหญิง',
         ]);
 
         $this->rules->assertValidName($type, $data['name']);
+        $this->assertColorName($data['color_hex'], $data['color_name']);
 
-        $people = [$data['leader'], ...$data['co_leaders']];
+        $people = [$data['leader'], ...($data['co_leaders'] ?? [])];
         $names = array_map(fn ($p) => mb_strtolower(trim($p['ic_name'])), $people);
         if (count(array_unique($names)) !== count($names)) {
             throw ValidationException::withMessages(['co_leaders' => 'ชื่อหัวหน้าและรองต้องไม่ซ้ำกัน']);
@@ -135,10 +181,9 @@ class GroupController extends Controller
                     'type' => $type,
                     'is_lady' => $isLady,
                     'name' => $data['name'],
-                    'short_name' => strtoupper($data['short_name']),
+                    'short_name' => $data['short_name'],
                     'color_hex' => strtoupper($data['color_hex']),
                     'color_name' => $data['color_name'],
-                    'declared_members' => $data['declared_members'],
                     'logo_path' => $logo,
                     'logo_url' => Storage::disk('public')->url($logo),
                     'temp_outfit_path' => $temp,
@@ -146,6 +191,7 @@ class GroupController extends Controller
                     'temp_outfit_female' => $data['temp_outfit_female'] ?? null,
                     'outfit_zip_path' => $zip,
                     'protect_requested' => $protect,
+                    'protect_from' => $protect ? now() : null, // เริ่มนับตอนกดขึ้นทะเบียน
                     'protect_until' => $protect ? now()->addDays((int) config('council.groups.protect_days')) : null,
                     'status' => GroupStatus::Normal,
                     'status_changed_at' => now(),
@@ -163,7 +209,7 @@ class GroupController extends Controller
                     $group->members()->create([
                         'character_name' => trim($p['ic_name']),
                         'ic_phone' => $p['ic_phone'] ?? null,
-                        'discord_id' => $p['discord_id'],
+                        'discord_id' => $p['discord_id'] ?? null,
                         'position' => $i === 0 ? MemberPosition::Leader : MemberPosition::CoLeader,
                         'joined_at' => now(),
                     ]);
@@ -194,6 +240,14 @@ class GroupController extends Controller
         $ext = pathinfo($path, PATHINFO_EXTENSION) ?: 'bin';
 
         return Storage::disk('local')->download($path, "{$group->name}-{$kind}.{$ext}");
+    }
+
+    /** ชื่อสีต้องตรงกับโค้ด HEX (เช่น #FF0000 ใช้ชื่อ "เขียว" ไม่ได้) */
+    private function assertColorName(string $hex, string $name): void
+    {
+        if ($message = ColorNameMatcher::check($hex, $name)) {
+            throw ValidationException::withMessages(['color_name' => $message]);
+        }
     }
 
     /** ตรวจชนิดไฟล์จากไบต์หัวไฟล์จริง ไม่เชื่อนามสกุล */
@@ -307,6 +361,7 @@ class GroupController extends Controller
 
     private function full(Group $group): Group
     {
-        return $group->fresh()->load(['leader', 'members', 'statusHistory.changedBy'])->loadCount('activeMembers');
+        return $group->fresh()->load(['leader', 'members', 'statusHistory.changedBy'])->loadCount('activeMembers')
+            ->loadMax(['records as last_report_at' => fn ($q) => $q->where('kind', 'report')], 'created_at');
     }
 }

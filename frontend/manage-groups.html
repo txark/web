@@ -28,110 +28,460 @@
 
       <!-- ═════════ รายการ ═════════ -->
       <section x-show="!g">
-        <div class="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h1 class="section-title">จัดการแก๊ง/ครอบครัว</h1>
-            <p class="mt-1 text-sm text-muted">ขึ้นทะเบียน แก้ไขข้อมูล จัดการสมาชิก สถานะ และล็อกสล็อต · ทุกการแก้ไขถูกบันทึกในบันทึกกิจกรรม</p>
+        <header class="rg-head">
+          <div class="min-w-0">
+            <p class="rg-eyebrow">WAVEVY COUNCIL / REGISTRY</p>
+            <h1 class="rg-title">ทะเบียนแก๊ง / ครอบครัว</h1>
+            <p class="rg-sub">ข้อมูลแก๊งและครอบครัวที่ขึ้นทะเบียนกับสภา · ทุกการแก้ไขถูกบันทึกในบันทึกกิจกรรม</p>
           </div>
-          <button type="button" class="btn-outline" @click="openCreate()">+ ขึ้นทะเบียนใหม่</button>
-        </div>
+          <div class="rg-actions">
+            <button type="button" class="rg-icon-btn" @click="reload()" :disabled="loading" aria-label="รีเฟรชรายการ" title="รีเฟรช">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" :class="loading ? 'animate-spin' : ''"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5M3 21v-5h5"/></svg>
+            </button>
+            <button type="button" class="rg-primary-btn" @click="openCreate()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              ขึ้นทะเบียนใหม่
+            </button>
+          </div>
+        </header>
 
         <p x-show="error" x-text="error" class="penalty-box mt-5"></p>
         <p x-show="msg && !g" x-text="msg" class="note-box mt-5"></p>
 
-        <!-- ตัวกรอง -->
-        <div class="mt-6 flex flex-col gap-3 md:flex-row md:items-center">
-          <input type="search" x-model.debounce.300ms="q" class="input md:w-80" placeholder="ค้นหาชื่อ" aria-label="ค้นหา">
-          <div class="flex flex-wrap gap-2">
-            <template x-for="t in types" :key="t.value">
-              <button type="button" class="chip" :aria-pressed="type === t.value" @click="type = t.value" x-text="t.label"></button>
+        <div class="rg-panel mt-6">
+          <!-- ค้นหา + ขอบเขต -->
+          <div class="rg-toolbar">
+            <label class="rg-search">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+              <input type="search" x-model.debounce.300ms="q" placeholder="ค้นหาชื่อแก๊ง ชื่อย่อ หรือ Leader" aria-label="ค้นหา" autocomplete="off">
+            </label>
+            <div class="rg-scopes" role="group" aria-label="ขอบเขตรายการ">
+              <button type="button" class="chip" :aria-pressed="scope === 'active'" @click="scope = 'active'">ใช้งานอยู่</button>
+              <button type="button" class="chip" :aria-pressed="scope === 'dissolved'" @click="scope = 'dissolved'">ยุบแล้ว <span x-text="counts.dissolved"></span></button>
+              <button type="button" class="chip" :aria-pressed="scope === 'deleted'" @click="scope = 'deleted'">ลบแล้ว <span x-text="counts.deleted"></span></button>
+            </div>
+          </div>
+
+          <!-- สรุปจำนวน (กดเพื่อกรองประเภท) -->
+          <div class="rg-tiles">
+            <template x-for="t in tiles" :key="t.kind">
+              <button type="button" class="rg-tile" :aria-pressed="kind === t.kind" @click="kind = t.kind">
+                <span class="rg-tile-icon" aria-hidden="true" x-html="t.icon"></span>
+                <span class="min-w-0">
+                  <span class="rg-tile-label" x-text="t.label"></span>
+                  <span class="rg-tile-num" x-text="counts[t.count]"></span>
+                </span>
+                <svg class="rg-tile-go" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+              </button>
             </template>
-            <span class="hidden w-px bg-[var(--line)] md:block"></span>
-            <template x-for="s in statuses" :key="s.value">
-              <button type="button" class="chip" :aria-pressed="status === s.value" @click="status = s.value" x-text="s.label"></button>
+          </div>
+
+          <div class="rg-list-head">
+            <p class="rg-count" x-text="scopeLabel + ' · ' + (meta ? meta.total : 0).toLocaleString('th-TH') + ' สังกัด'"></p>
+            <div class="flex flex-wrap gap-2" role="group" aria-label="กรองตามสถานะ">
+              <template x-for="s in statuses" :key="s.value">
+                <button type="button" class="chip" :aria-pressed="status === s.value" @click="status = s.value" x-text="s.label"></button>
+              </template>
+            </div>
+          </div>
+
+          <p x-show="loading && rows.length === 0" class="rg-empty">กำลังโหลด...</p>
+          <p x-show="!loading && !error && rows.length === 0" class="rg-empty">ไม่พบรายการตามเงื่อนไข</p>
+
+          <div class="rg-grid" x-show="rows.length > 0">
+            <template x-for="r in rows" :key="r.id">
+              <button type="button" class="rg-card" :disabled="!!r.dissolved_at" @click="openById(r.id)">
+                <span class="rg-card-top">
+                  <span class="rg-kind" :class="'rg-kind-' + kindOf(r).toLowerCase()" x-text="kindOf(r)"></span>
+                  <span x-show="r.status !== 'normal'" :class="badge(r.status)" x-text="r.status_label"></span>
+                  <span x-show="r.slots_locked && !r.dissolved_at" class="rg-lock">lock</span>
+                  <span x-show="r.dissolved_at" class="rg-lock" x-text="'ยุบ/ลบเมื่อ ' + when(r.dissolved_at)"></span>
+                  <svg x-show="!r.dissolved_at" class="rg-card-go" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+                </span>
+                <span class="rg-card-id">
+                  <span class="rg-logo">
+                    <img x-show="r.logo_url" :src="r.logo_url" :alt="'โลโก้ ' + r.name" loading="lazy" @error="$el.style.display = 'none'; $el.nextElementSibling.style.display = ''">
+                    <span :style="r.logo_url ? 'display:none' : ''" x-text="(r.short_name || r.name.slice(0, 3)).toUpperCase()"></span>
+                  </span>
+                  <span class="rg-card-name" x-text="r.name"></span>
+                </span>
+                <span class="rg-card-facts">
+                  <span class="rg-fact">
+                    <span class="rg-fact-label">หัวหน้า</span>
+                    <span class="rg-fact-value" x-text="r.leader || '—'"></span>
+                  </span>
+                  <span class="rg-fact">
+                    <span class="rg-fact-label">สี</span>
+                    <span class="rg-fact-value"><span class="rg-dot" :style="r.color_hex ? 'background:' + r.color_hex : ''"></span><span x-text="r.color_name || '—'"></span></span>
+                  </span>
+                </span>
+                <span class="rg-card-foot">
+                  <span x-text="r.short_name || ''"></span>
+                  <span x-show="!r.dissolved_at">ดูรายละเอียด +</span>
+                </span>
+              </button>
             </template>
+          </div>
+
+          <div class="mt-6 flex items-center justify-center gap-3 text-sm" x-show="meta && meta.last_page > 1">
+            <button class="btn-outline disabled:opacity-40" :disabled="page <= 1" @click="go(page - 1)">ก่อนหน้า</button>
+            <span class="text-muted">หน้า <span x-text="page"></span> / <span x-text="meta ? meta.last_page : 1"></span></span>
+            <button class="btn-outline disabled:opacity-40" :disabled="!meta || page >= meta.last_page" @click="go(page + 1)">ถัดไป</button>
           </div>
         </div>
 
-        <p x-show="loading" class="mt-10 text-center text-muted">กำลังโหลด...</p>
-        <p x-show="!loading && !error && rows.length === 0" class="mt-10 text-center text-muted">ไม่พบรายการตามเงื่อนไข</p>
-        <p class="mt-5 text-sm text-muted" x-show="meta && rows.length > 0">ทั้งหมด <span class="text-fg" x-text="meta ? meta.total.toLocaleString('th-TH') : 0"></span> กลุ่ม</p>
-
-        <ul class="mt-3 space-y-2" x-show="rows.length > 0">
-          <template x-for="r in rows" :key="r.id">
-            <li>
-              <button type="button" class="card card-link grid w-full gap-x-4 gap-y-1 px-4 py-3 text-left md:grid-cols-[minmax(0,1.4fr)_6rem_minmax(0,1fr)_7rem_6rem] md:items-center" @click="openById(r.id)">
-                <span class="min-w-0">
-                  <span class="block truncate font-medium" x-text="r.name"></span>
-                  <span class="block truncate text-xs text-muted" x-text="r.leader ? 'หัวหน้า ' + r.leader : 'ยังไม่มีหัวหน้า'"></span>
-                </span>
-                <span class="text-sm text-muted" x-text="r.type_label + (r.is_lady ? ' (Lady)' : '')"></span>
-                <span class="text-sm text-muted"><span x-text="r.members_count"></span> / <span x-text="r.max_members"></span> คน<span x-show="r.slots_locked" class="ml-2" title="ล็อกสล็อต">🔒</span></span>
-                <span><span :class="badge(r.status)" x-text="r.status_label"></span></span>
-                <span class="text-sm text-accent md:text-right">จัดการ →</span>
-              </button>
-            </li>
-          </template>
-        </ul>
-
-        <div class="mt-8 flex items-center justify-center gap-3 text-sm" x-show="meta && meta.last_page > 1">
-          <button class="btn-outline disabled:opacity-40" :disabled="page <= 1" @click="go(page - 1)">ก่อนหน้า</button>
-          <span class="text-muted">หน้า <span x-text="page"></span> / <span x-text="meta ? meta.last_page : 1"></span></span>
-          <button class="btn-outline disabled:opacity-40" :disabled="!meta || page >= meta.last_page" @click="go(page + 1)">ถัดไป</button>
-        </div>
+        <p class="rg-foot">
+          <span>WAVEVY COUNCIL · ทะเบียนแก๊ง / ครอบครัว</span>
+          <span x-show="updatedAt" x-text="'อัปเดต ' + updatedAt"></span>
+        </p>
       </section>
 
-      <!-- ═════════ รายละเอียด ═════════ -->
-      <section x-show="g" x-cloak>
-        <template x-if="g">
-          <div>
-            <button type="button" class="text-sm text-muted hover:text-accent" @click="close()">← กลับไปรายการ</button>
+      </div>
+    </div>
 
-            <div class="mt-3 flex flex-wrap items-center gap-3">
-              <h1 class="section-title" x-text="g.name"></h1>
-              <span class="badge badge-info" x-text="g.type_label + (g.is_lady ? ' (Lady)' : '')"></span>
-              <span :class="badge(g.status)" x-text="g.status_label"></span>
-              <span x-show="g.slots_locked" class="badge badge-muted">🔒 ล็อกสล็อต</span>
+  <!-- ═════════ ป๊อปอัปรายละเอียดแก๊ง/ครอบครัว ═════════ -->
+  <div x-show="g" x-cloak class="gd-backdrop" role="dialog" aria-modal="true" aria-labelledby="gd-title" @keydown.escape.window="close()" @mousedown.self="close()">
+    <div class="gd-modal">
+      <template x-if="g">
+        <div class="gd-inner">
+          <header class="gd-head">
+            <h2 id="gd-title" class="gd-title" x-text="g.name + (g.short_name ? ' [' + g.short_name + ']' : '')"></h2>
+            <button type="button" class="reg-close" aria-label="ปิด" @click="close()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+            </button>
+          </header>
+
+          <nav class="gd-tabs" aria-label="หมวดของทะเบียน">
+            <template x-for="t in tabs" :key="t.key">
+              <button type="button" class="gd-tab" :aria-pressed="tab === t.key" @click="openTab(t.key)" x-text="t.label"></button>
+            </template>
+            <div class="gd-menu" @click.outside="manageMenu = false" @keydown.escape.stop="manageMenu = false">
+              <button type="button" class="gd-tab" :aria-expanded="manageMenu" aria-haspopup="menu" :aria-pressed="tab === 'manage'" @click="manageMenu = !manageMenu">จัดการทะเบียน</button>
+              <div x-show="manageMenu" x-cloak class="gd-menu-panel" role="menu">
+                <button type="button" role="menuitem" class="gd-menu-item" @click="manageGo('members')">สมาชิกและสถานะ</button>
+                <button type="button" role="menuitem" class="gd-menu-item gd-menu-danger" @click="manageGo('dissolve')">ยุบทะเบียน</button>
+              </div>
             </div>
-            <p class="mt-1 text-sm text-muted">ขึ้นทะเบียน <span x-text="when(g.registered_at)"></span><span x-show="g.renamed_at"> · เปลี่ยนชื่อล่าสุด <span x-text="when(g.renamed_at)"></span></span></p>
+          </nav>
 
-            <p x-show="err" x-text="err" class="penalty-box mt-4"></p>
-            <p x-show="msg" x-text="msg" class="note-box mt-4"></p>
+          <div class="gd-body">
+            <p x-show="err" x-text="err" class="penalty-box mb-4"></p>
+            <p x-show="msg" x-text="msg" class="note-box mb-4"></p>
 
-            <div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+            <!-- ═══ แก้ไขข้อมูล (ภาพรวมทะเบียน) ═══ -->
+            <div x-show="tab === 'info'" class="gd-stack">
+              <section class="gd-card gd-summary">
+                <span class="gd-logo gd-logo-lg">
+                  <img x-show="g.logo_url" :src="g.logo_url" :alt="'โลโก้ ' + g.name" @error="$el.style.display = 'none'; $el.nextElementSibling.style.display = ''">
+                  <span :style="g.logo_url ? 'display:none' : ''" x-text="(g.short_name || g.name.slice(0, 3)).toUpperCase()"></span>
+                </span>
+                <div class="min-w-0">
+                  <p class="gd-muted" x-text="g.type === 'family' ? 'ครอบครัว' : (g.is_lady ? 'แก๊งหญิงล้วน (Lady)' : 'แก๊ง')"></p>
+                  <div class="gd-badges">
+                    <span :class="badge(g.status)" x-text="g.status_label"></span>
+                    <span x-show="protectBadge" class="gd-protect" x-text="protectBadge"></span>
+                    <span x-show="g.slots_locked" class="rg-lock">lock</span>
+                  </div>
+                </div>
+                <dl class="gd-stats">
+                  <div><dt>จำนวนสมาชิก</dt><dd x-text="g.declared_members ? g.declared_members + ' คน' : '—'"></dd></div>
+                  <div><dt>วันที่ขึ้นทะเบียน</dt><dd x-text="whenFull(g.registered_at)"></dd></div>
+                  <div><dt>รายงานตัวล่าสุด</dt><dd x-text="g.last_report_at ? whenFull(g.last_report_at) : '—'"></dd></div>
+                </dl>
+              </section>
+
+              <div class="gd-two">
+                <section class="gd-card">
+                  <h3 class="gd-h">ข้อมูลทะเบียน</h3>
+                  <dl class="gd-rows">
+                    <div><dt>ชื่อเต็ม</dt><dd x-text="g.name"></dd></div>
+                    <div><dt>ชื่อย่อ</dt><dd x-text="g.short_name || '—'"></dd></div>
+                    <div><dt>สีหลัก</dt><dd><span class="rg-dot" :style="g.color_hex ? 'background:' + g.color_hex : ''"></span><span x-text="g.color_hex ? (g.color_name || '') + ' · ' + g.color_hex.toLowerCase() : '—'"></span></dd></div>
+                    <div x-show="g.declared_members"><dt>จำนวนที่แจ้ง</dt><dd x-text="g.declared_members + ' คน'"></dd></div>
+                  </dl>
+                  <details class="gd-legacy">
+                    <summary>ข้อมูลจากระบบเดิม</summary>
+                    <dl class="gd-rows">
+                      <div><dt>รหัสในระบบ</dt><dd x-text="'#' + g.id"></dd></div>
+                      <div><dt>คำอธิบาย</dt><dd x-text="g.description || '—'"></dd></div>
+                      <div><dt>เปลี่ยนชื่อล่าสุด</dt><dd x-text="g.renamed_at ? whenFull(g.renamed_at) : '—'"></dd></div>
+                      <div x-show="g.status !== 'normal'"><dt>เหตุผลสถานะ</dt><dd x-text="g.status_reason || '—'"></dd></div>
+                      <div><dt>โลโก้</dt><dd class="break-all" x-text="g.logo_url || '—'"></dd></div>
+                    </dl>
+                  </details>
+                </section>
+
+                <section class="gd-card">
+                  <h3 class="gd-h">หัวหน้าและการติดต่อ</h3>
+                  <dl class="gd-rows">
+                    <div><dt>Leader</dt><dd x-text="leaderMember ? leaderMember.character_name : '—'"></dd></div>
+                    <div><dt>Discord ID</dt><dd class="font-mono" x-text="leaderMember && leaderMember.discord_id ? leaderMember.discord_id : 'ไม่ระบุ'"></dd></div>
+                    <div><dt>เบอร์โทร IC</dt><dd x-text="leaderMember && leaderMember.ic_phone ? leaderMember.ic_phone : 'ไม่ระบุ'"></dd></div>
+                  </dl>
+                  <div class="gd-sub" x-show="coLeaders.length > 0">
+                    <p class="gd-sub-title">รองหัวหน้า (Sub Leader)</p>
+                    <template x-for="(c, i) in coLeaders" :key="c.id">
+                      <dl class="gd-rows">
+                        <div><dt x-text="'คนที่ ' + (i + 1)"></dt><dd x-text="c.character_name"></dd></div>
+                        <div><dt>Discord ID</dt><dd class="font-mono" x-text="c.discord_id || 'ไม่ระบุ'"></dd></div>
+                        <div><dt>เบอร์โทร IC</dt><dd x-text="c.ic_phone || 'ไม่ระบุ'"></dd></div>
+                      </dl>
+                    </template>
+                  </div>
+                  <p x-show="coLeaders.length === 0" class="gd-muted mt-3">ยังไม่มีรองหัวหน้า</p>
+                </section>
+              </div>
+
+              <div class="gd-two">
+                <section class="gd-card">
+                  <div class="gd-h-row">
+                    <h3 class="gd-h">ชุดที่ลงและจำนวน</h3>
+                    <button type="button" class="gd-ghost" x-show="!outfitEdit" @click="startOutfitEdit()">แก้ไขจำนวน</button>
+                  </div>
+
+                  <!-- ดู -->
+                  <div class="gd-outfits" x-show="!outfitEdit">
+                    <template x-for="o in outfitTypes" :key="o.key">
+                      <div class="gd-outfit">
+                        <b x-text="o.label"></b>
+                        <span x-text="outfitValue(o.key) === null ? 'ยังไม่ลงทะเบียน' : outfitValue(o.key).toLocaleString('th-TH') + ' ชิ้น'"></span>
+                      </div>
+                    </template>
+                  </div>
+
+                  <!-- แก้ไข -->
+                  <form x-show="outfitEdit" x-cloak @submit.prevent="saveOutfits()" novalidate>
+                    <div class="gd-outfits">
+                      <template x-for="o in outfitTypes" :key="o.key">
+                        <label class="gd-outfit gd-outfit-edit">
+                          <b x-text="o.label"></b>
+                          <input type="text" inputmode="numeric" x-model="outfitForm[o.key]" placeholder="ยังไม่ลงทะเบียน" autocomplete="off" class="input" :aria-label="'จำนวน ' + o.label">
+                        </label>
+                      </template>
+                    </div>
+                    <p class="gd-muted mt-3">เว้นว่าง = ยังไม่ลงทะเบียน · ใส่ 0 = ลงทะเบียนแล้วแต่ไม่มีชุดชนิดนี้</p>
+                    <p class="reg-err mt-2" x-show="outfitErr" x-text="outfitErr"></p>
+                    <div class="mt-3 flex justify-end gap-2">
+                      <button type="button" class="btn-outline" @click="outfitEdit = false">ยกเลิก</button>
+                      <button type="submit" class="btn-solid" :disabled="busy" x-text="busy ? 'กำลังบันทึก...' : 'บันทึกจำนวนชุด'"></button>
+                    </div>
+                  </form>
+                </section>
+
+                <section class="gd-card">
+                  <h3 class="gd-h">Protect และไฟล์ชุด</h3>
+                  <dl class="gd-rows">
+                    <div><dt>สถานะ Protect</dt><dd><span class="gd-onoff" :class="protectOn ? 'gd-on' : 'gd-off'" x-text="protectOn ? 'ON' : 'OFF'"></span></dd></div>
+                    <div><dt>เริ่ม Protect</dt><dd x-text="protectStart ? whenFull(protectStart) : '—'"></dd></div>
+                    <div><dt>สิ้นสุด Protect</dt><dd x-text="g.protect_until ? whenFull(g.protect_until) : '—'"></dd></div>
+                    <div x-show="tempOutfitText"><dt>ชุดชั่วคราว</dt><dd x-text="tempOutfitText"></dd></div>
+                  </dl>
+                  <div class="gd-sub">
+                    <p class="gd-sub-title">รูปชุดชั่วคราว</p>
+                    <div class="gd-temp" x-show="tempPreview">
+                      <button type="button" class="gd-temp-img" @click="openTempPreview()" title="เปิดดูรูปเต็ม">
+                        <img :src="tempPreview" :alt="'รูปชุดชั่วคราวของ ' + g.name">
+                      </button>
+                    </div>
+                    <p x-show="tempLoading" class="gd-muted mt-2">กำลังโหลดรูป...</p>
+                    <p x-show="!tempPreview && !tempLoading" class="gd-muted mt-2" x-text="g.has_temp_outfit ? 'โหลดรูปชุดชั่วคราวไม่สำเร็จ' : 'ยังไม่มีรูปชุดชั่วคราว'"></p>
+                  </div>
+                  <div class="gd-sub">
+                    <p class="gd-sub-title">ไฟล์ชุดของทะเบียน</p>
+                    <div class="gd-files" x-show="g.has_temp_outfit || g.has_outfit_zip">
+                      <button type="button" class="gd-ghost" x-show="g.has_temp_outfit" @click="download('temp_outfit')">ดาวน์โหลดรูปชุดชั่วคราว (.png)</button>
+                      <button type="button" class="gd-ghost" x-show="g.has_outfit_zip" @click="download('outfit_zip')">ดาวน์โหลดไฟล์ชุด (.zip)</button>
+                    </div>
+                    <p x-show="!g.has_temp_outfit && !g.has_outfit_zip" class="gd-muted">ยังไม่มีไฟล์ชุด</p>
+                  </div>
+                </section>
+              </div>
+
+              <section class="gd-card">
+                <h3 class="gd-h">งานสตอรี่ที่เกี่ยวข้อง</h3>
+                <div class="gd-empty">
+                  <div class="gd-empty-icon" aria-hidden="true">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg>
+                  </div>
+                  <p class="gd-empty-title">ไม่พบงานสตอรี่</p>
+                  <p class="gd-muted">งานใหม่และประวัติงานเดิมจะแสดงที่นี่</p>
+                </div>
+              </section>
+
+              <section class="gd-card">
+                <div class="gd-h-row">
+                  <h3 class="gd-h">ประวัติและธุรกรรมของทะเบียนนี้</h3>
+                  <button type="button" class="gd-ghost" :disabled="histLoading" @click="loadHistory()" x-text="histLoading ? 'กำลังโหลด...' : 'อัปเดตประวัติ'"></button>
+                </div>
+                <p x-show="histError" x-text="histError" class="gd-muted mt-3"></p>
+                <ul class="gd-timeline">
+                  <template x-for="it in timeline" :key="it.key">
+                    <li class="gd-tl-item">
+                      <div class="gd-tl-top">
+                        <p class="gd-tl-title" x-text="it.title"></p>
+                        <span class="gd-muted" x-text="whenFull(it.at)"></span>
+                      </div>
+                      <p class="gd-muted" x-text="it.meta"></p>
+                      <p class="gd-tl-lines" x-show="it.lines.length" x-text="it.lines.join(' · ')"></p>
+                      <p x-show="it.tx && it.tx.status === 'rejected' && it.tx.review_reason" class="gd-tl-lines" x-text="'เหตุผลที่ไม่อนุมัติ: ' + (it.tx ? it.tx.review_reason : '')"></p>
+                      <div class="gd-tl-actions" x-show="it.tx && it.tx.status === 'pending'">
+                        <button type="button" class="gd-ghost" x-show="it.tx && me && it.tx.requested_by && it.tx.requested_by.id !== me.id" :disabled="busy" @click="reviewTx(it.tx, 'approve')">อนุมัติ</button>
+                        <button type="button" class="gd-ghost" x-show="it.tx && me && it.tx.requested_by && it.tx.requested_by.id !== me.id" :disabled="busy" @click="reviewTx(it.tx, 'reject')">ไม่อนุมัติ</button>
+                        <button type="button" class="gd-ghost" :disabled="busy" @click="reviewTx(it.tx, 'cancel')">ยกเลิก</button>
+                      </div>
+                    </li>
+                  </template>
+                </ul>
+                <p x-show="!histLoading && timeline.length === 0" class="gd-muted mt-3">ยังไม่มีประวัติ</p>
+              </section>
+            </div>
+
+            <!-- ═══ สร้างธุรกรรม ═══ -->
+            <form x-show="tab === 'txn'" class="gd-stack" @submit.prevent="submitTxn()" novalidate>
+              <section class="gd-card">
+                <h3 class="gd-h">สร้างธุรกรรมให้ <span x-text="g.name"></span></h3>
+                <p class="gd-muted mt-2">สภาที่ทำรายการ ธุรกรรมมีผลทันทีและบันทึกประวัติก่อน-หลังของกลุ่ม · ต้องเข้าเวรอยู่</p>
+
+                <div class="reg-field mt-4">
+                  <label class="reg-label" for="tx-kind">ชนิดธุรกรรม</label>
+                  <select id="tx-kind" x-model="txn.kind" class="input" @change="txErrors = {}; txMsg = ''">
+                    <template x-for="k in txnKinds" :key="k.value"><option :value="k.value" x-text="k.label"></option></template>
+                  </select>
+                </div>
+
+                <!-- เปลี่ยนชื่อ -->
+                <div x-show="txn.kind === 'rename'" class="reg-grid mt-4">
+                  <div class="reg-field">
+                    <label class="reg-label" for="tx-name">ชื่อใหม่ <span class="reg-hint">(อังกฤษ ไม่เกิน 20 ตัวอักษร)</span></label>
+                    <input id="tx-name" x-model="txn.name" maxlength="20" autocomplete="off" class="input" :aria-invalid="!!txErr('name')">
+                    <p class="reg-err" x-show="txErr('name')" x-text="txErr('name')"></p>
+                  </div>
+                  <div class="reg-field">
+                    <label class="reg-label" for="tx-short">ชื่อย่อใหม่ <span class="reg-hint">(พิมพ์ใหญ่ A-Z หรือตัวเลข ไม่เกิน 4 ตัว)</span></label>
+                    <input id="tx-short" x-model="txn.short_name" @input="txn.short_name = txn.short_name.toUpperCase().replace(/[^A-Z0-9]/g, '')" maxlength="4" autocomplete="off" class="input uppercase" :aria-invalid="!!txErr('short_name')">
+                    <p class="reg-err" x-show="txErr('short_name')" x-text="txErr('short_name')"></p>
+                  </div>
+                  <div class="reg-field reg-wide">
+                    <label class="reg-label" for="tx-logo">โลโก้ใหม่ <span class="reg-hint">(.PNG เท่านั้น · บังคับแนบ)</span></label>
+                    <input id="tx-logo" type="file" accept=".png,image/png" class="reg-file" @change="pickTxLogo($event)">
+                    <div x-show="txLogoPreview" x-cloak class="reg-preview"><img :src="txLogoPreview" alt="ตัวอย่างโลโก้ใหม่"><span class="reg-preview-name" x-text="txn.logo ? txn.logo.name : ''"></span></div>
+                    <p class="reg-err" x-show="txErr('logo')" x-text="txErr('logo')"></p>
+                  </div>
+                  <p class="gd-muted reg-wide">เปลี่ยนชื่อได้หลังขึ้นทะเบียนครบ 20 วัน และเว้น 30 วันต่อครั้ง</p>
+                </div>
+
+                <!-- เปลี่ยนสี -->
+                <div x-show="txn.kind === 'recolor'" class="reg-grid mt-4">
+                  <div class="reg-field">
+                    <label class="reg-label" for="tx-hex">โค้ดสีหลักใหม่ <span class="reg-hint">(HEX)</span></label>
+                    <div class="reg-color">
+                      <input type="color" class="reg-swatch" aria-label="เลือกสี" :value="/^#[0-9A-Fa-f]{6}$/.test(txn.color_hex) ? txn.color_hex : '#000000'" @input="txn.color_hex = $event.target.value.toUpperCase()">
+                      <input id="tx-hex" x-model="txn.color_hex" maxlength="7" placeholder="#FF0000" autocomplete="off" class="input font-mono uppercase" :aria-invalid="!!txErr('color_hex')">
+                    </div>
+                    <p class="reg-err" x-show="txErr('color_hex')" x-text="txErr('color_hex')"></p>
+                  </div>
+                  <div class="reg-field">
+                    <label class="reg-label" for="tx-cname">ชื่อสีใหม่ <span class="reg-hint">(ต้องตรงกับโค้ด HEX)</span></label>
+                    <input id="tx-cname" x-model="txn.color_name" @input="txn.color_auto = false" maxlength="60" autocomplete="off" class="input" :aria-invalid="!!txErr('color_name')">
+                    <p class="reg-err" x-show="txErr('color_name')" x-text="txErr('color_name')"></p>
+                  </div>
+                </div>
+
+                <!-- เปลี่ยน Leader -->
+                <div x-show="txn.kind === 'change_leader'" class="reg-grid reg-grid-3 mt-4">
+                  <div class="reg-field">
+                    <label class="reg-label" for="tx-lname">Leader ใหม่ (ชื่อ-นามสกุล IC)</label>
+                    <input id="tx-lname" x-model="txn.leader_name" autocomplete="off" class="input" :aria-invalid="!!txErr('name')">
+                    <p class="reg-err" x-show="txErr('name')" x-text="txErr('name')"></p>
+                  </div>
+                  <div class="reg-field">
+                    <label class="reg-label" for="tx-lphone">เบอร์โทร IC</label>
+                    <input id="tx-lphone" x-model="txn.leader_phone" inputmode="tel" autocomplete="off" class="input" :aria-invalid="!!txErr('phone')">
+                    <p class="reg-err" x-show="txErr('phone')" x-text="txErr('phone')"></p>
+                  </div>
+                  <div class="reg-field">
+                    <label class="reg-label" for="tx-ldid">Discord ID</label>
+                    <input id="tx-ldid" x-model="txn.leader_discord" inputmode="numeric" autocomplete="off" class="input" :aria-invalid="!!txErr('discord_id')">
+                    <p class="reg-err" x-show="txErr('discord_id')" x-text="txErr('discord_id')"></p>
+                  </div>
+                  <p class="gd-muted reg-wide">Leader คนเดิมจะอยู่ต่อเป็นสมาชิก ถ้าต้องการให้ออก ให้ทำธุรกรรม ออกสล็อต/ออกลอย แยกต่างหาก</p>
+                </div>
+
+                <!-- ออกสล็อต / ออกลอย -->
+                <div x-show="txn.kind === 'release_slot' || txn.kind === 'release_free'" class="reg-grid mt-4">
+                  <div class="reg-field reg-wide">
+                    <label class="reg-label" for="tx-member">ชื่อสมาชิกที่ออก <span class="reg-hint">(กรอกได้หลายชื่อ: 1 บรรทัดต่อ 1 ชื่อ หรือคั่นด้วยเครื่องหมายจุลภาค)</span></label>
+                    <textarea id="tx-member" x-model="txn.member_names" rows="3" autocomplete="off" class="input" :aria-invalid="!!txErr('member_names')"></textarea>
+                    <p class="reg-err" x-show="txErr('member_names')" x-text="txErr('member_names')"></p>
+                  </div>
+                  <p class="gd-muted reg-wide" x-text="txn.kind === 'release_slot' ? 'ออกสล็อต: ผู้ที่จะออกมายืนยันตัวตนที่หน้าสภา · ทำไม่ได้ถ้าสล็อตถูกล็อก' : 'ออกลอย: นำสมาชิกออกโดยผู้ออกไม่ได้มายืนยันตัวตน'"></p>
+                </div>
+
+                <!-- ยุบ -->
+                <div x-show="txn.kind === 'dissolve'" class="reg-grid mt-4">
+                  <div class="reg-field reg-wide">
+                    <label class="reg-label" for="tx-dreason">เหตุผลการยุบ</label>
+                    <textarea id="tx-dreason" x-model="txn.reason" rows="2" class="input" :aria-invalid="!!txErr('reason')"></textarea>
+                    <p class="reg-err" x-show="txErr('reason')" x-text="txErr('reason')"></p>
+                  </div>
+                  <p class="penalty-box reg-wide text-sm">ยุบแล้วกลุ่มจะออกจากทะเบียนที่ใช้งาน และสมาชิกทุกคนถูกนำออก (ประวัติยังอยู่)</p>
+                </div>
+
+                <!-- ค่าบริการของธุรกรรมที่เลือก (ทุกชนิด) -->
+                <div class="gd-cost mt-4" aria-live="polite">
+                  <template x-for="l in feeLines" :key="l.label">
+                    <div class="gd-cost-row"><span x-text="l.label"></span><b x-text="money(l.amount)"></b></div>
+                  </template>
+                  <div class="gd-cost-row gd-cost-total"><span>ค่าบริการรวม</span><b x-text="money(feeTotal)"></b></div>
+                  <p class="gd-muted" x-show="feeTotal === 0">ยังไม่มีอัตราค่าบริการสำหรับธุรกรรมชนิดนี้ (ตั้งอัตราได้ที่ค่ากลางของเว็บ)</p>
+                </div>
+
+                <p class="reg-err mt-3" x-show="txErr('_')" x-text="txErr('_')"></p>
+                <p class="note-box mt-3" x-show="txMsg" x-text="txMsg"></p>
+                <div class="mt-4 flex justify-end">
+                  <button type="submit" class="btn-solid" :disabled="txBusy" x-text="txBusy ? 'กำลังบันทึก...' : 'บันทึกธุรกรรม'"></button>
+                </div>
+              </section>
+            </form>
+
+            <!-- ═══ หมวดที่ยังไม่เปิดใช้ ═══ -->
+            <div x-show="['report', 'protect', 'fine'].includes(tab)" class="gd-card gd-empty">
+              <div class="gd-empty-icon" aria-hidden="true">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+              </div>
+              <p class="gd-empty-title" x-text="(tabs.find((t) => t.key === tab) || {}).label"></p>
+              <p class="gd-muted">กำลังพัฒนา — เร็วๆ นี้</p>
+            </div>
+
+            <!-- ═══ จัดการทะเบียน (สมาชิก / ข้อมูล / สถานะ / ล็อก) ═══ -->
+            <div x-show="tab === 'manage'">
+            <div class="grid gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
 
               <!-- สมาชิก -->
               <div class="panel p-4 sm:p-5">
                 <div class="flex items-baseline justify-between gap-3">
-                  <h2 class="type-sub">สมาชิก</h2>
-                  <span class="text-sm text-muted">
-                    ตัวจริง <b class="font-medium text-fg" x-text="g.slots.main_count + ' / ' + g.slots.main_max"></b>
-                    <span x-show="g.slots.reserve_max > 0"> · สำรอง <b class="font-medium text-fg" x-text="g.slots.reserve_count + ' / ' + g.slots.reserve_max"></b></span>
-                  </span>
+                  <h2 class="type-sub">รายชื่อหัวหน้าและรอง</h2>
+                  <span class="text-sm text-muted">เก็บเฉพาะรายชื่อหัวหน้าและรองหัวหน้า</span>
                 </div>
-                <p x-show="belowMinimum" class="mt-3 rounded-lg border border-line px-3 py-2 text-sm text-muted">
-                  ยังไม่ถึงขั้นต่ำสำหรับขึ้นทะเบียน — ต้องมีอย่างน้อย <b class="text-fg" x-text="g.slots.min"></b> คน (ตอนนี้ <span x-text="activeMembers.length"></span>)
-                </p>
 
                 <p x-show="g.slots_locked" class="penalty-box mt-3 text-sm">
                   สล็อตถูกล็อก — เพิ่ม/ลบ/เปลี่ยนตำแหน่งไม่ได้<span x-show="g.locked_reason" x-text="' (' + g.locked_reason + ')'"></span>
                 </p>
 
-                <p x-show="activeMembers.length === 0" class="mt-4 text-sm text-muted">ยังไม่มีสมาชิก</p>
+                <p x-show="activeMembers.length === 0" class="mt-4 text-sm text-muted">ยังไม่มีหัวหน้า/รองหัวหน้า</p>
                 <ul class="mt-3 divide-y divide-[var(--line)]">
                   <template x-for="m in activeMembers" :key="m.id">
                     <li class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 py-2.5">
                       <span class="min-w-0">
-                        <span class="block truncate font-medium"><span x-text="m.character_name"></span> <span x-show="m.is_reserve" class="badge badge-muted ml-1">สำรอง</span></span>
+                        <span class="block truncate font-medium" x-text="m.character_name"></span>
                         <span class="block text-xs text-muted">เข้าเมื่อ <span x-text="when(m.joined_at)"></span></span>
                       </span>
                       <span class="flex items-center gap-3">
                         <select class="input !w-auto !py-1.5 text-sm" :disabled="g.slots_locked || busy" @change="setPosition(m, $event.target.value, $event.target)" :aria-label="'ตำแหน่งของ ' + m.character_name">
-                          <template x-for="p in positions" :key="p.value">
+                          <template x-for="p in staffPositions" :key="p.value">
                             <option :value="p.value" :selected="p.value === m.position" x-text="p.label"></option>
                           </template>
                         </select>
-                        <button type="button" x-show="g.slots.reserve_max > 0 && m.position === 'member'" class="text-sm text-accent hover:underline disabled:opacity-40" :disabled="g.slots_locked || busy" @click="toggleReserve(m)" x-text="m.is_reserve ? 'ย้ายเป็นตัวจริง' : 'ย้ายเป็นสำรอง'"></button>
                         <button type="button" class="text-sm text-danger hover:underline disabled:opacity-40" :disabled="g.slots_locked || busy" @click="removeMember(m)">นำออก</button>
                       </span>
                     </li>
@@ -139,17 +489,14 @@
                 </ul>
 
                 <form class="mt-4 border-t border-line pt-4" @submit.prevent="addMember()" novalidate>
-                  <p class="mb-2 text-sm text-muted">เพิ่มสมาชิก</p>
+                  <p class="mb-2 text-sm text-muted">เพิ่มหัวหน้า/รองหัวหน้า</p>
                   <div class="flex flex-col gap-2 sm:flex-row">
                     <input x-model="newMember.character_name" placeholder="ชื่อตัวละคร" autocomplete="off" class="input sm:flex-1" aria-label="ชื่อตัวละคร">
                     <select x-model="newMember.position" class="input sm:!w-36" aria-label="ตำแหน่ง">
-                      <template x-for="p in positions" :key="p.value"><option :value="p.value" x-text="p.label"></option></template>
+                      <template x-for="p in staffPositions" :key="p.value"><option :value="p.value" x-text="p.label"></option></template>
                     </select>
                     <button type="submit" class="btn-outline justify-center" :disabled="busy || g.slots_locked || !newMember.character_name.trim()">เพิ่ม</button>
                   </div>
-                  <label x-show="g.slots.reserve_max > 0 && newMember.position === 'member'" class="mt-2 flex items-center gap-2 text-xs text-muted">
-                    <input type="checkbox" x-model="newMember.is_reserve"> เพิ่มเป็นตัวสำรอง
-                  </label>
                   <label class="mt-2 flex items-center gap-2 text-xs text-muted">
                     <input type="checkbox" x-model="newMember.skip_cooldown"> ปลดคูลดาวน์ 7 วัน (ผู้เล่นนำบัตร No cooldown มาและชำระแล้ว)
                   </label>
@@ -157,7 +504,7 @@
 
                 <template x-if="pastMembers.length">
                   <div class="mt-5 border-t border-line pt-4">
-                    <p class="mb-2 text-sm text-muted">เคยเป็นสมาชิก</p>
+                    <p class="mb-2 text-sm text-muted">เคยเป็นหัวหน้า/รองหัวหน้า</p>
                     <ul class="space-y-1 text-sm text-muted">
                       <template x-for="m in pastMembers" :key="m.id">
                         <li><span x-text="m.character_name"></span> · ออกเมื่อ <span x-text="when(m.left_at)"></span></li>
@@ -177,13 +524,8 @@
                     <input type="checkbox" x-model="edit.skip_cooldown"> ปลดคูลดาวน์เปลี่ยนชื่อ (ชำระค่าบริการแล้ว)
                   </label>
                   <p class="mt-1 text-xs text-muted">เปลี่ยนชื่อได้หลังขึ้นทะเบียนครบ 20 วัน และเว้น 30 วันต่อครั้ง</p>
-                  <label x-show="g.type === 'gang'" class="mt-3 flex items-center gap-2 text-sm text-muted">
-                    <input type="checkbox" x-model="edit.is_lady"> แก๊งหญิงล้วน (Lady) — ตัวจริงได้ 25 คน
-                  </label>
                   <label class="mb-1 mt-3 block text-sm text-muted" for="e-logo">ลิงก์โลโก้</label>
                   <input id="e-logo" x-model="edit.logo_url" type="url" autocomplete="off" class="input">
-                  <label class="mb-1 mt-3 block text-sm text-muted" for="e-desc">คำอธิบาย</label>
-                  <textarea id="e-desc" x-model="edit.description" rows="3" class="input"></textarea>
                   <button type="submit" class="btn-outline mt-4" :disabled="busy || !editDirty">บันทึกข้อมูล</button>
                 </form>
 
@@ -223,16 +565,131 @@
                   <button type="button" class="btn-outline mt-3" :disabled="busy" @click="toggleLock()" x-text="g.slots_locked ? 'ปลดล็อกสล็อต' : 'ล็อกสล็อต'"></button>
                 </div>
 
-                <div x-show="canDelete" class="text-right">
-                  <button type="button" class="text-sm text-danger hover:underline" @click="deleteGroup()">ลบกลุ่มนี้ออกจากทะเบียน</button>
-                </div>
               </div>
             </div>
+            </div>
           </div>
-        </template>
-      </section>
-      </div>
+        </div>
+      </template>
     </div>
+
+    <!-- ป๊อปอัปย่อย: รายงานตัว / จัดการ Protect / บันทึกค่าปรับ -->
+    <div x-show="g && dlg" x-cloak class="gd-dlg-back" role="dialog" aria-modal="true" aria-labelledby="gd-dlg-title" @mousedown.self="closeDlg()">
+      <form class="gd-dlg" @submit.prevent="submitDlg()" novalidate>
+        <header class="gd-dlg-head">
+          <h3 id="gd-dlg-title" class="gd-dlg-title" x-text="dlgTitle"></h3>
+          <button type="button" class="reg-close" aria-label="ปิด" @click="closeDlg()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+        </header>
+
+        <div class="gd-dlg-body">
+          <!-- บันทึกรายงานตัว = ปุ่มสถานะ -->
+          <div x-show="dlg === 'report'">
+            <p class="gd-muted">เลือกสถานะของ <b x-text="g ? g.name : ''"></b> เวลาที่บันทึก = ตอนกดบันทึก (เวลาไทย)</p>
+            <div class="gd-status-btns" role="group" aria-label="สถานะ">
+              <template x-for="s in reportStatuses" :key="s.value">
+                <button type="button" class="gd-status-btn" :class="'gd-status-' + s.value" :aria-pressed="rep.status === s.value" :disabled="reportLocked" @click="rep.status = s.value" x-text="s.label"></button>
+              </template>
+            </div>
+            <p class="reg-err mt-3" x-show="reportLocked" x-text="'ทะเบียนนี้เป็นสถานะ ' + (g ? g.status_label : '') + ' จึงเปลี่ยนด้วยการรายงานตัวไม่ได้ ให้จัดการสถานะที่ \'จัดการทะเบียน\''"></p>
+            <p class="reg-err mt-3" x-show="dlgErr('status')" x-text="dlgErr('status')"></p>
+            <div class="reg-field mt-4">
+              <label class="reg-label" for="dl-rnote">หมายเหตุ <span class="reg-hint">(ไม่บังคับ)</span></label>
+              <textarea id="dl-rnote" x-model="rep.note" rows="3" class="input"></textarea>
+            </div>
+          </div>
+
+          <!-- จัดการ Protect -->
+          <div x-show="dlg === 'protect'">
+            <div class="reg-field">
+              <label class="reg-label" for="dl-until">สิ้นสุด Protect (เวลาไทย)</label>
+              <input id="dl-until" type="datetime-local" x-model="pro.until" class="input" :aria-invalid="!!dlgErr('protect_until')">
+              <p class="reg-err" x-show="dlgErr('protect_until')" x-text="dlgErr('protect_until')"></p>
+              <p class="gd-muted mt-2">เว้นว่างเพื่อยกเลิก Protect</p>
+            </div>
+          </div>
+
+          <!-- บันทึกค่าปรับ: หมวด/ข้อหา/จำนวนเงินดึงจากกฎ -->
+          <div x-show="dlg === 'fine'" class="reg-grid">
+            <div class="reg-field reg-wide">
+              <label class="reg-label" for="dl-group">ทะเบียน</label>
+              <select id="dl-group" class="input" disabled><option x-text="g ? g.name : ''"></option></select>
+            </div>
+            <div class="reg-field">
+              <label class="reg-label" for="dl-cat">หมวดหมู่ <span class="reg-hint">(จากกฎ)</span></label>
+              <select id="dl-cat" x-model="fine.category" class="input" :aria-invalid="!!dlgErr('category')" @change="onFineCategory()">
+                <template x-for="c in fineSections" :key="c.value"><option :value="c.value" x-text="c.label"></option></template>
+              </select>
+              <p class="reg-err" x-show="dlgErr('category')" x-text="dlgErr('category')"></p>
+            </div>
+            <div class="reg-field">
+              <span class="reg-label" id="dl-type-label">ชนิดบทลงโทษ <span class="text-accent">*</span></span>
+              <div class="gd-status-btns !mt-0" role="group" aria-labelledby="dl-type-label">
+                <button type="button" class="gd-status-btn" :aria-pressed="fine.type === 'fine'" @click="setFineType('fine')">ค่าปรับ</button>
+                <button type="button" class="gd-status-btn" :aria-pressed="fine.type === 'penance'" @click="setFineType('penance')">ส่งบำเพ็ญ</button>
+              </div>
+            </div>
+            <div class="reg-field" x-show="fine.type === 'fine'">
+              <label class="reg-label" for="dl-amount">จำนวนเงินในเกม <span class="text-accent">*</span></label>
+              <input id="dl-amount" x-model="fine.amount" inputmode="numeric" autocomplete="off" class="input" :aria-invalid="!!dlgErr('amount')">
+              <p class="reg-err" x-show="dlgErr('amount')" x-text="dlgErr('amount')"></p>
+              <p class="gd-muted mt-1" x-show="amountHint" x-text="amountHint"></p>
+            </div>
+            <div class="reg-field" x-show="fine.type === 'penance'">
+              <label class="reg-label" for="dl-units">จำนวนไม้ที่ต้องบำเพ็ญ <span class="text-accent">*</span></label>
+              <input id="dl-units" x-model="fine.units" inputmode="numeric" autocomplete="off" class="input" :aria-invalid="!!dlgErr('penance_units')">
+              <p class="reg-err" x-show="dlgErr('penance_units')" x-text="dlgErr('penance_units')"></p>
+              <p class="gd-muted mt-1" x-show="penanceHint" x-text="penanceHint"></p>
+            </div>
+            <div class="reg-field reg-wide">
+              <label class="reg-label" for="dl-rule">ข้อหา <span class="text-accent">*</span> <span class="reg-hint">(ตามหมวดหมู่ที่เลือก · พิมพ์ค้นหาหรือเลือกได้)</span></label>
+              <div class="gd-combo" @click.outside="fineOpen = false">
+                <input id="dl-rule" type="text" role="combobox" class="input gd-combo-input" autocomplete="off" aria-autocomplete="list" aria-controls="dl-rule-list" :aria-expanded="fineOpen" :aria-invalid="!!dlgErr('rule_id') || !!dlgErr('charge')"
+                  placeholder="พิมพ์ค้นหาในหมวดนี้ หรือกดเลือกข้อกฎ" x-model="fineQuery"
+                  @focus="fineOpen = true" @input="onFineQuery()" @keydown.arrow-down.prevent="fineMove(1)" @keydown.arrow-up.prevent="fineMove(-1)"
+                  @keydown.enter="fineEnter($event)" @keydown.escape.stop="fineOpen = false">
+                <button type="button" class="gd-combo-toggle" tabindex="-1" aria-label="แสดงรายการข้อกฎ" @click="fineOpen = !fineOpen">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                </button>
+                <ul id="dl-rule-list" class="gd-combo-list" role="listbox" x-show="fineOpen" x-cloak>
+                  <template x-for="(o, i) in fineOptions" :key="o.key">
+                    <li role="option" class="gd-combo-opt" :class="{ 'gd-combo-active': i === fineActive, 'gd-combo-other': o.other }" :aria-selected="String(fine.rule_id) === o.value" @mousedown.prevent="pickFine(o)" @mousemove="fineActive = i">
+                      <span class="gd-combo-text" x-text="o.label"></span>
+                      <span class="gd-combo-tag" x-show="o.tag" x-text="o.tag"></span>
+                    </li>
+                  </template>
+                  <li class="gd-combo-empty" x-show="fineOptions.length === 1 && fineQuery.trim()">ไม่พบข้อกฎในหมวดนี้ที่ตรงกับ "<span x-text="fineQuery.trim()"></span>" — ลองเปลี่ยนหมวดหมู่ หรือเลือก "อื่นๆ" เพื่อระบุข้อหาเอง</li>
+                </ul>
+              </div>
+              <p class="reg-err" x-show="dlgErr('rule_id')" x-text="dlgErr('rule_id')"></p>
+              <p class="reg-err" x-show="dlgErr('charge')" x-text="dlgErr('charge')"></p>
+            </div>
+            <div class="gd-rule-box reg-wide" x-show="selectedRule">
+              <p class="gd-rule-text" x-text="selectedRule ? selectedRule.text : ''"></p>
+              <p class="gd-rule-pen"><b>บทลงโทษตามกฎ:</b> <span x-text="selectedRule ? selectedRule.penalty : ''"></span></p>
+            </div>
+            <div class="reg-field reg-wide" x-show="fine.rule_id === 'other'">
+              <label class="reg-label" for="dl-charge">ข้อหา (ระบุเอง) <span class="text-accent">*</span></label>
+              <input id="dl-charge" x-model="fine.charge" maxlength="1000" autocomplete="off" class="input">
+            </div>
+            <div class="reg-field reg-wide">
+              <label class="reg-label" for="dl-fnote">หมายเหตุ</label>
+              <textarea id="dl-fnote" x-model="fine.note" rows="3" class="input"></textarea>
+            </div>
+            <p class="gd-muted reg-wide">บันทึกค่าปรับในประวัติธุรกรรม เมื่อรับเงินจริงให้บันทึกกองกลางแยกต่างหาก</p>
+          </div>
+
+          <p class="reg-err mt-3" x-show="dlgErr('_')" x-text="dlgErr('_')"></p>
+        </div>
+
+        <footer class="gd-dlg-foot">
+          <button type="button" class="btn-outline" @click="closeDlg()">ยกเลิก</button>
+          <button type="submit" class="btn-solid" :disabled="dlgBusy" x-text="dlgBusy ? 'กำลังบันทึก...' : 'บันทึก'"></button>
+        </footer>
+      </form>
+    </div>
+  </div>
 
   <!-- ═════════ ป๊อปอัปขึ้นทะเบียน ═════════ -->
   <div x-show="showCreate" x-cloak class="reg-backdrop" role="dialog" aria-modal="true" aria-labelledby="reg-title" @keydown.escape.window="closeCreate()" @mousedown.self="closeCreate()">
@@ -250,27 +707,22 @@
         <!-- ข้อมูลทั่วไป -->
         <h3 class="reg-sec">ข้อมูลทั่วไป</h3>
         <div class="reg-grid">
-          <div class="reg-field">
-            <label class="reg-label" for="r-type">ประเภท</label>
-            <select id="r-type" x-model="f.kind" class="input" @change="clampMembers()">
-              <option value="gang">แก๊ง</option>
-              <option value="lady">แก๊งหญิงล้วน (Lady)</option>
-              <option value="family">ครอบครัว</option>
-            </select>
+          <div class="reg-field reg-wide">
+            <span class="reg-label" id="r-type-label">ประเภท</span>
+            <div class="flex flex-wrap gap-2" role="group" aria-labelledby="r-type-label">
+              <template x-for="t in [{ v: 'gang', l: 'GANG' }, { v: 'lady', l: 'LADY-GANG' }, { v: 'family', l: 'FAMILY' }]" :key="t.v">
+                <button type="button" class="chip" :aria-pressed="f.kind === t.v" @click="f.kind = t.v; clampMembers()" x-text="t.l"></button>
+              </template>
+            </div>
           </div>
           <div class="reg-field">
-            <label class="reg-label" for="r-count">จำนวนสมาชิก <span class="reg-hint" x-text="'(' + kindInfo.min + ' – ' + kindInfo.max + ' คน)'"></span></label>
-            <input id="r-count" type="number" inputmode="numeric" :min="kindInfo.min" :max="kindInfo.max" x-model="f.declared_members" class="input" :aria-invalid="!!e('declared_members')">
-            <p class="reg-err" x-show="e('declared_members')" x-text="e('declared_members')"></p>
-          </div>
-          <div class="reg-field">
-            <label class="reg-label" for="r-name">ชื่อเต็ม <span class="reg-hint">(อังกฤษ ไม่เกิน 20 ตัวอักษร)</span></label>
+            <label class="reg-label" for="r-name">ชื่อเต็ม <span class="reg-hint">(ภาษาอังกฤษ ไม่เกิน 20 ตัวอักษร)</span></label>
             <input id="r-name" x-model="f.name" maxlength="20" autocomplete="off" class="input" :aria-invalid="!!e('name')">
             <p class="reg-err" x-show="e('name')" x-text="e('name')"></p>
           </div>
           <div class="reg-field">
-            <label class="reg-label" for="r-short">ชื่อย่อ <span class="reg-hint">(ไม่เกิน 4 ตัวอักษร)</span></label>
-            <input id="r-short" x-model="f.short_name" maxlength="4" autocomplete="off" class="input uppercase" :aria-invalid="!!e('short_name')">
+            <label class="reg-label" for="r-short">ชื่อย่อ <span class="reg-hint">(พิมพ์ใหญ่ A-Z หรือตัวเลข ไม่เกิน 4 ตัว)</span></label>
+            <input id="r-short" x-model="f.short_name" @input="f.short_name = f.short_name.toUpperCase().replace(/[^A-Z0-9]/g, '')" maxlength="4" autocomplete="off" class="input uppercase" :aria-invalid="!!e('short_name')">
             <p class="reg-err" x-show="e('short_name')" x-text="e('short_name')"></p>
           </div>
           <div class="reg-field">
@@ -278,18 +730,18 @@
             <div class="reg-color">
               <input type="color" class="reg-swatch" aria-label="เลือกสี" :value="hexOk ? f.color_hex : '#000000'" @input="f.color_hex = $event.target.value.toUpperCase()">
               <input id="r-hex" x-model="f.color_hex" maxlength="7" placeholder="#FF0000" autocomplete="off" class="input font-mono uppercase" :aria-invalid="!!e('color_hex')">
-              <span class="reg-chip" :style="hexOk ? 'background:' + f.color_hex : ''" :class="{ 'reg-chip-empty': !hexOk }" title="ตัวอย่างสี"></span>
             </div>
             <p class="reg-err" x-show="e('color_hex')" x-text="e('color_hex')"></p>
           </div>
           <div class="reg-field">
-            <label class="reg-label" for="r-cname">ชื่อสี</label>
-            <input id="r-cname" x-model="f.color_name" maxlength="60" placeholder="เช่น แดงเลือดหมู" autocomplete="off" class="input" :aria-invalid="!!e('color_name')">
+            <label class="reg-label" for="r-cname">ชื่อสี <span class="reg-hint">(เติมให้อัตโนมัติจากโค้ด HEX แก้ไขได้ แต่ต้องตรงกับโค้ด)</span></label>
+            <input id="r-cname" x-model="f.color_name" @input="f.color_auto = false" maxlength="60" placeholder="เช่น แดงเลือดหมู" autocomplete="off" class="input" :aria-invalid="!!e('color_name')">
             <p class="reg-err" x-show="e('color_name')" x-text="e('color_name')"></p>
           </div>
           <div class="reg-field reg-wide">
             <label class="reg-label" for="r-logo">รูปโลโก้ <span class="reg-hint">(.PNG เท่านั้น)</span></label>
             <input id="r-logo" type="file" accept=".png,image/png" class="reg-file" @change="pick($event, 'logo', 'png')">
+            <div x-show="previews.logo" x-cloak class="reg-preview"><img :src="previews.logo" alt="ตัวอย่างรูปที่แนบ"><span class="reg-preview-name" x-text="files.logo ? files.logo.name + ' · ' + size(files.logo) : ''"></span></div>
             <p class="reg-err" x-show="e('logo')" x-text="e('logo')"></p>
           </div>
         </div>
@@ -316,7 +768,7 @@
 
         <!-- รอง -->
         <div class="reg-sec-row">
-          <h3 class="reg-sec">ข้อมูลรอง<span x-text="kindInfo.noun"></span> <span class="reg-hint" x-text="'(' + f.co.length + ' / ' + maxCo + ' คน)'"></span></h3>
+          <h3 class="reg-sec">ข้อมูลรอง<span x-text="kindInfo.noun"></span> <span class="reg-hint" x-text="'(ไม่บังคับ · ' + f.co.length + ' / ' + maxCo + ' คน)'"></span></h3>
           <button type="button" class="reg-add" x-show="f.co.length < maxCo" @click="addCo()">+ เพิ่มรอง</button>
         </div>
         <p class="reg-err" x-show="e('co_leaders')" x-text="e('co_leaders')"></p>
@@ -324,7 +776,7 @@
           <div class="reg-person">
             <div class="reg-person-head">
               <span class="reg-person-title" x-text="'รองคนที่ ' + (i + 1)"></span>
-              <button type="button" class="reg-remove" x-show="f.co.length > 1" @click="removeCo(i)">นำออก</button>
+              <button type="button" class="reg-remove" @click="removeCo(i)">นำออก</button>
             </div>
             <div class="reg-grid reg-grid-3">
               <div class="reg-field">
@@ -338,7 +790,7 @@
                 <p class="reg-err" x-show="e('co_leaders.' + i + '.ic_phone')" x-text="e('co_leaders.' + i + '.ic_phone')"></p>
               </div>
               <div class="reg-field">
-                <label class="reg-label" :for="'c-did' + i">Discord ID</label>
+                <label class="reg-label" :for="'c-did' + i">Discord ID <span class="reg-hint">(ไม่บังคับ)</span></label>
                 <input :id="'c-did' + i" x-model="c.discord_id" inputmode="numeric" autocomplete="off" class="input" :aria-invalid="!!e('co_leaders.' + i + '.discord_id')">
                 <p class="reg-err" x-show="e('co_leaders.' + i + '.discord_id')" x-text="e('co_leaders.' + i + '.discord_id')"></p>
               </div>
@@ -352,15 +804,16 @@
           <div class="reg-field reg-wide">
             <label class="reg-label" for="t-img">รูปชุดชั่วคราว <span class="reg-hint">(.PNG เท่านั้น)</span></label>
             <input id="t-img" type="file" accept=".png,image/png" class="reg-file" @change="pick($event, 'temp_outfit_image', 'png')">
+            <div x-show="previews.temp_outfit_image" x-cloak class="reg-preview"><img :src="previews.temp_outfit_image" alt="ตัวอย่างรูปที่แนบ"><span class="reg-preview-name" x-text="files.temp_outfit_image ? files.temp_outfit_image.name + ' · ' + size(files.temp_outfit_image) : ''"></span></div>
             <p class="reg-err" x-show="e('temp_outfit_image')" x-text="e('temp_outfit_image')"></p>
           </div>
           <div class="reg-field">
-            <label class="reg-label" for="t-male">เลขชุดชั่วคราว (ชาย)</label>
+            <label class="reg-label" for="t-male">เลขชุดชั่วคราว (ชาย) <span class="reg-hint">(ไม่บังคับ)</span></label>
             <input id="t-male" x-model="f.temp_outfit_male" autocomplete="off" class="input" :aria-invalid="!!e('temp_outfit_male')">
             <p class="reg-err" x-show="e('temp_outfit_male')" x-text="e('temp_outfit_male')"></p>
           </div>
           <div class="reg-field">
-            <label class="reg-label" for="t-female">เลขชุดชั่วคราว (หญิง)</label>
+            <label class="reg-label" for="t-female">เลขชุดชั่วคราว (หญิง) <span class="reg-hint">(ไม่บังคับ)</span></label>
             <input id="t-female" x-model="f.temp_outfit_female" autocomplete="off" class="input" :aria-invalid="!!e('temp_outfit_female')">
             <p class="reg-err" x-show="e('temp_outfit_female')" x-text="e('temp_outfit_female')"></p>
           </div>
@@ -377,6 +830,7 @@
         <div class="reg-field mt-3">
           <label class="reg-label" for="o-zip">ไฟล์ชุด <span class="reg-hint">(.ZIP เท่านั้น)</span></label>
           <input id="o-zip" type="file" accept=".zip,application/zip,application/x-zip-compressed" class="reg-file" @change="pick($event, 'outfit_zip', 'zip')">
+          <p x-show="files.outfit_zip" x-cloak class="reg-preview-name mt-2" x-text="files.outfit_zip ? 'ไฟล์ที่เลือก: ' + files.outfit_zip.name + ' · ' + size(files.outfit_zip) : ''"></p>
           <p class="reg-err" x-show="e('outfit_zip')" x-text="e('outfit_zip')"></p>
         </div>
 

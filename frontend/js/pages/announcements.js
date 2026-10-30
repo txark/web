@@ -177,7 +177,7 @@ function announcementsPage() {
     },
 
     canDelete(a) {
-      return !!this.me && (a.created_by === this.me.id || ['vice_president', 'president', 'admin'].includes(this.me.role));
+      return !!this.me && (a.created_by === this.me.id || ['vice_president', 'president'].includes(this.me.role));
     },
 
     // ── แสดงผล ──

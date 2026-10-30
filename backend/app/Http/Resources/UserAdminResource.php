@@ -32,7 +32,7 @@ class UserAdminResource extends JsonResource
             'added_by' => $this->whenLoaded('addedBy', fn () => $this->addedBy ? ['id' => $this->addedBy->id, 'name' => $this->addedBy->name] : null),
             'created_at' => $this->created_at?->toIso8601String(),
             // แก้ไขได้ไหม: ไม่ใช่ตัวเอง และมีสิทธิ์สูงกว่าเจ้าของบัญชี
-            'can_manage' => $actor && $actor->id !== $this->id && $actor->role->level() > $this->role->level(),
+            'can_manage' => $actor && $actor->id !== $this->id && $actor->role->canManage($this->role),
         ];
     }
 }

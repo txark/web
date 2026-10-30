@@ -38,7 +38,7 @@ function dutyReportPage() {
       { key: 'lastmonth', label: 'เดือนที่แล้ว' },
       { key: 'custom', label: 'กำหนดเอง' },
     ],
-    preset: 'd30',
+    preset: 'today',
     from: '',
     to: '',
 
@@ -59,7 +59,7 @@ function dutyReportPage() {
       await auth.require('vice_president');
       this.me = auth.user;
       this.ready = true;
-      this.setPreset('d30');
+      this.setPreset('today');
     },
 
     setPreset(key) {

@@ -18,7 +18,8 @@ class LogController extends Controller
     public function index(Request $request): AnonymousResourceCollection
     {
         $f = $request->validate([
-            'type' => ['nullable', Rule::in(['auth', 'access', 'changes'])],
+            // หมวด = log_name (changes = แก้ไขข้อมูลทั่วไป = default)
+            'type' => ['nullable', Rule::in(['auth', 'access', 'changes', 'transactions', 'groups', 'duty'])],
             'event' => ['nullable', 'string', 'max:32'],
             'user_id' => ['nullable', 'integer'],
             'q' => ['nullable', 'string', 'max:100'],

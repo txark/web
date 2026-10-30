@@ -22,14 +22,26 @@
 
     <div x-show="ready" x-cloak>
       <h1 class="section-title">บันทึกกิจกรรม</h1>
-      <p class="mt-1 text-sm text-muted">ใครทำอะไร เมื่อไร จากที่ไหน · เห็นเฉพาะรองประธานขึ้นไป · เก็บย้อนหลัง 90 วัน</p>
+      <p class="mt-1 text-sm text-muted">ใครทำอะไร เมื่อไร จากที่ไหน · เห็นเฉพาะรองประธานสภาขึ้นไปและผู้ดูแลระบบ · เก็บย้อนหลัง 90 วัน</p>
 
       <!-- ตัวกรอง -->
       <div class="panel mt-6 space-y-3 p-4">
-        <div class="flex flex-wrap gap-2">
-          <template x-for="t in types" :key="t.value">
-            <button type="button" class="chip" :aria-pressed="type === t.value" @click="setType(t.value)" x-text="t.label"></button>
-          </template>
+        <div class="space-y-1">
+          <p class="text-xs text-muted">หมวดหมู่</p>
+          <div class="flex flex-wrap gap-2" role="group" aria-label="หมวดหมู่">
+            <template x-for="t in types" :key="t.value">
+              <button type="button" class="chip" :aria-pressed="type === t.value" @click="setType(t.value)" x-text="t.label"></button>
+            </template>
+          </div>
+        </div>
+
+        <div class="space-y-1" x-show="events.length">
+          <p class="text-xs text-muted">สถานะ</p>
+          <div class="flex flex-wrap gap-2" role="group" aria-label="สถานะ">
+            <template x-for="e in events" :key="e.value">
+              <button type="button" class="chip" :aria-pressed="event === e.value" @click="setEvent(e.value)" x-text="e.label"></button>
+            </template>
+          </div>
         </div>
 
         <div class="grid gap-3 md:grid-cols-[1fr_auto_auto]">
@@ -81,9 +93,10 @@
               </div>
 
               <div class="flex min-w-0 flex-wrap items-center gap-2">
-                <span :class="badge(r.event)" x-text="r.event_label"></span>
+                <span :class="badge(r.event)" x-text="r.event_label || r.log_label"></span>
                 <span class="min-w-0 break-words text-sm" x-text="r.description"></span>
                 <span x-show="r.subject" class="text-xs text-muted" x-text="r.subject ? r.subject.label + ' #' + r.subject.id : ''"></span>
+                <span x-show="r.summary" class="basis-full break-words text-xs text-muted" x-text="r.summary"></span>
               </div>
 
               <button type="button" class="text-xs text-accent hover:underline md:justify-self-end" x-show="hasDetail(r)"
@@ -93,7 +106,7 @@
             <!-- รายละเอียด -->
             <div x-show="open[r.id]" x-cloak class="mt-3 grid gap-3 border-t border-line pt-3 text-sm md:grid-cols-2">
               <dl class="space-y-1" x-show="extras(r).length">
-                <template x-for="[k, v] in extras(r)" :key="k">
+                <template x-for="([k, v], i) in extras(r)" :key="i">
                   <div class="flex gap-3"><dt class="w-28 shrink-0 text-muted" x-text="k"></dt><dd class="min-w-0 break-words" x-text="v"></dd></div>
                 </template>
               </dl>

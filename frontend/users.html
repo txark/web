@@ -28,7 +28,7 @@
       <p x-show="error" x-text="error" class="penalty-box mt-5"></p>
 
       <!-- เพิ่มผู้ใช้ -->
-      <form class="panel mt-6 p-4 sm:p-5" @submit.prevent="add()" novalidate>
+      <form x-show="assignable.length > 0" x-cloak class="panel mt-6 p-4 sm:p-5" @submit.prevent="add()" novalidate>
         <h2 class="type-sub">เพิ่มผู้ใช้</h2>
 
         <div class="mt-4 grid gap-4 md:grid-cols-[1.2fr_1fr_1fr_auto] md:items-start">
@@ -112,15 +112,15 @@
 
               <!-- บทบาท -->
               <div>
-                <template x-if="u.can_manage">
+                <template x-if="u.can_manage && assignable.length > 0">
                   <select class="input !py-1.5 text-sm" @change="changeRole(u, $event.target.value, $event.target)" :aria-label="'บทบาทของ ' + (u.character_name || u.name)">
                     <!-- บทบาทปัจจุบัน (ถ้าอยู่ต่ำกว่าเรา ก็อยู่ในตัวเลือกอยู่แล้ว) -->
                     <template x-for="r in assignable" :key="r.value">
-                      <option :value="r.value" :selected="r.value === u.role" x-text="r.label"></option>
+                      <option :value="r.value" :selected="r.value === u.role" x-text="r.name"></option>
                     </template>
                   </select>
                 </template>
-                <span x-show="!u.can_manage" class="badge badge-info" :title="u.role_name" x-text="u.role_label"></span>
+                <span x-show="!u.can_manage || assignable.length === 0" class="badge badge-info" :title="u.role_name" x-text="u.role_label"></span>
               </div>
 
               <!-- สถานะ -->

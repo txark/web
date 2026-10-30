@@ -10,7 +10,7 @@ class RoleTest extends TestCase
     public function test_badge_labels_are_the_six_names_shown_in_the_ui(): void
     {
         $this->assertSame(
-            ['Gang', 'Family', 'Council', 'Sub-CC', 'Head-CC', 'Admin'],
+            ['Gang', 'Family', 'Trainee', 'Council', 'Operations', 'Senior', 'Secretary', 'Sub-CC', 'Head-CC', 'Admin'],
             array_map(fn (Role $r) => $r->label(), Role::cases()),
         );
     }
@@ -18,7 +18,7 @@ class RoleTest extends TestCase
     public function test_thai_names_are_available_for_sentences(): void
     {
         $this->assertSame(
-            ['แก๊ง', 'ครอบครัว', 'สมาชิกสภา', 'รองประธาน', 'ประธาน', 'แอดมินดูแลเว็บ'],
+            ['แก๊ง', 'ครอบครัว', 'สภาฝึกหัด', 'สภา', 'สภาปฏิบัติการ', 'สภาอาวุโส', 'เลขาสภา', 'รองประธานสภา', 'ประธานสภา', 'แอดมินดูแลเว็บ'],
             array_map(fn (Role $r) => $r->thaiName(), Role::cases()),
         );
     }
@@ -37,9 +37,41 @@ class RoleTest extends TestCase
         $this->assertTrue(Role::Member->atLeast(Role::Family));
         $this->assertTrue(Role::VicePresident->atLeast(Role::Member));
         $this->assertTrue(Role::President->atLeast(Role::VicePresident));
-        $this->assertTrue(Role::Admin->atLeast(Role::President));
+        $this->assertFalse(Role::VicePresident->atLeast(Role::Admin));
         $this->assertFalse(Role::President->atLeast(Role::Admin));
         $this->assertFalse(Role::VicePresident->atLeast(Role::President));
+    }
+
+    public function test_secretary_senior_operations_and_trainee_work_like_council(): void
+    {
+        foreach ([Role::Trainee, Role::Operations, Role::Senior, Role::Secretary] as $r) {
+            $this->assertSame(Role::Member->level(), $r->level());
+            $this->assertTrue($r->atLeast(Role::Member));
+            $this->assertFalse($r->atLeast(Role::VicePresident));
+            $this->assertSame([], array_filter($r->assignable(), fn ($x) => $x->atLeast(Role::Member)), 'ยศสภาตั้งยศสภาให้ใครไม่ได้');
+        }
+    }
+
+    public function test_only_vice_president_up_can_assign_council_ranks(): void
+    {
+        foreach ([Role::Secretary, Role::Senior, Role::Operations, Role::Member, Role::Trainee] as $rank) {
+            $this->assertTrue(Role::VicePresident->canAssign($rank));
+            $this->assertTrue(Role::President->canAssign($rank));
+            $this->assertFalse(Role::Secretary->canAssign($rank));
+            $this->assertFalse(Role::Member->canAssign($rank));
+        }
+    }
+
+    public function test_sort_weights_are_unique_and_follow_the_seven_council_ranks(): void
+    {
+        $w = array_map(fn (Role $r) => $r->sortWeight(), Role::cases());
+        $this->assertSame($w, array_values(array_unique($w)));
+        $this->assertTrue(Role::President->sortWeight() > Role::VicePresident->sortWeight());
+        $this->assertTrue(Role::VicePresident->sortWeight() > Role::Secretary->sortWeight());
+        $this->assertTrue(Role::Secretary->sortWeight() > Role::Senior->sortWeight());
+        $this->assertTrue(Role::Senior->sortWeight() > Role::Operations->sortWeight());
+        $this->assertTrue(Role::Operations->sortWeight() > Role::Member->sortWeight());
+        $this->assertTrue(Role::Member->sortWeight() > Role::Trainee->sortWeight());
     }
 
     public function test_values_are_unique_and_round_trip(): void

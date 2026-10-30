@@ -10,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 /**
  * แจ้งเตือนงานค้างของสภา: คำนวณจากข้อมูลจริงทุกครั้งที่เปิด (ไม่มีตารางแยก จึงไม่ค้างเมื่อแก้ปัญหาแล้ว)
  * งานใหม่ (คำร้อง สัญญาสตอรี่ ฯลฯ) เพิ่มเป็นกฎอีกข้อในที่นี้ได้
+ * ไม่แจ้งเตือนจำนวนสมาชิก: ระบบเก็บเฉพาะรายชื่อหัวหน้าและรอง จึงนับสมาชิกทั้งหมดไม่ได้
  */
 class AlertController extends Controller
 {
@@ -19,10 +20,7 @@ class AlertController extends Controller
     {
         $lockedDays = config('council.alerts.locked_days');
 
-        $groups = Group::query()
-            ->withCount('activeMembers')
-            ->with('leader')
-            ->get();
+        $groups = Group::query()->with('leader')->get();
 
         $alerts = [];
         foreach ($groups as $g) {
@@ -31,11 +29,6 @@ class AlertController extends Controller
 
             if (! $g->leader) {
                 $alerts[] = $this->alert('no_leader', 'high', $g, $link, "{$label} ยังไม่มีหัวหน้า", 'กำหนดหัวหน้าในหน้าจัดการกลุ่ม', $g->created_at);
-            }
-
-            $min = $g->minMembers();
-            if ($g->active_members_count < $min) {
-                $alerts[] = $this->alert('below_minimum', 'medium', $g, $link, "{$label} ยังไม่ถึงขั้นต่ำ", "มีสมาชิก {$g->active_members_count} คน ต้องมีอย่างน้อย {$min} คน", $g->created_at);
             }
 
             if ($g->slots_locked && $g->updated_at->lt(now()->subDays($lockedDays))) {
