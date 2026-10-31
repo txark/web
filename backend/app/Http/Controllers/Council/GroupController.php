@@ -144,14 +144,17 @@ class GroupController extends Controller
             'co_leaders' => ['nullable', 'array', "max:{$maxCo}"], // รองไม่บังคับ
             'co_leaders.*' => ['array'],
             ...$person('co_leaders.*', false),
-            'temp_outfit_image' => ['required', 'file', 'max:4096', $this->signature('png')],
-            'temp_outfit_male' => ['nullable', 'string', 'max:30'],
-            'temp_outfit_female' => ['nullable', 'string', 'max:30'],
+            // ชุดชั่วคราวเป็นเบอร์สี 1..N (ไม่แนบรูป) และวันเดียวกันใช้เบอร์ซ้ำกันไม่ได้
+            'temp_outfit_color' => ['required', 'integer', 'min:1', 'max:'.config('council.groups.temp_outfit.colors')],
             'outfit_zip' => ['required', 'file', 'max:51200', $this->signature('zip')],
             'protect' => ['sometimes', 'boolean'],
         ], self::MESSAGES + [
             'short_name.regex' => 'ชื่อย่อต้องเป็นตัวพิมพ์ใหญ่ภาษาอังกฤษหรือตัวเลขเท่านั้น ไม่เกิน 4 ตัวอักษร',
             'color_hex.regex' => 'โค้ดสีต้องเป็นรูปแบบ #RRGGBB',
+            'temp_outfit_color.required' => 'กรุณาเลือกเบอร์สีชุดชั่วคราว',
+            'temp_outfit_color.integer' => 'เบอร์สีชุดชั่วคราวไม่ถูกต้อง',
+            'temp_outfit_color.min' => 'เบอร์สีชุดชั่วคราวไม่ถูกต้อง',
+            'temp_outfit_color.max' => 'เบอร์สีชุดชั่วคราวไม่ถูกต้อง',
             'co_leaders.max' => $type === GroupType::Family ? 'ครอบครัวมีรองได้ 1 คน' : "แก๊งมีรองได้ไม่เกิน {$maxCo} คน",
             '*.discord_id.regex' => 'Discord ID ต้องเป็นตัวเลข 17-20 หลัก',
             '*.ic_phone.regex' => 'เบอร์ IC ไม่ถูกต้อง',
@@ -169,10 +172,16 @@ class GroupController extends Controller
         $stored = [];
         try {
             $group = DB::transaction(function () use ($data, $type, $isLady, $request, $people, &$stored) {
+                // ตรวจเบอร์สีซ้ำในวันเดียวกันใน transaction (ล็อกตารางกันสองคนจองเบอร์เดียวกันพร้อมกัน)
+                if (DB::getDriverName() === 'pgsql') {
+                    DB::statement('LOCK TABLE groups IN SHARE ROW EXCLUSIVE MODE');
+                }
+                if (in_array((int) $data['temp_outfit_color'], $this->takenTempColors(), true)) {
+                    throw ValidationException::withMessages(['temp_outfit_color' => "เบอร์สีชุดชั่วคราว {$data['temp_outfit_color']} ถูกแก๊ง/ครอบครัวอื่นใช้ไปแล้วในวันนี้ กรุณาเลือกเบอร์อื่น"]);
+                }
+
                 $logo = $request->file('logo')->store('groups/logos', 'public');
                 $stored[] = ['public', $logo];
-                $temp = $request->file('temp_outfit_image')->store('groups/temp-outfits', 'local');
-                $stored[] = ['local', $temp];
                 $zip = $request->file('outfit_zip')->store('groups/outfits', 'local');
                 $stored[] = ['local', $zip];
                 $protect = $request->boolean('protect');
@@ -186,10 +195,11 @@ class GroupController extends Controller
                     'color_name' => $data['color_name'],
                     'logo_path' => $logo,
                     'logo_url' => Storage::disk('public')->url($logo),
-                    'temp_outfit_path' => $temp,
-                    'temp_outfit_male' => $data['temp_outfit_male'] ?? null,
-                    'temp_outfit_female' => $data['temp_outfit_female'] ?? null,
+                    'temp_outfit_male' => config('council.groups.temp_outfit.male'),
+                    'temp_outfit_female' => config('council.groups.temp_outfit.female'),
+                    'temp_outfit_color' => (int) $data['temp_outfit_color'],
                     'outfit_zip_path' => $zip,
+                    'outfit_zip_original_path' => $zip,
                     'protect_requested' => $protect,
                     'protect_from' => $protect ? now() : null, // เริ่มนับตอนกดขึ้นทะเบียน
                     'protect_until' => $protect ? now()->addDays((int) config('council.groups.protect_days')) : null,
@@ -228,11 +238,44 @@ class GroupController extends Controller
     }
 
     /** ดาวน์โหลดไฟล์ส่วนตัวของกลุ่ม (ชุดชั่วคราว PNG / ไฟล์ชุด ZIP) */
+    /** เบอร์สีชุดชั่วคราวที่ถูกใช้ไปแล้ววันนี้ (เวลาไทย) ไว้ให้หน้าขึ้นทะเบียนปิดเบอร์ที่ซ้ำ */
+    public function tempColors(): \Illuminate\Http\JsonResponse
+    {
+        $cfg = config('council.groups.temp_outfit');
+
+        return response()->json([
+            'taken' => $this->takenTempColors(),
+            'colors' => (int) $cfg['colors'],
+            'male' => $cfg['male'],
+            'female' => $cfg['female'],
+            'date' => now(config('council.report_timezone'))->toDateString(),
+        ]);
+    }
+
+    /** @return list<int> เบอร์สีที่แก๊ง/ครอบครัว (รวมที่ยุบไปแล้ว) ขึ้นทะเบียนด้วยในวันนี้ตามเวลาไทย */
+    private function takenTempColors(): array
+    {
+        $tz = config('council.report_timezone');
+        $from = now($tz)->startOfDay()->utc();
+
+        return Group::withTrashed()->whereNotNull('temp_outfit_color')
+            ->where('registered_at', '>=', $from)->where('registered_at', '<', $from->copy()->addDay())
+            ->pluck('temp_outfit_color')->map(fn ($c) => (int) $c)->unique()->values()->all();
+    }
+
     public function file(Group $group, string $kind)
     {
+        // โลโก้อยู่ดิสก์สาธารณะ: ส่งกลับเป็นรูป (ไม่ดาวน์โหลด) ให้หน้าเว็บนำไปวาดในหนังสือสัญญา
+        if ($kind === 'logo') {
+            abort_unless($group->logo_path && Storage::disk('public')->exists($group->logo_path), 404);
+
+            return Storage::disk('public')->response($group->logo_path);
+        }
+
         $path = match ($kind) {
             'temp_outfit' => $group->temp_outfit_path,
             'outfit_zip' => $group->outfit_zip_path,
+            'outfit_zip_original' => $group->outfit_zip_original_path,
             default => null,
         };
         abort_unless($path && Storage::disk('local')->exists($path), 404);

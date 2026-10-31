@@ -9,15 +9,20 @@ const KINDS = {
     allowed: GANG_ALLOWED,
   },
   family: {
-    type: 'family', lady: false, min: 6, max: 10, maxCo: 1, noun: 'ครอบครัว', noun_full: 'ครอบครัว',
+    type: 'family', lady: false, min: 6, max: 10, maxCo: 2, noun: 'ครอบครัว', noun_full: 'ครอบครัว',
     allowed: ['เสื้อโปโล 1 ชิ้น', 'ฮูด 1 ชิ้น (โมเดลตัวเกม)', 'เสื้อยืด 1 ชิ้น', 'Accessories 1 ชิ้น'],
   },
 };
+/** สีของชุดชั่วคราวเบอร์ 1–23 (ตามเท็กซ์เจอร์ polofm/polomale 1–23) ใช้แสดงตัวอย่างสี */
+const TEMP_COLORS = [
+  '#ef4444', '#3b82f6', '#10b981', '#fcd34d', '#8b5cf6', '#f9a8d4', '#f97316', '#92613a', '#e0d5c8', '#ff7066', '#00008b', '#ff00ff',
+  '#98fb98', '#a52a2a', '#b5305f', '#556b2f', '#99ffff', '#b8860b', '#da60ff', '#a0a0a0', '#ffe0e0', '#e0e8e0', '#7cfc00',
+];
 const blankPerson = () => ({ key: Math.random().toString(36).slice(2), ic_name: '', ic_phone: '', discord_id: '' });
 const blankForm = () => ({
   kind: 'gang', name: '', short_name: '', color_hex: '', color_name: '', color_auto: true,
   leader: blankPerson(), co: [],
-  temp_outfit_male: '', temp_outfit_female: '', protect: 'no',
+  temp_outfit_color: null, protect: 'no',
 });
 
 /** วันเวลาแบบไทย เช่น 29 ต.ค. 69 22:16 (เวลาไทย) */
@@ -141,7 +146,7 @@ const OUTFITS = [
   { key: 'accessories', label: 'Accessories' },
 ];
 const FAMILY_OUTFITS = ['hoodie', 'tshirt', 'polo', 'accessories']; // ครอบครัวลงได้เฉพาะ ฮูด เสื้อยืด เสื้อโปโล และ accessories
-const blankTxn = () => ({ kind: 'rename', name: '', short_name: '', logo: null, color_hex: '', color_name: '', color_auto: true, leader_name: '', leader_phone: '', leader_discord: '', member_names: '', reason: '' });
+const blankTxn = () => ({ kind: 'rename', name: '', short_name: '', logo: null, color_hex: '', color_name: '', color_auto: true, outfit_zip: null, leader_name: '', leader_phone: '', leader_discord: '', member_names: '', reason: '' });
 
 /** วันเวลาปัจจุบันแบบไทย เช่น 29 ต.ค. 69 22:08 · เวลาไทย (UTC+7) */
 const nowThai = () => {
@@ -221,6 +226,14 @@ function manageGroupsPage() {
     outfitErr: '',
     hist: [],
     histLoading: false,
+    stories: [], // ประวัติการเล่นสตอรี่ของทะเบียนนี้
+    // ย่อ/ขยายการ์ดในรายละเอียดทะเบียน (จำค่าล่าสุดไว้ในเบราว์เซอร์)
+    storyOpen: (() => { try { return localStorage.getItem('gdStoryOpen') !== '0'; } catch (e) { return true; } })(),
+    histOpen: (() => { try { return localStorage.getItem('gdHistOpen') !== '0'; } catch (e) { return true; } })(),
+    storyWeek: 0, // 0 = สัปดาห์นี้ · -1 = สัปดาห์ก่อน ... (ย้อนดูได้ภายใน 1 เดือน)
+    contractView: null, // แถวสตอรี่ที่เปิดหนังสือสัญญาเป็นป๊อปอัปอยู่
+    storiesLoading: false,
+    storiesError: '',
     histError: '',
     // อัตราค่าบริการของแต่ละธุรกรรม (โหลดจากเซิร์ฟเวอร์ ค่าตั้งต้นนี้ใช้ก่อนโหลดเสร็จ)
     fees: { currency: 'WVDL', register: 0, rename: 1000000, rename_logo: 2000000, recolor: 1000000, change_leader: 0, release_slot: 300000, release_free: 500000, dissolve: 0 },
@@ -350,8 +363,31 @@ function manageGroupsPage() {
       return this.createErrors[k] || '';
     },
 
+    // ── ชุดชั่วคราว: เลือกเบอร์สี 1–23 (วันเดียวกันซ้ำกันไม่ได้) ──
+    tempColors: TEMP_COLORS,
+    tempTaken: [], // เบอร์ที่ถูกใช้ไปแล้ววันนี้
+    tempIds: { male: '1254', female: '1300' },
+
+    async loadTempColors() {
+      try {
+        const r = await API.get('/api/council/groups/temp-colors');
+        this.tempTaken = r.taken || [];
+        this.tempIds = { male: r.male || '1254', female: r.female || '1300' };
+        if (this.f.temp_outfit_color && this.tempTaken.includes(this.f.temp_outfit_color)) this.f.temp_outfit_color = null;
+      } catch (e) {
+        this.tempTaken = []; // โหลดไม่ได้ก็เลือกได้ เซิร์ฟเวอร์ตรวจซ้ำให้
+      }
+    },
+
+    pickTempColor(n) {
+      if (this.tempTaken.includes(n)) return;
+      this.f.temp_outfit_color = n;
+      delete this.createErrors.temp_outfit_color;
+    },
+
     openCreate() {
       this.f = blankForm();
+      this.loadTempColors();
       this.clearPreviews();
       this.files = {};
       this.createErrors = {};
@@ -397,7 +433,7 @@ function manageGroupsPage() {
       }
       delete this.createErrors[key];
       if (!file) return;
-      const limit = { logo: 2, temp_outfit_image: 4, outfit_zip: 50 }[key];
+      const limit = { logo: 2, outfit_zip: 50 }[key];
       if (!file.name.toLowerCase().endsWith('.' + ext)) {
         this.createErrors[key] = ext === 'png' ? 'ต้องเป็นไฟล์ .PNG เท่านั้น' : 'ต้องเป็นไฟล์ .ZIP เท่านั้น';
         ev.target.value = '';
@@ -428,7 +464,8 @@ function manageGroupsPage() {
       };
       person(this.f.leader, 'leader', true);
       this.filledCo().forEach(([c, i]) => person(c, `co_leaders.${i}`, false));
-      if (!this.files.temp_outfit_image) er.temp_outfit_image = 'กรุณาแนบรูปชุดชั่วคราว (.PNG)';
+      if (!this.f.temp_outfit_color) er.temp_outfit_color = 'กรุณาเลือกเบอร์สีชุดชั่วคราว';
+      else if (this.tempTaken.includes(this.f.temp_outfit_color)) er.temp_outfit_color = 'เบอร์นี้ถูกใช้ไปแล้ววันนี้ กรุณาเลือกเบอร์อื่น';
       if (!this.files.outfit_zip) er.outfit_zip = 'กรุณาแนบไฟล์ชุด (.ZIP)';
       return er;
     },
@@ -445,7 +482,7 @@ function manageGroupsPage() {
       fd.append('type', k.type);
       if (k.lady) fd.append('is_lady', '1');
       for (const key of ['name', 'short_name', 'color_hex', 'color_name']) fd.append(key, this.f[key].trim());
-      for (const key of ['temp_outfit_male', 'temp_outfit_female']) if (this.f[key].trim()) fd.append(key, this.f[key].trim());
+      fd.append('temp_outfit_color', this.f.temp_outfit_color);
       const person = (p, prefix) => {
         fd.append(`${prefix}[ic_name]`, p.ic_name.trim());
         fd.append(`${prefix}[ic_phone]`, p.ic_phone.trim());
@@ -500,15 +537,23 @@ function manageGroupsPage() {
       this.hist = [];
       this.records = [];
       this.histError = '';
+      this.stories = [];
+      this.storiesError = '';
+      this.storyWeek = 0;
       this.dlg = null;
       this.manageMenu = false;
       this.outfitEdit = false;
       document.documentElement.classList.add('ui-locked');
       this.loadHistory();
+      this.loadStories();
       this.loadTempPreview();
     },
 
     close() {
+      if (this.contractView) {
+        this.contractView = null; // ปิดป๊อปอัปหนังสือสัญญาก่อน
+        return;
+      }
       if (this.dlg) return this.closeDlg();
       if (!this.g) return;
       this.dlg = null;
@@ -518,6 +563,101 @@ function manageGroupsPage() {
       this.resetTxn();
       if (!this.showCreate) document.documentElement.classList.remove('ui-locked');
       this.load();
+    },
+
+    // ── ประวัติการเล่นสตอรี่ ──
+    async loadStories() {
+      if (!this.g) return;
+      const id = this.g.id;
+      this.storiesLoading = true;
+      this.storiesError = '';
+      try {
+        const w = this.storyWeekRange;
+        const res = await API.get(`/api/council/stories?group_id=${id}&from=${w.from}&to=${w.to}&per_page=100`);
+        if (this.g && this.g.id === id) this.stories = res.data;
+      } catch (e) {
+        this.stories = [];
+        this.storiesError = e.status === 403 ? 'ดูประวัติสตอรี่ได้เฉพาะตอนเข้าเวร' : API.describe(e, 'โหลดประวัติการเล่นสตอรี่ไม่สำเร็จ');
+      } finally {
+        this.storiesLoading = false;
+      }
+    },
+
+    toggleFold(flag) {
+      this[flag] = !this[flag];
+      try {
+        localStorage.setItem(flag === 'storyOpen' ? 'gdStoryOpen' : 'gdHistOpen', this[flag] ? '1' : '0');
+      } catch (e) {
+        /* ใช้ไม่ได้ก็แค่ไม่จำค่า */
+      }
+    },
+
+    /** สัปดาห์ (จันทร์–อาทิตย์ ตามเวลาไทย) ที่ offset: 0 = สัปดาห์นี้ · -1 = สัปดาห์ก่อน ... → { from, to, label } */
+    weekRange(offset) {
+      const MS = 86400000;
+      const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date()).map((x) => [x.type, x.value]));
+      const today = Date.UTC(+p.year, +p.month - 1, +p.day);
+      const monday = today - ((new Date(today).getUTCDay() + 6) % 7) * MS + offset * 7 * MS;
+      const sunday = monday + 6 * MS;
+      const iso = (t) => new Date(t).toISOString().slice(0, 10);
+      const fmt = (t, withYear) => new Intl.DateTimeFormat('th-TH-u-ca-buddhist', { timeZone: 'UTC', day: 'numeric', month: 'short', ...(withYear ? { year: 'numeric' } : {}) }).format(new Date(t));
+      const name = offset === 0 ? 'สัปดาห์นี้' : offset === -1 ? 'สัปดาห์ก่อน' : `${-offset} สัปดาห์ก่อน`;
+      return { from: iso(monday), to: iso(sunday), label: `${name} · ${fmt(monday)} – ${fmt(sunday, true)}` };
+    },
+
+    get storyWeekRange() {
+      return this.weekRange(this.storyWeek);
+    },
+
+    /** ย้อนดูประวัติได้ภายใน 1 เดือน: ย้อนได้ตราบที่สัปดาห์นั้นยังมีวันอยู่ในช่วง 1 เดือนล่าสุด */
+    get canStoryPrev() {
+      const t = new Date();
+      t.setMonth(t.getMonth() - 1);
+      return this.weekRange(this.storyWeek - 1).to >= t.toISOString().slice(0, 10);
+    },
+
+    async storyWeekStep(delta) {
+      if (delta < 0 && !this.canStoryPrev) return;
+      if (delta > 0 && this.storyWeek >= 0) return;
+      this.storyWeek += delta;
+      await this.loadStories();
+    },
+
+    /** แถวประวัติสตอรี่จากมุมมองของทะเบียนที่เปิดอยู่: คู่แข่ง · คะแนน (เรา:เขา) · ผล */
+    get storyRows() {
+      if (!this.g) return [];
+      const me = this.g.id;
+      return this.stories.map((s) => {
+        const isA = s.group_a.id === me;
+        const opp = isA ? s.group_b : s.group_a;
+        const mine = isA ? s.score_a : s.score_b;
+        const theirs = isA ? s.score_b : s.score_a;
+        let outcome = { key: s.phase, label: s.phase_label };
+        if (s.status === 'ended') {
+          if (s.end_kind === 'no_show') outcome = { key: 'draw', label: 'ไม่มาเจรจาปิดเรื่อง' };
+          else if (s.winner_group_id === me) outcome = { key: 'win', label: s.end_kind === 'surrender' ? 'ชนะ (คู่แข่งยอมแพ้)' : 'ชนะ' };
+          else outcome = { key: 'lose', label: s.end_kind === 'surrender' ? 'แพ้ (ยอมแพ้)' : 'แพ้' };
+        }
+        return { id: s.id, number: s.number, me: this.g, opp, mine, theirs, outcome, startsAt: s.starts_at, venue: s.venue_random ? 'สุ่มโดยระบบ' : s.venue, active: s.status === 'active' };
+      });
+    },
+
+    /** สรุปว่าเคยเล่นกับกลุ่มไหนมาบ้าง (ไม่นับที่ยกเลิก): [{ name, kind, n, win, lose }] เรียงตามจำนวนครั้ง */
+    get storyOpponents() {
+      const by = new Map();
+      for (const r of this.storyRows) {
+        if (r.outcome.key === 'cancelled') continue;
+        const o = by.get(r.opp.id) || { id: r.opp.id, name: r.opp.name, type: r.opp.type, is_lady: r.opp.is_lady, n: 0, win: 0, lose: 0 };
+        o.n++;
+        if (r.outcome.key === 'win') o.win++;
+        if (r.outcome.key === 'lose') o.lose++;
+        by.set(r.opp.id, o);
+      }
+      return [...by.values()].sort((a, b) => b.n - a.n || a.name.localeCompare(b.name));
+    },
+
+    storyKind(o) {
+      return o.type === 'family' ? 'FAMILY' : o.is_lady ? 'LADY' : 'GANG';
     },
 
     // ── ประวัติและธุรกรรมของทะเบียน ──
@@ -555,6 +695,7 @@ function manageGroupsPage() {
         meta: [tx.requested_by ? tx.requested_by.name : '', tx.number].filter(Boolean).join(' · '),
         at: tx.created_at,
         lines: this.diffLines(tx),
+        swatch: this.swatchOf(tx),
         tx,
       }));
       for (const r of this.records) {
@@ -603,8 +744,18 @@ function manageGroupsPage() {
       return base.concat(perHead ? `ค่าบริการ ${n(fee.unit_price)} × ${fee.count} คน = ${n(fee.total)} ${fee.currency || ''}`.trim() : `ค่าบริการ ${n(fee.total)} ${fee.currency || ''}`.trim());
     },
 
+    /** ธุรกรรมเปลี่ยนสี: สีเดิม → สีใหม่ (ยังไม่อนุมัติ/ไม่มีภาพก่อน-หลัง ใช้สีปัจจุบันของกลุ่มเป็นสีเดิม) */
+    swatchOf(tx) {
+      if (tx.kind !== 'recolor') return null;
+      const p = tx.payload || {};
+      const from = tx.before && tx.before.color_hex ? tx.before : this.g;
+      const to = tx.after && tx.after.color_hex ? tx.after : { color_hex: p.color_hex, color_name: p.color_name };
+      return { from: { hex: from.color_hex, name: from.color_name }, to: { hex: to.color_hex, name: to.color_name } };
+    },
+
     /** สรุปสิ่งที่ธุรกรรมทำ (ไม่รวมค่าบริการ) */
     diffBase(tx) {
+      if (tx.kind === 'recolor') return ['แนบไฟล์ชุดใหม่ (.ZIP) เป็นไฟล์ชุดล่าสุด (ไฟล์เดิมยังเก็บไว้)'];
       const b = tx.before;
       const a = tx.after;
       if (tx.kind === 'release_slot' || tx.kind === 'release_free') return [`ออก: ${(tx.payload.member_names || []).join(', ')}`];
@@ -905,6 +1056,30 @@ function manageGroupsPage() {
       return this.txErrors[k] || '';
     },
 
+    /** ตัวอย่างโลโก้ในฟอร์มเปลี่ยนสี: พื้นหลังตามโค้ดสีที่กรอก และตัวอักษรสลับขาว/ดำให้อ่านออก */
+    get txColorStyle() {
+      const h = this.txn.color_hex;
+      if (!/^#[0-9a-f]{6}$/i.test(h || '')) return '';
+      const lum = (parseInt(h.slice(1, 3), 16) * 299 + parseInt(h.slice(3, 5), 16) * 587 + parseInt(h.slice(5, 7), 16) * 114) / 1000;
+      return `background:${h};color:${lum > 150 ? '#111' : '#fff'}`;
+    },
+
+    pickTxZip(ev) {
+      const file = ev.target.files[0];
+      this.txn.outfit_zip = null;
+      delete this.txErrors.outfit_zip;
+      if (!file) return;
+      if (!file.name.toLowerCase().endsWith('.zip')) {
+        this.txErrors.outfit_zip = 'ต้องเป็นไฟล์ .ZIP เท่านั้น';
+        ev.target.value = '';
+      } else if (file.size > 50 * 1024 * 1024) {
+        this.txErrors.outfit_zip = 'ไฟล์ใหญ่เกิน 50 MB';
+        ev.target.value = '';
+      } else {
+        this.txn.outfit_zip = file;
+      }
+    },
+
     pickTxLogo(ev) {
       const file = ev.target.files[0];
       this.txn.logo = null;
@@ -980,6 +1155,7 @@ function manageGroupsPage() {
       if ((t.kind === 'release_slot' || t.kind === 'release_free') && !this.releaseNames.length) er.member_names = 'กรุณากรอกชื่อสมาชิกที่ออกอย่างน้อย 1 ชื่อ';
       if ((t.kind === 'release_slot' || t.kind === 'release_free') && this.releaseNames.length > 50) er.member_names = 'ออกพร้อมกันได้ไม่เกิน 50 ชื่อต่อธุรกรรม';
       if (t.kind === 'recolor') {
+        if (!t.outfit_zip) er.outfit_zip = 'กรุณาแนบไฟล์ชุดใหม่ (.ZIP)';
         const msg = /^#[0-9A-Fa-f]{6}$/.test(t.color_hex.trim()) ? colorNameError(t.color_hex.trim(), t.color_name) : '';
         if (msg) er.color_name = msg;
       }
@@ -1004,6 +1180,7 @@ function manageGroupsPage() {
       } else if (t.kind === 'recolor') {
         put('color_hex', t.color_hex.trim());
         put('color_name', t.color_name.trim());
+        if (t.outfit_zip) fd.append('payload[outfit_zip]', t.outfit_zip);
       } else if (t.kind === 'change_leader') {
         put('name', t.leader_name.trim());
         put('phone', t.leader_phone.trim());
@@ -1078,7 +1255,7 @@ function manageGroupsPage() {
         const blob = await res.blob();
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = `${this.g.name}-${kind}.${kind === 'outfit_zip' ? 'zip' : 'png'}`;
+        a.download = `${this.g.name}-${kind}.${kind.startsWith('outfit_zip') ? 'zip' : 'png'}`;
         a.click();
         setTimeout(() => URL.revokeObjectURL(a.href), 1000);
       } catch (e) {
@@ -1225,6 +1402,7 @@ function manageGroupsPage() {
     get tempOutfitText() {
       const g = this.g;
       const parts = [];
+      if (g && g.temp_outfit_color) parts.push('สีเบอร์ ' + g.temp_outfit_color);
       if (g && g.temp_outfit_male) parts.push('ชาย ' + g.temp_outfit_male);
       if (g && g.temp_outfit_female) parts.push('หญิง ' + g.temp_outfit_female);
       return parts.join(' · '); // ว่าง = ไม่ระบุ (หน้าจอซ่อนแถวนี้)

@@ -8,6 +8,7 @@ function logsPage() {
     created: 'badge badge-normal', updated: 'badge badge-blacklist', deleted: 'badge badge-sanction',
     approved: 'badge badge-normal', rejected: 'badge badge-sanction', cancelled: 'badge badge-muted',
     start: 'badge badge-normal', end: 'badge badge-muted', system_end: 'badge badge-blacklist',
+    started: 'badge badge-normal', ended: 'badge badge-muted', scored: 'badge badge-info', shared: 'badge badge-info', unshared: 'badge badge-muted',
   };
   // สถานะ (event) ที่มีในแต่ละหมวด: หมวดที่ไม่มีสถานะ (แก๊ง/ครอบครัว) จะไม่แสดงแถวสถานะ
   const EVENTS = {
@@ -16,6 +17,7 @@ function logsPage() {
     changes: [['created', 'สร้าง'], ['updated', 'แก้ไข'], ['deleted', 'ลบ']],
     transactions: [['approved', 'อนุมัติ'], ['rejected', 'ไม่อนุมัติ'], ['cancelled', 'ยกเลิก']],
     groups: [],
+    stories: [['started', 'สร้าง'], ['updated', 'แก้ไข'], ['scored', 'บันทึกคะแนน'], ['shared', 'สร้างลิงก์แชร์'], ['unshared', 'ยกเลิกลิงก์แชร์'], ['ended', 'สิ้นสุด'], ['cancelled', 'ยกเลิก']],
     duty: [['start', 'เข้าเวร'], ['end', 'ออกเวร'], ['system_end', 'ระบบปิดเวร']],
   };
 
@@ -27,6 +29,7 @@ function logsPage() {
       { value: 'access', label: 'การเข้าดู' },
       { value: 'transactions', label: 'ธุรกรรม' },
       { value: 'groups', label: 'แก๊ง/ครอบครัว' },
+      { value: 'stories', label: 'สตอรี่' },
       { value: 'duty', label: 'เข้า/ออกเวร' },
       { value: 'changes', label: 'แก้ไขข้อมูลอื่นๆ' },
     ],
@@ -202,8 +205,17 @@ function logsPage() {
       return out;
     },
 
+    /** ธุรกรรมเปลี่ยนสี: สีเดิม → สีใหม่ จากภาพก่อน-หลังที่บันทึกไว้ */
+    swatch(row) {
+      const p = row.properties || {};
+      const b = p.before;
+      const a = p.after;
+      if (row.log !== 'transactions' || !b || !a || !a.color_hex || b.color_hex === a.color_hex) return null;
+      return { from: { hex: b.color_hex, name: b.color_name }, to: { hex: a.color_hex, name: a.color_name } };
+    },
+
     hasDetail(row) {
-      return this.diff(row).length > 0 || this.extras(row).length > 0;
+      return this.diff(row).length > 0 || this.extras(row).length > 0 || !!this.swatch(row);
     },
   };
 }

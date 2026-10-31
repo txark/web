@@ -16,7 +16,7 @@ const FAMILY_OUTFIT_KEYS = ['hoodie', 'tshirt', 'polo', 'accessories']; // ค�
 const SPECIAL_KEYS = ['mod1', 'mod2', 'accessories']; // ราคาเพิ่มชุด MOD / Accessories สูงกว่าชุดทั่วไป
 const MODES = [
   { value: 'outfit', label: 'ลงชุด / แก้ไขชุด', hint: 'ลงชุดเพิ่ม และ/หรือ เปลี่ยน-แทนชุดเดิม ในธุรกรรมเดียว แนบไฟล์ .ZIP ไฟล์เดียว' },
-  { value: 'outfit_counts', label: 'แก้จำนวนชุด', hint: 'กำหนดจำนวนที่ลงทะเบียนของแต่ละชนิดใหม่ทั้งหมด (ไม่มีไฟล์)' },
+  // โหมด "แก้จำนวนชุด" (outfit_counts) ถูกซ่อนจากหน้านี้ แก้จำนวนได้ที่หน้าจัดการแก๊ง/ครอบครัว
 ];
 const ZIP_LIMIT_MB = 50;
 
@@ -29,6 +29,8 @@ function outfitsPage() {
     mode: 'outfit',
 
     q: '',
+    kind: '', // '' ทั้งหมด | gang | lady | family
+    kinds: [{ value: '', label: 'ทั้งหมด' }, { value: 'gang', label: 'GANG · แก๊ง' }, { value: 'lady', label: 'LADY-GANG · แก๊งหญิงล้วน' }, { value: 'family', label: 'FAMILY · ครอบครัว' }],
     results: [],
     searching: false,
     g: null,
@@ -50,6 +52,7 @@ function outfitsPage() {
       await auth.require('member');
       this.ready = true;
       this.$watch('q', () => this.search());
+      this.$watch('kind', () => this.search());
       this.$watch('mode', () => this.resetForm());
       await Promise.all([this.search(), this.loadFees()]);
     },
@@ -65,8 +68,9 @@ function outfitsPage() {
 
     async search() {
       this.searching = true;
-      const p = new URLSearchParams({ per_page: 8 });
+      const p = new URLSearchParams({ per_page: 24 });
       if (this.q.trim()) p.set('q', this.q.trim());
+      if (this.kind) p.set('kind', this.kind);
       try {
         this.results = (await API.get(`/api/council/groups?${p}`)).data;
       } catch (e) {
@@ -123,6 +127,11 @@ function outfitsPage() {
     current(key) {
       const v = this.g && this.g.outfit_counts ? this.g.outfit_counts[key] : undefined;
       return v === undefined || v === null ? null : Number(v);
+    },
+
+    /** แก้ไข/แทนชุดได้เฉพาะชนิดที่ลงทะเบียนไว้แล้ว (หรือเลือกไว้แล้ว/เป็นปลายทางการสลับ) */
+    canEdit(key) {
+      return (this.current(key) || 0) > 0 || this.types.includes(key);
     },
 
     /** ลงเพิ่มได้อีกกี่ชิ้น (ลิมิต − ที่ลงไว้แล้ว) ถ้าลงเกินลิมิตมาก่อนแล้วจะเป็น 0 */

@@ -12,10 +12,13 @@ fs.mkdirSync(path.join(root, 'js', 'vendor'), { recursive: true });
 fs.copyFileSync(path.join(nm, 'alpinejs', 'dist', 'cdn.min.js'), path.join(root, 'js', 'vendor', 'alpine.min.js'));
 console.log('copied alpine.min.js');
 
-// ฟอนต์: เนื้อหา = Noto Sans Thai Looped, หัวข้อ = Prompt
+// ฟอนต์: เนื้อหา = Noto Sans Thai Looped, หัวข้อ = Prompt, เอกสารทางการ = Noto Serif Thai
 const fonts = [
   { pkg: 'noto-sans-thai-looped', weights: [400, 500, 600, 700] },
   { pkg: 'prompt', weights: [600, 700] },
+  { pkg: 'noto-serif-thai', weights: [400, 600, 700] }, // หนังสือสัญญา (แบบเอกสารทางการ)
+  { pkg: 'dancing-script', weights: [600] }, // ลายเซ็นผู้รับรอง (ตัวอักษรละติน)
+  { pkg: 'charmonman', weights: [400] }, // ลายเซ็นผู้รับรอง (ตัวอักษรไทย)
 ];
 const subsets = ['thai', 'latin'];
 

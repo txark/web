@@ -89,6 +89,10 @@ class TransactionResource extends JsonResource
                 }
                 $lines[] = ['ไฟล์ชุด', ! empty($p['replace']['types']) ? 'แทนที่ไฟล์ชุดหลักของกลุ่ม' : 'เก็บไว้กับธุรกรรม (ไม่แทนไฟล์ชุดหลัก)'];
                 break;
+            case TransactionKind::Recolor:
+                $lines[] = ['สีใหม่', trim(($p['color_name'] ?? '').' '.($p['color_hex'] ?? ''))];
+                $lines[] = ['ไฟล์ชุด', 'แทนที่ไฟล์ชุดหลักของกลุ่ม'];
+                break;
             case TransactionKind::OutfitCounts:
                 $lines[] = ['จำนวนชุดใหม่', self::counts($p)];
                 break;
@@ -161,7 +165,7 @@ class TransactionResource extends JsonResource
         $text = match ($this->kind) {
             TransactionKind::Register => "ขึ้นทะเบียน {$p['name']} ({$p['short_name']})",
             TransactionKind::Rename => "เปลี่ยนชื่อ {$g} → {$p['name']}",
-            TransactionKind::Recolor => "เปลี่ยนสี {$g} → {$p['color_hex']} {$p['color_name']}",
+            TransactionKind::Recolor => "เปลี่ยนสี {$g} → {$p['color_hex']} {$p['color_name']} (แนบไฟล์ชุดใหม่)",
             TransactionKind::ChangeLeader => "เปลี่ยน Leader {$g} → {$p['name']}",
             TransactionKind::ReleaseSlot => 'ออกสล็อต '.self::names($p)." จาก {$g}",
             TransactionKind::ReleaseFree => 'ออกลอย '.self::names($p)." จาก {$g}",

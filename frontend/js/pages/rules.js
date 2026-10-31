@@ -76,6 +76,11 @@ function rulesPage() {
       }
     },
 
+    // แบ่งเนื้อหาเป็นบรรทัด: บรรทัดที่ขึ้นต้นด้วย "• " เป็นหัวข้อย่อย (รายการ) ที่เหลือเป็นย่อหน้า
+    parts(text) {
+      return String(text || '').split(String.fromCharCode(10)).filter((l) => l.trim() !== '').map((l) => (/^\s*•\s*/.test(l) ? { li: true, t: l.replace(/^\s*•\s*/, '') } : { li: false, t: l }));
+    },
+
     // จัด Typography ในเนื้อหา แล้วคืนเป็น HTML ที่ปลอดภัย (escape ก่อนเสมอ) ใช้กับ x-html
     //  - "…" → “…”  และช่วงตัวเลข 1 - 2 → 1 – 2
     //  - เน้นจำนวนเงิน/ไม้, ระยะเวลา/จำนวนคน, ใบเหลือง/ใบแดง, คำสำคัญ และคำที่กฎใช้บ่อย (ห้าม/เด็ดขาด/ทุกกรณี/ยกเว้น)
@@ -153,6 +158,19 @@ function rulesPage() {
         if (r.kind === 'heading') current = r;
         else if (current && ['rule', 'highlight', 'price'].includes(r.kind)) current.count += 1;
       }
+
+      // รายการราคา: วาดเป็นตารางเดียวต่อเนื่อง (หัวข้อกลุ่มคั่นเป็นแถบ) pi = ลำดับแถว, last = แถวสุดท้ายของตาราง
+      let run = 0;
+      rules.forEach((r, i) => {
+        if (r.kind === 'heading') return;
+        if (r.kind !== 'price') {
+          run = 0;
+          return;
+        }
+        r.pi = run++;
+        const next = rules[i + 1];
+        r.last = !next || (next.kind !== 'price' && next.kind !== 'heading');
+      });
 
       return { rules, cats: rules.filter((r) => r.kind === 'heading') };
     },

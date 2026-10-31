@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="th" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>สตอรี่ | WAVEVY COUNCIL</title>
+  <link rel="icon" href="/img/favicon.png">
+  <script src="/js/theme.js"></script>
+  <link rel="stylesheet" href="/css/output.css">
+  <script src="/js/config.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/vendor/html-to-image.min.js"></script>
+  <script src="/js/vendor/html2canvas.min.js"></script>
+  <script src="/js/story-fmt.js"></script>
+  <script src="/js/pages/stories.js"></script>
+  <script defer src="/js/layout.js"></script>
+  <script defer src="/js/txnav.js"></script>
+  <script defer src="/js/vendor/alpine.min.js"></script>
+</head>
+<body>
+  <div id="site-header"></div>
+
+  <main class="container-app py-8" x-data="storiesPage()" @keydown.escape.window="closeModal()">
+    <div x-show="!ready" class="py-24 text-center text-muted">กำลังตรวจสอบสิทธิ์...</div>
+
+    <div x-show="ready" x-cloak class="tx-layout">
+      <aside id="tx-sidebar" x-data="txSidebar()"></aside>
+      <div class="min-w-0">
+
+        <header class="rg-head">
+          <div class="min-w-0">
+            <p class="rg-eyebrow">WAVEVY COUNCIL / STORY OPERATIONS</p>
+            <h1 class="rg-title">งานสตอรี่</h1>
+            <p class="rg-sub">ติดตามคู่สตอรี่ คะแนน รูปแบบการเล่น และผลการดำเนินงาน · ไม่มีค่าบริการ มีเดิมพัน</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button type="button" class="btn-outline" @click="refresh()" :disabled="loading" aria-label="รีเฟรช" title="รีเฟรช">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v5h-5"/></svg>
+            </button>
+            <a href="/story-form.html" class="btn-solid">+ สร้างสตอรี่</a>
+          </div>
+        </header>
+
+        <div class="st-stats" role="group" aria-label="สรุปจำนวนสตอรี่">
+          <div class="st-stat"><p class="st-stat-label">รอเข้าสู่การเล่น</p><p class="st-stat-num" x-text="counts.waiting"></p></div>
+          <div class="st-stat"><p class="st-stat-label">กำลังเล่น</p><p class="st-stat-num" x-text="counts.playing"></p></div>
+          <div class="st-stat"><p class="st-stat-label">สิ้นสุด</p><p class="st-stat-num" x-text="counts.ended"></p></div>
+          <div class="st-stat"><p class="st-stat-label">สตอรี่ทั้งหมด</p><p class="st-stat-num" x-text="counts.all"></p></div>
+        </div>
+
+        <p x-show="msg" x-text="msg" class="note-box mt-5"></p>
+        <p x-show="error" x-text="error" class="penalty-box mt-5"></p>
+
+        <section class="st-table">
+          <div class="st-filter">
+            <label class="rg-search">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+              <input type="search" x-model.debounce.300ms="q" placeholder="ค้นหาคู่สตอรี่หรือรูปแบบการเล่น" aria-label="ค้นหา" autocomplete="off">
+            </label>
+            <select x-model="status" class="input w-auto" aria-label="กรองสถานะ">
+              <template x-for="f in filters" :key="f.value"><option :value="f.value" x-text="f.label"></option></template>
+            </select>
+          </div>
+
+          <div class="st-row st-row-head" role="row">
+            <span>คู่สตอรี่ / เวลาเริ่มเล่น</span><span>คะแนน</span><span>รูปแบบ</span><span>สถานะ</span>
+          </div>
+          <p x-show="loading && rows.length === 0" class="rg-empty">กำลังโหลด...</p>
+          <p x-show="!loading && !error && rows.length === 0" class="rg-empty">ไม่พบสตอรี่ตามเงื่อนไข</p>
+
+          <template x-for="s in rows" :key="s.id">
+            <button type="button" class="st-row" @click="openDetail(s)">
+              <span class="min-w-0">
+                <span class="st-teams">
+                  <span class="st-team">
+                    <span class="st-mini" :style="logoStyle(s.group_a)"><img x-show="s.group_a.logo_url" :src="s.group_a.logo_url" alt="" loading="lazy" @error="$el.style.display = 'none'"><span x-show="!s.group_a.logo_url" x-text="(s.group_a.short_name || s.group_a.name.slice(0, 3)).toUpperCase()"></span></span>
+                    <span x-text="s.group_a.name"></span>
+                  </span>
+                  <span class="st-vs">VS</span>
+                  <span class="st-team">
+                    <span class="st-mini" :style="logoStyle(s.group_b)"><img x-show="s.group_b.logo_url" :src="s.group_b.logo_url" alt="" loading="lazy" @error="$el.style.display = 'none'"><span x-show="!s.group_b.logo_url" x-text="(s.group_b.short_name || s.group_b.name.slice(0, 3)).toUpperCase()"></span></span>
+                    <span x-text="s.group_b.name"></span>
+                  </span>
+                </span>
+                <span class="st-sub block" x-text="typeLabel(s.story_type) + ' · เริ่มเล่น ' + thai(s.starts_at)"></span>
+              </span>
+              <span class="st-score"><b x-text="s.score_a"></b><span class="dim">:</span><b x-text="s.score_b"></b></span>
+              <span x-text="picked(s, 'play_format')"></span>
+              <span><span class="st-pill" :class="'st-pill-' + s.phase" x-text="s.phase_label"></span></span>
+            </button>
+          </template>
+        </section>
+
+        <p class="mt-6 text-xs text-muted">WAVEVY COUNCIL · เวลาไทย (UTC+7) · สล็อตของทั้งสองฝั่งถูกล็อกก่อนเริ่มเล่น และปลดเมื่อสตอรี่สิ้นสุดหรือยกเลิก</p>
+      </div>
+    </div>
+
+    <!-- ═════════ ข้อมูลสตอรี่ ═════════ -->
+    <template x-if="modal === 'detail' && cur">
+      <div class="st-modal-back" @click.self="closeModal()">
+        <div class="st-modal" role="dialog" aria-modal="true" aria-label="ข้อมูลสตอรี่">
+          <header class="st-modal-head">
+            <h2 class="st-modal-title">ข้อมูลสตอรี่</h2>
+            <button type="button" class="st-x" @click="closeModal()" aria-label="ปิด">✕</button>
+          </header>
+          <div class="st-modal-body">
+            <p x-show="errors._" x-text="errors._" class="penalty-box mb-4"></p>
+            <div class="st-board">
+              <div class="st-board-side">
+                <span class="st-mini" :style="logoStyle(cur.group_a)"><img x-show="cur.group_a.logo_url" :src="cur.group_a.logo_url" alt="" @error="$el.style.display = 'none'"><span x-show="!cur.group_a.logo_url" x-text="(cur.group_a.short_name || cur.group_a.name.slice(0, 3)).toUpperCase()"></span></span>
+                <div class="min-w-0">
+                  <p class="st-board-name" x-text="cur.group_a.name"></p>
+                  <span class="st-win" x-show="cur.status === 'ended' && cur.winner_group_id === cur.group_a.id">ผู้ชนะ</span>
+                </div>
+              </div>
+              <div class="st-board-mid">
+                <p class="st-board-score"><span x-text="cur.score_a"></span><span class="text-muted"> : </span><span x-text="cur.score_b"></span></p>
+                <span class="st-pill mt-2" :class="'st-pill-' + cur.phase" x-text="cur.phase_label"></span>
+              </div>
+              <div class="st-board-side is-b">
+                <span class="st-mini" :style="logoStyle(cur.group_b)"><img x-show="cur.group_b.logo_url" :src="cur.group_b.logo_url" alt="" @error="$el.style.display = 'none'"><span x-show="!cur.group_b.logo_url" x-text="(cur.group_b.short_name || cur.group_b.name.slice(0, 3)).toUpperCase()"></span></span>
+                <div class="min-w-0">
+                  <p class="st-board-name" x-text="cur.group_b.name"></p>
+                  <span class="st-win" x-show="cur.status === 'ended' && cur.winner_group_id === cur.group_b.id">ผู้ชนะ</span>
+                </div>
+              </div>
+            </div>
+
+            <p class="st-fgroup">ข้อมูลทั่วไป</p>
+            <div class="st-facts">
+              <div class="st-fact"><p class="st-fact-label">ประเภท</p><p class="st-fact-val" x-text="typeLabel(cur.story_type)"></p></div>
+              <div class="st-fact"><p class="st-fact-label">วันและเวลาเริ่มเล่น</p><p class="st-fact-val" x-text="thai(cur.starts_at)"></p></div>
+              <div class="st-fact"><p class="st-fact-label">ผู้สร้าง</p><p class="st-fact-val" x-text="(cur.created_by ? cur.created_by.name : '—') + ' · ' + thai(cur.created_at)"></p></div>
+            </div>
+
+            <p class="st-fgroup">กติกาการแข่ง</p>
+            <div class="st-facts">
+              <div class="st-fact"><p class="st-fact-label">จำนวนไฟต์</p><p class="st-fact-val" x-text="cur.fights + ' ไฟต์ · ถึง ' + cur.fights + ' ก่อนชนะ'"></p></div>
+              <div class="st-fact"><p class="st-fact-label">รูปแบบการเล่น</p><p class="st-fact-val" x-text="picked(cur, 'play_format')"></p></div>
+              <div class="st-fact"><p class="st-fact-label">สถานที่ไฟต์</p><p class="st-fact-val" x-text="picked(cur, 'venue')"></p></div>
+              <div class="st-fact"><p class="st-fact-label">ปลด TOXIC</p><p class="st-fact-val" x-text="toxic(cur)"></p></div>
+              <div class="st-fact"><p class="st-fact-label">การแจ้งใบ</p><p class="st-fact-val" x-text="cur.ticket_policy"></p></div>
+              <div class="st-fact"><p class="st-fact-label">จำนวนปืน</p><p class="st-fact-val" x-text="cur.guns > 0 ? cur.guns + ' กระบอก' : 'ไม่เล่นปืน'"></p></div>
+            </div>
+
+            <p class="st-fgroup">เดิมพัน</p>
+            <div class="st-facts">
+              <div class="st-fact"><p class="st-fact-label">เดิมพันฝั่งละ (WVDL)</p><p class="st-fact-val" x-text="money(cur.stake_amount)"></p></div>
+              <div class="st-fact"><p class="st-fact-label">ชำระหลังเริ่ม (×2)</p><p class="st-fact-val" x-text="lateText(cur) || 'ไม่มี'"></p></div>
+              <div class="st-fact" x-show="cur.status === 'ended'"><p class="st-fact-label">ยอดที่ต้องชำระ</p><p class="st-fact-val" x-text="'A ' + money(cur.stake_final_a) + ' · B ' + money(cur.stake_final_b)"></p></div>
+            </div>
+
+            <p class="st-fgroup">Slot</p>
+            <div class="st-facts">
+              <div class="st-fact" x-show="hasReserve(cur)"><p class="st-fact-label">การสลับ Slot ตัวสำรอง</p><p class="st-fact-val" x-text="yesNo(cur.allow_reserve_swap)"></p></div>
+              <div class="st-fact"><p class="st-fact-label">การเพิ่ม-ถอน Slot</p><p class="st-fact-val" x-text="yesNo(cur.allow_slot_change)"></p></div>
+              <div class="st-fact"><p class="st-fact-label">เวลา LOCK SLOT</p><p class="st-fact-val"><span x-text="lockNow(cur) ? 'ล็อกทันทีที่สร้างสตอรี่' : thai(cur.lock_at)"></span><span class="text-muted" style="font-weight:400" x-text="cur.lock_applied ? ' · ล็อกแล้ว' : ''"></span></p></div>
+            </div>
+
+            <div class="st-facts">
+              <div class="st-fact st-fact-wide" x-show="cur.status === 'ended'"><p class="st-fact-label">Protect หลังจบสตอรี่</p><p class="st-fact-val" x-text="cur.group_a.name + ': ' + protectText(cur, 'a') + ' · ' + cur.group_b.name + ': ' + protectText(cur, 'b')"></p></div>
+              <div class="st-fact st-fact-wide" x-show="cur.status === 'ended'"><p class="st-fact-label">ผล</p><p class="st-fact-val" x-text="resultText(cur)"></p></div>
+              <div class="st-fact st-fact-wide" x-show="cur.status === 'cancelled'"><p class="st-fact-label">เหตุผลที่ยกเลิก</p><p class="st-fact-val" x-text="cur.end_note"></p></div>
+              <div class="st-fact st-fact-wide"><p class="st-fact-label">รายละเอียดเพิ่มเติม</p><p class="st-fact-val whitespace-pre-line" style="font-weight:400" x-text="cur.extra_conditions || '—'"></p></div>
+            </div>
+            <ul x-show="cur.warnings.length" class="note-box mt-4 space-y-1 text-sm">
+              <template x-for="w in cur.warnings" :key="w"><li x-text="'⚠ ' + w"></li></template>
+            </ul>
+          </div>
+          <footer class="st-modal-foot">
+            <button type="button" class="btn-outline" @click="closeModal()">ปิด</button>
+            <button type="button" class="btn-outline" x-show="cur.status === 'active'" :disabled="busy" @click="cancelStory()">ยกเลิกสตอรี่</button>
+            <button type="button" class="btn-outline" x-show="cur.status === 'active'" @click="openEnd()">จบแบบพิเศษ</button>
+            <button type="button" class="btn-solid" x-show="cur.status === 'active'" @click="openScore()">บันทึกคะแนน</button>
+            <button type="button" class="btn-outline" x-show="cur.status !== 'cancelled'" @click="openSummary()">รูปสรุปคะแนน</button>
+            <button type="button" class="btn-outline" @click="openContract()">หนังสือสัญญา</button>
+            <a :href="'/story-form.html?id=' + cur.id" class="btn-outline" x-show="cur.status === 'active'">แก้ไขข้อมูลสตอรี่</a>
+          </footer>
+        </div>
+      </div>
+    </template>
+
+    <!-- ═════════ บันทึกคะแนน ═════════ -->
+    <template x-if="modal === 'score' && cur">
+      <div class="st-modal-back" @click.self="backToDetail()">
+        <form class="st-modal st-modal-sm" role="dialog" aria-modal="true" aria-label="บันทึกคะแนนสตอรี่" @submit.prevent="saveScore()" novalidate>
+          <header class="st-modal-head">
+            <h2 class="st-modal-title">บันทึกคะแนนสตอรี่</h2>
+            <button type="button" class="st-x" @click="backToDetail()" aria-label="ปิด">✕</button>
+          </header>
+          <div class="st-modal-body">
+            <p x-show="errors._" x-text="errors._" class="penalty-box mb-4"></p>
+            <p class="flex items-baseline justify-between"><span class="text-muted">ถึงก่อนชนะ</span><b class="text-lg" x-text="cur.fights + ' คะแนน'"></b></p>
+            <p class="mt-3 text-sm text-muted">กรอกคะแนนจริงของทั้งสองฝั่ง แล้วตรวจสอบผลก่อนบันทึก</p>
+            <div class="st-sides mt-4">
+              <div class="st-score-box st-side-a">
+                <p class="flex items-center gap-2 text-sm"><span class="st-badge st-badge-a">A</span> <span class="text-muted">ฝั่ง A</span></p>
+                <p class="mt-3 font-semibold" x-text="cur.group_a.name"></p>
+                <label class="reg-label mt-3" for="sc-a">คะแนนฝั่ง A <span class="text-accent">*</span></label>
+                <input id="sc-a" class="st-score-input" x-model="sf.score_a" inputmode="numeric" maxlength="2" autocomplete="off" @input="sf.score_a = sf.score_a.replace(/\D/g, '')" :aria-invalid="!!errors.score_a">
+                <p class="reg-err" x-show="errors.score_a" x-text="errors.score_a"></p>
+              </div>
+              <div class="st-score-box st-side-b">
+                <p class="flex items-center gap-2 text-sm"><span class="st-badge st-badge-b">B</span> <span class="text-muted">ฝั่ง B</span></p>
+                <p class="mt-3 font-semibold" x-text="cur.group_b.name"></p>
+                <label class="reg-label mt-3" for="sc-b">คะแนนฝั่ง B <span class="text-accent">*</span></label>
+                <input id="sc-b" class="st-score-input" x-model="sf.score_b" inputmode="numeric" maxlength="2" autocomplete="off" @input="sf.score_b = sf.score_b.replace(/\D/g, '')" :aria-invalid="!!errors.score_b">
+                <p class="reg-err" x-show="errors.score_b" x-text="errors.score_b"></p>
+              </div>
+            </div>
+<div class="reg-field mt-4" x-show="willEnd">
+                  <span class="reg-label">Protect หลังจบสตอรี่ <span class="reg-hint">(ระบุว่าแต่ละฝั่งรับหรือไม่ · รับ = นับ <span x-text="protectDays"></span> วันทันทีที่บันทึก)</span></span>
+                  <div class="grid gap-3 sm:grid-cols-2">
+                    <template x-for="side in ['a', 'b']" :key="side">
+                      <div>
+                        <p class="mb-1 text-sm font-semibold" x-text="cur['group_' + side].name"></p>
+                        <div class="st-seg" role="group" :aria-label="'Protect ' + cur['group_' + side].name">
+                          <button type="button" class="st-seg-btn" :aria-pressed="sf['protect_' + side] === true" @click="sf['protect_' + side] = true"><span class="st-seg-main"><svg class="st-seg-tick" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg><span>รับ Protect</span></span></button>
+                          <button type="button" class="st-seg-btn" :aria-pressed="sf['protect_' + side] === false" @click="sf['protect_' + side] = false"><span class="st-seg-main"><svg class="st-seg-tick" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg><span>ไม่รับ</span></span></button>
+                        </div>
+                        <p class="reg-err" x-show="errors['protect_' + side]" x-text="errors['protect_' + side]"></p>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+            <div class="st-info">
+              <p class="text-xs text-muted">ผลจากคะแนนที่กรอก</p>
+              <p class="mt-1 text-lg font-semibold" x-text="scoreResult.title"></p>
+              <p class="mt-1 text-sm text-muted" x-text="scoreResult.sub"></p>
+            </div>
+          </div>
+          <footer class="st-modal-foot">
+            <button type="button" class="btn-outline" @click="backToDetail()">ยกเลิก</button>
+            <button type="submit" class="btn-solid" :disabled="busy" x-text="busy ? 'กำลังบันทึก...' : 'ยืนยันบันทึกคะแนน'"></button>
+          </footer>
+        </form>
+      </div>
+    </template>
+
+    <!-- ═════════ จบแบบพิเศษ ═════════ -->
+    <template x-if="modal === 'end' && cur">
+      <div class="st-modal-back" @click.self="backToDetail()">
+        <form class="st-modal st-modal-sm" role="dialog" aria-modal="true" aria-label="จบสตอรี่แบบพิเศษ" @submit.prevent="saveEnd()" novalidate>
+          <header class="st-modal-head">
+            <h2 class="st-modal-title">จบสตอรี่แบบพิเศษ</h2>
+            <button type="button" class="st-x" @click="backToDetail()" aria-label="ปิด">✕</button>
+          </header>
+          <div class="st-modal-body">
+            <p x-show="errors._" x-text="errors._" class="penalty-box mb-4"></p>
+            <div class="flex flex-wrap gap-2" role="group" aria-label="ลักษณะการจบ">
+              <button type="button" class="chip" :aria-pressed="ef.end_kind === 'surrender'" @click="ef.end_kind = 'surrender'">ยอมแพ้</button>
+              <button type="button" class="chip" :aria-pressed="ef.end_kind === 'no_show'" @click="ef.end_kind = 'no_show'">ไม่มาเจรจาปิดเรื่อง</button>
+            </div>
+            <div class="reg-field mt-4" x-show="ef.end_kind === 'surrender'">
+              <span class="reg-label">ฝั่งที่ยอมแพ้ <span class="reg-hint">(เดิมพันเป็น 2 เท่า · PROT-010)</span></span>
+              <div class="flex flex-wrap gap-2">
+                <template x-for="g in [cur.group_a, cur.group_b]" :key="g.id">
+                  <button type="button" class="chip" :aria-pressed="ef.surrender_group_id === g.id" @click="ef.surrender_group_id = g.id" x-text="g.name"></button>
+                </template>
+              </div>
+              <p class="reg-err" x-show="errors.surrender_group_id" x-text="errors.surrender_group_id"></p>
+            </div>
+<div class="reg-field mt-4" x-show="ef.end_kind === 'surrender'">
+                  <span class="reg-label">Protect หลังจบสตอรี่ <span class="reg-hint">(ระบุว่าแต่ละฝั่งรับหรือไม่ · รับ = นับ <span x-text="protectDays"></span> วันทันทีที่บันทึก)</span></span>
+                  <div class="grid gap-3 sm:grid-cols-2">
+                    <template x-for="side in ['a', 'b']" :key="side">
+                      <div>
+                        <p class="mb-1 text-sm font-semibold" x-text="cur['group_' + side].name"></p>
+                        <div class="st-seg" role="group" :aria-label="'Protect ' + cur['group_' + side].name">
+                          <button type="button" class="st-seg-btn" :aria-pressed="ef['protect_' + side] === true" @click="ef['protect_' + side] = true"><span class="st-seg-main"><svg class="st-seg-tick" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg><span>รับ Protect</span></span></button>
+                          <button type="button" class="st-seg-btn" :aria-pressed="ef['protect_' + side] === false" @click="ef['protect_' + side] = false"><span class="st-seg-main"><svg class="st-seg-tick" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg><span>ไม่รับ</span></span></button>
+                        </div>
+                        <p class="reg-err" x-show="errors['protect_' + side]" x-text="errors['protect_' + side]"></p>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+            <p class="gd-muted mt-4" x-show="ef.end_kind === 'no_show'">ตั้งใจไม่มาเจรจาปิดเรื่อง: บันทึก 0 คะแนนทั้งสองฝั่งและแก้ภายหลังไม่ได้ (PROT-009 · ปรับ 1,000,000 WVDL ตามกฎ ให้บันทึกค่าปรับที่ทะเบียนแยกต่างหาก)</p>
+            <div class="reg-field mt-4">
+              <label class="reg-label" for="e-note">หมายเหตุ <span class="reg-hint">(ไม่บังคับ)</span></label>
+              <textarea id="e-note" x-model="ef.note" rows="2" maxlength="2000" class="input"></textarea>
+            </div>
+          </div>
+          <footer class="st-modal-foot">
+            <button type="button" class="btn-outline" @click="backToDetail()">ยกเลิก</button>
+            <button type="submit" class="btn-solid" :disabled="busy" x-text="busy ? 'กำลังบันทึก...' : 'ยืนยันจบสตอรี่'"></button>
+          </footer>
+        </form>
+      </div>
+    </template>
+
+    <!-- ═════════ รูปสรุปคะแนน ═════════ -->
+    <template x-if="modal === 'summary' && cur">
+      <div class="st-modal-back" @click.self="backToDetail()">
+        <div class="st-modal st-modal-full" role="dialog" aria-modal="true" aria-label="รูปสรุปคะแนน">
+          <header class="st-modal-head">
+            <div>
+              <h2 class="st-modal-title">รูปสรุปคะแนน</h2>
+              <p class="text-xs text-muted" x-text="copied ? 'คัดลอกแล้ว — ไปกดวาง (Ctrl+V) ใน Discord ได้เลย' : 'บันทึกคะแนนแล้ว · กด “คัดลอกรูป” แล้วนำไปวางใน Discord'"></p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button type="button" class="btn-solid" :disabled="busy || blank" @click="copyPng()" x-text="busy ? 'กำลังสร้างรูป...' : (copied ? '✓ คัดลอกแล้ว' : 'คัดลอกรูป')"></button>
+              <button type="button" class="st-x" @click="backToDetail()" aria-label="ปิด">✕</button>
+            </div>
+          </header>
+          <p x-show="errors._" x-text="errors._" class="penalty-box m-4"></p>
+          <div class="st-contract-wrap" @contextmenu.prevent @dragstart.prevent @copy.prevent>
+            <div class="st-guard" x-show="blank" x-cloak><p>ซ่อนเนื้อหาไว้ — กลับมาที่หน้านี้เพื่อดูรูปสรุปคะแนน</p></div>
+            <article id="story-summary" class="st-contract st-paper st-summary" :aria-hidden="blank">
+              <div class="st-p-inner">
+                <i class="st-p-corner tl"></i><i class="st-p-corner tr"></i><i class="st-p-corner bl"></i><i class="st-p-corner br"></i>
+                <header class="st-p-head">
+                  <div class="st-p-brand">
+                    <img src="/img/logo.png" alt="" class="st-p-crest">
+                    <div><p class="st-p-org">สภาเมืองคลื่น</p><p class="st-p-orgen">WAVEVY COUNCIL</p></div>
+                  </div>
+                  <div class="st-p-titlebox">
+                    <h2 class="st-p-title">หนังสือสรุปผลการแข่งขัน</h2>
+                    <p class="st-p-sub">STORY RESULT · ประเภท <b x-text="typeLabel(cur.story_type)"></b></p>
+                  </div>
+                  <div class="st-p-refbox">
+                    <p><span>เลขที่</span> <b x-text="cur.number"></b></p>
+                    <p><span>สถานะ</span> <b x-text="cur.phase_label"></b></p>
+                  </div>
+                </header>
+                <div class="st-p-orn"><span></span><i>◆</i><span></span></div>
+                <p class="st-p-lead">สภาเมืองคลื่นขอรับรองผลการแข่งขันสตอรี่ ระหว่าง</p>
+
+                <div class="st-s-board">
+                  <div class="st-s-side">
+                    <div class="st-c-logo" :style="logoStyle(cur.group_a)"><img x-show="logos.a" :src="logos.a" alt=""><span x-show="!logos.a" x-text="(cur.group_a.short_name || cur.group_a.name.slice(0, 3)).toUpperCase()"></span></div>
+                    <p class="st-c-name"><span class="st-c-gold" x-text="'[' + (cur.group_a.short_name || cur.group_a.name.slice(0, 3)).toUpperCase() + ']'"></span> <span x-text="cur.group_a.name"></span></p>
+                    <p class="st-s-win" x-show="cur.status === 'ended' && cur.winner_group_id === cur.group_a.id">ผู้ชนะ</p>
+                  </div>
+                  <div class="st-s-mid">
+                    <p class="st-s-score"><span x-text="cur.score_a"></span><span class="st-s-colon">:</span><span x-text="cur.score_b"></span></p>
+                    <p class="st-c-muted" x-text="'ถึง ' + cur.fights + ' คะแนนก่อนชนะ'"></p>
+                  </div>
+                  <div class="st-s-side">
+                    <div class="st-c-logo" :style="logoStyle(cur.group_b)"><img x-show="logos.b" :src="logos.b" alt=""><span x-show="!logos.b" x-text="(cur.group_b.short_name || cur.group_b.name.slice(0, 3)).toUpperCase()"></span></div>
+                    <p class="st-c-name"><span class="st-c-gold" x-text="'[' + (cur.group_b.short_name || cur.group_b.name.slice(0, 3)).toUpperCase() + ']'"></span> <span x-text="cur.group_b.name"></span></p>
+                    <p class="st-s-win" x-show="cur.status === 'ended' && cur.winner_group_id === cur.group_b.id">ผู้ชนะ</p>
+                  </div>
+                </div>
+
+                <p class="st-s-line" x-text="summaryLine(cur)"></p>
+
+                <section class="st-p-clause st-s-protect-clause">
+                  <h3>Protect หลังจบสตอรี่</h3>
+                  <dl x-show="cur.status === 'ended'">
+                    <div><dt x-text="cur.group_a.name"></dt><dd :class="cur.end_kind !== 'no_show' && cur.protect_a ? 'is-yes' : ''" x-text="protectText(cur, 'a')"></dd></div>
+                    <div><dt x-text="cur.group_b.name"></dt><dd :class="cur.end_kind !== 'no_show' && cur.protect_b ? 'is-yes' : ''" x-text="protectText(cur, 'b')"></dd></div>
+                  </dl>
+                  <p class="st-p-text" x-show="cur.status !== 'ended'">ระบุเมื่อสตอรี่สิ้นสุด</p>
+                </section>
+
+                <div class="st-p-sign st-p-sign-seal">
+                </div>
+
+                <footer class="st-p-foot">
+                  <span class="st-c-gold" style="letter-spacing:.3em">WAVEVY CITY</span>
+                  <span>เอกสารออกโดยระบบของสภาเมืองคลื่น · เลขที่ <span x-text="cur.number"></span> · ออกเมื่อ <span x-text="dateLong(issuedAt) + ' ' + timeHm(issuedAt) + ' น.'"></span></span>
+                </footer>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- ═════════ หนังสือสัญญา ═════════ -->
+    <template x-if="modal === 'contract' && cur">
+      <div class="st-modal-back" @click.self="backToDetail()">
+        <div class="st-modal st-modal-full" role="dialog" aria-modal="true" aria-label="หนังสือสัญญา">
+          <header class="st-modal-head">
+            <div>
+              <h2 class="st-modal-title">หนังสือสัญญา</h2>
+              <p class="text-xs text-muted" x-text="copied ? 'คัดลอกแล้ว — ไปกดวาง (Ctrl+V) ใน Discord ได้เลย' : 'ข้อมูลครบในหน้าเดียว · กด “คัดลอกรูป” แล้วนำไปวางใน Discord'"></p>
+            </div>
+            <div class="flex items-center gap-2">
+              <a :href="'/story-form.html?id=' + cur.id" class="btn-outline" x-show="cur.status === 'active'">แก้ไขสตอรี่</a>
+              <button type="button" class="btn-outline" :disabled="busy" @click="copyLink()" x-text="linkCopied ? '✓ คัดลอกลิงก์แล้ว' : 'คัดลอกลิงก์'"></button>
+              <button type="button" class="btn-solid" :disabled="busy || blank" @click="copyPng()" x-text="busy ? 'กำลังสร้างรูป...' : (copied ? '✓ คัดลอกแล้ว' : 'คัดลอกรูป')"></button>
+              <button type="button" class="st-x" @click="backToDetail()" aria-label="ปิด">✕</button>
+            </div>
+          </header>
+          <p x-show="errors._" x-text="errors._" class="penalty-box m-4"></p>
+          <div class="st-contract-wrap" @contextmenu.prevent @dragstart.prevent @copy.prevent>
+            <div class="st-guard" x-show="blank" x-cloak><p>ซ่อนเนื้อหาไว้ — กลับมาที่หน้านี้เพื่อดูหนังสือสัญญา</p></div>
+            <article id="story-contract" class="st-contract st-paper" :aria-hidden="blank">
+              <div class="st-p-inner">
+                <i class="st-p-corner tl"></i><i class="st-p-corner tr"></i><i class="st-p-corner bl"></i><i class="st-p-corner br"></i>
+                <header class="st-p-head">
+                  <div class="st-p-brand">
+                    <img src="/img/logo.png" alt="" class="st-p-crest">
+                    <div><p class="st-p-orgen">WAVEVY COUNCIL</p><p class="st-p-org">สภาเมืองคลื่น</p></div>
+                  </div>
+                  <div class="st-p-titlebox">
+                    <p class="st-p-eyebrow">STORY AGREEMENT</p>
+                    <h2 class="st-p-title">หนังสือสัญญา</h2>
+                    <p class="st-p-sub">ข้อตกลงการเล่นสตอรี่ · <span x-text="typeLabel(cur.story_type)"></span></p>
+                  </div>
+                  <div class="st-p-refbox">
+                    <p><span>เลขที่เอกสาร</span><b x-text="cur.number"></b></p>
+                    <p><span>สถานะสตอรี่</span><b class="st-p-status" x-text="cur.phase_label"></b></p>
+                  </div>
+                </header>
+
+                <div class="st-p-parties">
+                  <div class="st-p-party">
+                    <div class="st-c-logo" :style="logoStyle(cur.group_a)"><img x-show="logos.a" :src="logos.a" alt=""><span x-show="!logos.a" x-text="(cur.group_a.short_name || cur.group_a.name.slice(0, 3)).toUpperCase()"></span></div>
+                    <p class="st-c-name"><span class="st-c-gold" x-text="'[' + (cur.group_a.short_name || cur.group_a.name.slice(0, 3)).toUpperCase() + ']'"></span> <span x-text="cur.group_a.name"></span></p>
+                  </div>
+                  <div class="st-p-vs"><small>STORY MATCH</small><p class="st-p-with">VS</p><small>WAVEVY CITY</small></div>
+                  <div class="st-p-party">
+                    <div class="st-c-logo" :style="logoStyle(cur.group_b)"><img x-show="logos.b" :src="logos.b" alt=""><span x-show="!logos.b" x-text="(cur.group_b.short_name || cur.group_b.name.slice(0, 3)).toUpperCase()"></span></div>
+                    <p class="st-c-name"><span class="st-c-gold" x-text="'[' + (cur.group_b.short_name || cur.group_b.name.slice(0, 3)).toUpperCase() + ']'"></span> <span x-text="cur.group_b.name"></span></p>
+                  </div>
+                </div>
+
+
+                <div class="st-p-time">
+                  <div><span>วันและเวลาเริ่มเล่น · เวลาไทย</span><b x-text="dateLong(cur.starts_at) + ' เวลา ' + timeHm(cur.starts_at)"></b></div>
+                  <div><span x-text="lockNow(cur) ? 'เวลา LOCK SLOT · ล็อกทันทีที่สร้างสตอรี่' : 'เวลา LOCK SLOT · ก่อนเล่น ' + Math.round((new Date(cur.starts_at) - new Date(cur.lock_at)) / 60000) + ' นาที'"></span><b x-text="dateLong(cur.lock_at) + ' เวลา ' + timeHm(cur.lock_at)"></b></div>
+                </div>
+
+                <h3 class="st-p-sec"><em>01</em>เงื่อนไขการแข่งขัน</h3>
+                <dl class="st-p-grid">
+                  <div><dt>จำนวนไฟต์ / คะแนนชนะ</dt><dd x-text="cur.fights + ' ไฟต์ · ถึง ' + cur.fights"></dd></div>
+                  <div><dt>รูปแบบการเล่น</dt><dd x-text="picked(cur, 'play_format')"></dd></div>
+                  <div><dt>สถานที่ไฟต์</dt><dd x-text="picked(cur, 'venue')"></dd></div>
+                  <div><dt>เดิมพันฝั่งละ</dt><dd x-text="money(cur.stake_amount)"></dd></div>
+                  <div><dt>จำนวนปืน</dt><dd x-text="cur.guns > 0 ? cur.guns : 'ไม่เล่นปืน'"></dd></div>
+                  <div><dt>การแจ้งใบ</dt><dd x-text="cur.ticket_policy"></dd></div>
+                  <div x-show="hasReserve(cur)"><dt>การสลับ Slot ตัวสำรอง</dt><dd x-text="yesNo(cur.allow_reserve_swap)"></dd></div>
+                  <div><dt>การเพิ่ม–ถอน Slot</dt><dd x-text="yesNo(cur.allow_slot_change)"></dd></div>
+                  <div><dt>ปลด TOXIC</dt><dd x-text="toxic(cur)"></dd></div>
+                  <div class="st-p-wide"><dt>วันที่สร้างสตอรี่</dt><dd x-text="dateLong(cur.created_at) + ' เวลา ' + timeHm(cur.created_at)"></dd></div>
+                  <div><dt>ประเภทสตอรี่</dt><dd x-text="typeLabel(cur.story_type)"></dd></div>
+                </dl>
+
+                <template x-if="cur.extra_conditions">
+                  <div>
+                    <h3 class="st-p-sec"><em>02</em>รายละเอียดเพิ่มเติม</h3>
+                    <p class="st-p-extra" x-text="cur.extra_conditions"></p>
+                  </div>
+                </template>
+
+                <div class="st-p-bottom">
+                <section class="st-p-clause st-p-general">
+                  <p class="st-p-text">คู่สัญญาทั้งสองฝ่ายรับทราบและยินยอมปฏิบัติตามกฎและข้อปฏิบัติของสภา คำตัดสินของสภาถือเป็นที่สุด</p>
+                </section>
+
+                <div class="st-p-sign">
+                  <div class="st-p-signer">
+                    <div class="st-p-sigrow"><em>ลงชื่อ</em><span class="st-p-signature" x-text="cur.created_by ? cur.created_by.name : ''"></span></div>
+                    <p x-text="'(' + (cur.created_by ? cur.created_by.name : '') + ')'"></p>
+                    <small x-text="'ผู้รับรองโดยสภา' + (cur.created_by && cur.created_by.role_label ? ' · ' + cur.created_by.role_label : '')"></small>
+                  </div>
+                </div>
+                </div>
+
+                <footer class="st-p-foot">
+                  <span class="st-c-gold" style="letter-spacing:.3em">WAVEVY CITY</span>
+                  <span>เอกสารออกโดยระบบของสภาเมืองคลื่น · เลขที่ <span x-text="cur.number"></span> · ออกเมื่อ <span x-text="dateLong(issuedAt) + ' ' + timeHm(issuedAt) + ' น.'"></span></span>
+                </footer>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+    </template>
+  </main>
+</body>
+</html>

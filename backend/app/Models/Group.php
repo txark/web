@@ -21,7 +21,7 @@ use Spatie\Activitylog\Support\LogOptions;
     'slots_locked', 'locked_reason',
     'registered_at', 'renamed_at',
     'short_name', 'color_hex', 'color_name', 'declared_members', 'logo_path',
-    'temp_outfit_path', 'temp_outfit_male', 'temp_outfit_female', 'outfit_zip_path',
+    'temp_outfit_path', 'temp_outfit_male', 'temp_outfit_female', 'temp_outfit_color', 'outfit_zip_path', 'outfit_zip_original_path',
     'protect_requested', 'protect_from', 'protect_until', 'outfit_counts',
 ])]
 class Group extends Model
@@ -57,17 +57,17 @@ class Group extends Model
         return config("council.groups.slots.{$key}");
     }
 
-    /** จำนวนรองหัวหน้าสูงสุด: แก๊ง 2 / ครอบครัว 1 */
-    public function maxCoLeaders(): int
-    {
-        return self::coLeaderLimit($this->type);
-    }
-
-    public static function coLeaderLimit(GroupType $type): int
-    {
-        return (int) config($type === GroupType::Family ? 'council.groups.max_co_leaders_family' : 'council.groups.max_co_leaders');
-    }
-
+    /** จำนวนรองหัวหน้าสูงสุด: แก๊ง 2 / ครอบครัว 1 */
+    public function maxCoLeaders(): int
+    {
+        return self::coLeaderLimit($this->type);
+    }
+
+    public static function coLeaderLimit(GroupType $type): int
+    {
+        return (int) config($type === GroupType::Family ? 'council.groups.max_co_leaders_family' : 'council.groups.max_co_leaders');
+    }
+
     /**
      * สิทธิ์ลงชุดฟรีของแก๊ง/ครอบครัวที่เพิ่งขึ้นทะเบียน: ภายใน outfit_free_hours ชั่วโมงหลังขึ้นทะเบียน
      * และใช้ได้ครั้งเดียว — ส่งไฟล์ชุดมาแล้ว 1 ครั้ง (ธุรกรรมชุดที่รออนุมัติหรืออนุมัติแล้ว) สิทธิ์หายทันที

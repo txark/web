@@ -33,6 +33,10 @@ class GroupRules
 
     public function assertSlotsOpen(Group $group): void
     {
+        // สตอรี่ที่ถึงเวลาล็อกแล้วต้องล็อกก่อนตรวจ (กรณีตัวรันตารางงานไม่ทำงาน)
+        if (! $group->slots_locked && app(StoryService::class)->syncLocks() > 0) {
+            $group->refresh();
+        }
         if ($group->slots_locked) {
             abort(409, 'สล็อตสมาชิกถูกล็อกอยู่ จึงเพิ่ม/ลบ/เปลี่ยนตำแหน่งไม่ได้'.($group->locked_reason ? " ({$group->locked_reason})" : ''));
         }

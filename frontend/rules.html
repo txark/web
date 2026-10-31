@@ -142,31 +142,49 @@
 
             <div class="space-y-3 p-3 sm:p-6">
               <template x-for="r in c.rules" :key="r.id">
-                <div>
+                <div :class="(r.kind === 'price' && !r.last) || (r.kind === 'heading' && c.key === 'fees') ? 'price-join' : ''">
                   <!-- ข้อกฎ -->
                   <template x-if="r.kind === 'rule'">
-                    <article class="card p-3.5 sm:p-5">
+                    <article class="card rule-card p-3.5 sm:p-5">
                       <div class="flex flex-col gap-2 sm:flex-row sm:gap-4">
                         <span class="rule-no" x-text="'ข้อ ' + r.n"></span>
-                        <p class="type-rule min-w-0 whitespace-pre-line break-words" x-html="fmt(r.body)"></p>
-                      </div>
-                      <div class="mt-3 space-y-2 sm:pl-[4.25rem]">
-                        <template x-if="r.note">
-                          <p class="note-box type-meta"><b x-text="r.note_label + ' :'"></b> <span class="whitespace-pre-line" x-html="fmt(r.note)"></span></p>
-                        </template>
-                        <template x-if="r.penalty">
-                          <p class="penalty-box type-meta"><b>โทษ :</b> <span class="whitespace-pre-line" x-html="fmt(r.penalty)"></span></p>
-                        </template>
+                        <div class="min-w-0 flex-1 break-words">
+                          <!-- หัวข้อ -->
+                          <h4 class="rule-title" x-show="r.title" x-text="r.title"></h4>
+
+                          <!-- คำอธิบาย -->
+                          <div class="rule-desc space-y-1.5">
+                            <template x-for="(p, i) in parts(r.body)" :key="i">
+                              <p :class="p.li ? 'rule-li' : 'type-rule'"><span class="rule-dot" x-show="p.li" aria-hidden="true">•</span><span class="min-w-0" x-html="fmt(p.t)"></span></p>
+                            </template>
+                          </div>
+
+                          <!-- หมายเหตุ / โทษ -->
+                          <div class="mt-3 space-y-2" x-show="r.note || r.penalty">
+                            <template x-if="r.note">
+                              <div class="note-box type-meta rule-extra">
+                                <span class="rule-chip" x-text="r.note_label || 'หมายเหตุ'"></span>
+                                <span class="min-w-0 whitespace-pre-line" x-html="fmt(r.note)"></span>
+                              </div>
+                            </template>
+                            <template x-if="r.penalty">
+                              <div class="penalty-box type-meta rule-extra">
+                                <span class="rule-chip">โทษ</span>
+                                <span class="min-w-0 whitespace-pre-line" x-html="fmt(r.penalty)"></span>
+                              </div>
+                            </template>
+                          </div>
+                        </div>
                       </div>
                     </article>
                   </template>
 
                   <!-- รายการราคา (ค่าบริการ) -->
                   <template x-if="r.kind === 'price'">
-                    <div class="card px-4 py-3 sm:px-5">
-                      <div class="flex items-baseline justify-between gap-4">
-                        <p class="type-rule" x-text="r.title"></p>
-                        <p class="amt shrink-0 text-accent" x-text="r.body"></p>
+                    <div>
+                      <div class="price-line" :class="[r.pi % 2 ? 'price-alt' : '', r.last ? 'price-last' : '']">
+                        <p class="price-title" x-text="r.title"></p>
+                        <p class="price-amt" x-text="String(r.body).replace(/\s*WVDL\s*$/, '')"></p>
                       </div>
                       <template x-if="r.note">
                         <p class="note-box type-meta mt-2"><b x-text="r.note_label + ' :'"></b> <span x-html="fmt(r.note)"></span></p>
@@ -180,7 +198,17 @@
                   </template>
 
                   <!-- หมวดย่อย: แถบหัวข้อเด่น เลขข้อด้านล่างนับใหม่จาก 1 -->
-                  <template x-if="r.kind === 'heading'">
+                  <template x-if="r.kind === 'heading' && c.key === 'fees'">
+                    <div :id="r.anchor">
+                      <div class="price-head" x-show="r.cat === 1">
+                        <span>รายการ</span>
+                        <span>อัตรา (WVDL)</span>
+                      </div>
+                      <p class="price-group" x-text="r.title"></p>
+                    </div>
+                  </template>
+
+                  <template x-if="r.kind === 'heading' && c.key !== 'fees'">
                     <div :id="r.anchor" class="subcat" :class="r.cat === 1 ? '' : 'subcat-next'">
                       <div class="min-w-0">
                         <p class="subcat-eyebrow" x-text="'หมวดย่อย ' + pad(r.cat) + (c.cats.length > 1 ? ' / ' + pad(c.cats.length) : '')"></p>

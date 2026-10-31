@@ -99,7 +99,7 @@
                   <svg x-show="!r.dissolved_at" class="rg-card-go" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
                 </span>
                 <span class="rg-card-id">
-                  <span class="rg-logo">
+                  <span class="rg-logo" :style="(h => /^#[0-9a-f]{6}$/i.test(h || '') ? 'background:' + h + ';color:' + ((parseInt(h.slice(1,3),16)*299 + parseInt(h.slice(3,5),16)*587 + parseInt(h.slice(5,7),16)*114) / 1000 > 150 ? '#111' : '#fff') : '')(r.color_hex)">
                     <img x-show="r.logo_url" :src="r.logo_url" :alt="'โลโก้ ' + r.name" loading="lazy" @error="$el.style.display = 'none'; $el.nextElementSibling.style.display = ''">
                     <span :style="r.logo_url ? 'display:none' : ''" x-text="(r.short_name || r.name.slice(0, 3)).toUpperCase()"></span>
                   </span>
@@ -277,20 +277,26 @@
                     <div x-show="tempOutfitText"><dt>ชุดชั่วคราว</dt><dd x-text="tempOutfitText"></dd></div>
                   </dl>
                   <div class="gd-sub">
-                    <p class="gd-sub-title">รูปชุดชั่วคราว</p>
+                    <p class="gd-sub-title">ชุดชั่วคราว</p>
+                    <div class="tc-show" x-show="g.temp_outfit_color">
+                      <span class="tc-dot tc-dot-lg" :style="'background:' + (tempColors[(g.temp_outfit_color || 1) - 1] || '#888')"></span>
+                      <span x-text="'สีเบอร์ ' + g.temp_outfit_color + ' · ชุดชายเลข ' + g.temp_outfit_male + ' · ชุดหญิงเลข ' + g.temp_outfit_female"></span>
+                    </div>
+                    <p class="gd-muted" x-show="!g.temp_outfit_color && !g.has_temp_outfit">ยังไม่ระบุ</p>
                     <div class="gd-temp" x-show="tempPreview">
                       <button type="button" class="gd-temp-img" @click="openTempPreview()" title="เปิดดูรูปเต็ม">
                         <img :src="tempPreview" :alt="'รูปชุดชั่วคราวของ ' + g.name">
                       </button>
                     </div>
                     <p x-show="tempLoading" class="gd-muted mt-2">กำลังโหลดรูป...</p>
-                    <p x-show="!tempPreview && !tempLoading" class="gd-muted mt-2" x-text="g.has_temp_outfit ? 'โหลดรูปชุดชั่วคราวไม่สำเร็จ' : 'ยังไม่มีรูปชุดชั่วคราว'"></p>
+                    <p x-show="g.has_temp_outfit && !tempPreview && !tempLoading" class="gd-muted mt-2">โหลดรูปชุดชั่วคราวไม่สำเร็จ</p>
                   </div>
                   <div class="gd-sub">
                     <p class="gd-sub-title">ไฟล์ชุดของทะเบียน</p>
                     <div class="gd-files" x-show="g.has_temp_outfit || g.has_outfit_zip">
                       <button type="button" class="gd-ghost" x-show="g.has_temp_outfit" @click="download('temp_outfit')">ดาวน์โหลดรูปชุดชั่วคราว (.png)</button>
-                      <button type="button" class="gd-ghost" x-show="g.has_outfit_zip" @click="download('outfit_zip')">ดาวน์โหลดไฟล์ชุด (.zip)</button>
+                      <button type="button" class="gd-ghost" x-show="g.has_outfit_zip" @click="download('outfit_zip')" x-text="g.has_outfit_zip_original ? 'ดาวน์โหลดไฟล์ชุดล่าสุด (.zip)' : 'ดาวน์โหลดไฟล์ชุด (.zip)'"></button>
+                      <button type="button" class="gd-ghost" x-show="g.has_outfit_zip_original" @click="download('outfit_zip_original')">ดาวน์โหลดไฟล์ตอนขึ้นทะเบียน (.zip)</button>
                     </div>
                     <p x-show="!g.has_temp_outfit && !g.has_outfit_zip" class="gd-muted">ยังไม่มีไฟล์ชุด</p>
                   </div>
@@ -298,21 +304,55 @@
               </div>
 
               <section class="gd-card">
-                <h3 class="gd-h">งานสตอรี่ที่เกี่ยวข้อง</h3>
-                <div class="gd-empty">
+                <div class="gd-h-row">
+                  <button type="button" class="gd-fold" :aria-expanded="storyOpen" @click="toggleFold('storyOpen')"><h3 class="gd-h">ประวัติการเล่นสตอรี่</h3><svg class="gd-fold-ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+                  <span class="gd-muted text-xs" x-show="storyOpen && storyRows.length > 0">คลิกที่แถวเพื่อดูหนังสือสัญญา</span>
+                </div>
+                <div x-show="storyOpen" x-cloak>
+                <div class="st-week" role="group" aria-label="เลือกสัปดาห์">
+                  <button type="button" class="gd-ghost" :disabled="!canStoryPrev || storiesLoading" @click="storyWeekStep(-1)" aria-label="สัปดาห์ก่อนหน้า">‹ ก่อนหน้า</button>
+                  <p class="st-week-label" x-text="storyWeekRange.label"></p>
+                  <button type="button" class="gd-ghost" :disabled="storyWeek >= 0 || storiesLoading" @click="storyWeekStep(1)" aria-label="สัปดาห์ถัดไป">ถัดไป ›</button>
+                </div>
+                <p class="gd-muted text-xs" style="text-align:center">ย้อนดูประวัติได้ภายใน 1 เดือน</p>
+                <p x-show="storiesError" x-text="storiesError" class="gd-muted mt-3"></p>
+                <p x-show="storiesLoading && stories.length === 0" class="gd-muted mt-3">กำลังโหลด...</p>
+
+                <div x-show="storyOpponents.length > 0">
+                  <p class="gd-muted mt-3" x-text="'เล่นกับ ' + storyOpponents.length + ' กลุ่ม · ทั้งหมด ' + storyRows.filter((r) => r.outcome.key !== 'cancelled').length + ' ครั้ง · ชนะ ' + storyRows.filter((r) => r.outcome.key === 'win').length + ' ครั้ง · แพ้ ' + storyRows.filter((r) => r.outcome.key === 'lose').length + ' ครั้ง'"></p>
+                </div>
+
+                <ul class="st-hist mt-4" x-show="storyRows.length > 0">
+                  <template x-for="r in storyRows" :key="r.id">
+                    <li>
+                      <a :href="'/contract.html?id=' + r.id" target="_blank" rel="noopener" class="st-hist-row" :title="'ดูหนังสือสัญญา ' + r.number" @click.prevent="contractView = r">
+                        <span class="min-w-0">
+                          <b class="block truncate"><span x-text="r.me.name"></span> <span class="st-vs">VS</span> <span x-text="r.opp.name"></span></b>
+                          <small class="block text-muted" x-text="r.number + ' · ' + whenFull(r.startsAt) + ' · ' + r.venue"></small>
+                        </span>
+                        <span class="st-hist-score" x-text="r.mine + ' : ' + r.theirs"></span>
+                        <span class="st-pill" :class="{ win: 'st-pill-ended is-win', lose: 'st-pill-cancelled', draw: 'st-pill-waiting', playing: 'st-pill-playing', waiting: 'st-pill-waiting', cancelled: 'st-pill-ended' }[r.outcome.key] || 'st-pill'" x-text="r.outcome.label"></span>
+                      </a>
+                    </li>
+                  </template>
+                </ul>
+
+                <div class="gd-empty" x-show="!storiesLoading && !storiesError && stories.length === 0">
                   <div class="gd-empty-icon" aria-hidden="true">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg>
                   </div>
-                  <p class="gd-empty-title">ไม่พบงานสตอรี่</p>
-                  <p class="gd-muted">งานใหม่และประวัติงานเดิมจะแสดงที่นี่</p>
+                  <p class="gd-empty-title" x-text="storyWeek === 0 ? 'สัปดาห์นี้ยังไม่ได้เล่นสตอรี่' : 'ไม่มีการเล่นสตอรี่ในสัปดาห์นี้'"></p>
+                  <p class="gd-muted">สตอรี่ที่ทะเบียนนี้เป็นคู่สัญญาในสัปดาห์ที่เลือกจะแสดงที่นี่ พร้อมคู่แข่งและผล</p>
+                </div>
                 </div>
               </section>
 
               <section class="gd-card">
                 <div class="gd-h-row">
-                  <h3 class="gd-h">ประวัติและธุรกรรมของทะเบียนนี้</h3>
+                  <button type="button" class="gd-fold" :aria-expanded="histOpen" @click="toggleFold('histOpen')"><h3 class="gd-h">ประวัติและธุรกรรมของทะเบียนนี้</h3><svg class="gd-fold-ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
                   <button type="button" class="gd-ghost" :disabled="histLoading" @click="loadHistory()" x-text="histLoading ? 'กำลังโหลด...' : 'อัปเดตประวัติ'"></button>
                 </div>
+                <div x-show="histOpen" x-cloak>
                 <p x-show="histError" x-text="histError" class="gd-muted mt-3"></p>
                 <ul class="gd-timeline">
                   <template x-for="it in timeline" :key="it.key">
@@ -322,6 +362,13 @@
                         <span class="gd-muted" x-text="whenFull(it.at)"></span>
                       </div>
                       <p class="gd-muted" x-text="it.meta"></p>
+                      <p class="gd-tl-lines flex flex-wrap items-center gap-2" x-show="it.swatch" x-cloak>
+                        <span class="rg-dot" :style="it.swatch && it.swatch.from.hex ? 'background:' + it.swatch.from.hex : ''"></span>
+                        <span x-text="it.swatch ? ((it.swatch.from.name || '') + ' ' + (it.swatch.from.hex || '—')).trim() : ''"></span>
+                        <span aria-hidden="true">→</span>
+                        <span class="rg-dot" :style="it.swatch && it.swatch.to.hex ? 'background:' + it.swatch.to.hex : ''"></span>
+                        <b x-text="it.swatch ? ((it.swatch.to.name || '') + ' ' + (it.swatch.to.hex || '—')).trim() : ''"></b>
+                      </p>
                       <p class="gd-tl-lines" x-show="it.lines.length" x-text="it.lines.join(' · ')"></p>
                       <p x-show="it.tx && it.tx.status === 'rejected' && it.tx.review_reason" class="gd-tl-lines" x-text="'เหตุผลที่ไม่อนุมัติ: ' + (it.tx ? it.tx.review_reason : '')"></p>
                       <div class="gd-tl-actions" x-show="it.tx && it.tx.status === 'pending'">
@@ -333,6 +380,7 @@
                   </template>
                 </ul>
                 <p x-show="!histLoading && timeline.length === 0" class="gd-muted mt-3">ยังไม่มีประวัติ</p>
+                </div>
               </section>
             </div>
 
@@ -384,6 +432,26 @@
                     <label class="reg-label" for="tx-cname">ชื่อสีใหม่ <span class="reg-hint">(ต้องตรงกับโค้ด HEX)</span></label>
                     <input id="tx-cname" x-model="txn.color_name" @input="txn.color_auto = false" maxlength="60" autocomplete="off" class="input" :aria-invalid="!!txErr('color_name')">
                     <p class="reg-err" x-show="txErr('color_name')" x-text="txErr('color_name')"></p>
+                  </div>
+                  <div class="reg-field reg-wide">
+                    <span class="reg-label">ตัวอย่างโลโก้ตามสีใหม่</span>
+                    <div class="flex items-center gap-3">
+                      <span class="rg-logo" :style="txColorStyle">
+                        <img x-show="g.logo_url" :src="g.logo_url" :alt="'โลโก้ ' + g.name" @error="$el.style.display = 'none'; $el.nextElementSibling.style.display = ''">
+                        <span :style="g.logo_url ? 'display:none' : ''" x-text="(g.short_name || g.name.slice(0, 3)).toUpperCase()"></span>
+                      </span>
+                      <span class="rg-dot" :style="g.color_hex ? 'background:' + g.color_hex : ''"></span>
+                      <span class="text-sm" x-text="(g.color_name || '—') + ' ' + (g.color_hex || '')"></span>
+                      <span aria-hidden="true">→</span>
+                      <span class="rg-dot" :style="/^#[0-9A-Fa-f]{6}$/.test(txn.color_hex) ? 'background:' + txn.color_hex : ''"></span>
+                      <b class="text-sm" x-text="((txn.color_name || '') + ' ' + (txn.color_hex || '')).trim() || '—'"></b>
+                    </div>
+                  </div>
+                  <div class="reg-field reg-wide">
+                    <label class="reg-label" for="tx-zip">ไฟล์ชุดใหม่ตามสีใหม่ <span class="reg-hint">(.ZIP · บังคับแนบ · เป็นไฟล์ชุดล่าสุดเมื่อธุรกรรมมีผล ไฟล์เดิมยังเก็บไว้)</span></label>
+                    <input id="tx-zip" type="file" accept=".zip,application/zip,application/x-zip-compressed" class="reg-file" @change="pickTxZip($event)">
+                    <p x-show="txn.outfit_zip" x-cloak class="reg-preview-name mt-2" x-text="txn.outfit_zip ? 'ไฟล์ที่เลือก: ' + txn.outfit_zip.name : ''"></p>
+                    <p class="reg-err" x-show="txErr('outfit_zip')" x-text="txErr('outfit_zip')"></p>
                   </div>
                 </div>
 
@@ -802,23 +870,21 @@
         <h3 class="reg-sec">ชุดชั่วคราว</h3>
         <div class="reg-grid">
           <div class="reg-field reg-wide">
-            <label class="reg-label" for="t-img">รูปชุดชั่วคราว <span class="reg-hint">(.PNG เท่านั้น)</span></label>
-            <input id="t-img" type="file" accept=".png,image/png" class="reg-file" @change="pick($event, 'temp_outfit_image', 'png')">
-            <div x-show="previews.temp_outfit_image" x-cloak class="reg-preview"><img :src="previews.temp_outfit_image" alt="ตัวอย่างรูปที่แนบ"><span class="reg-preview-name" x-text="files.temp_outfit_image ? files.temp_outfit_image.name + ' · ' + size(files.temp_outfit_image) : ''"></span></div>
-            <p class="reg-err" x-show="e('temp_outfit_image')" x-text="e('temp_outfit_image')"></p>
-          </div>
-          <div class="reg-field">
-            <label class="reg-label" for="t-male">เลขชุดชั่วคราว (ชาย) <span class="reg-hint">(ไม่บังคับ)</span></label>
-            <input id="t-male" x-model="f.temp_outfit_male" autocomplete="off" class="input" :aria-invalid="!!e('temp_outfit_male')">
-            <p class="reg-err" x-show="e('temp_outfit_male')" x-text="e('temp_outfit_male')"></p>
-          </div>
-          <div class="reg-field">
-            <label class="reg-label" for="t-female">เลขชุดชั่วคราว (หญิง) <span class="reg-hint">(ไม่บังคับ)</span></label>
-            <input id="t-female" x-model="f.temp_outfit_female" autocomplete="off" class="input" :aria-invalid="!!e('temp_outfit_female')">
-            <p class="reg-err" x-show="e('temp_outfit_female')" x-text="e('temp_outfit_female')"></p>
+            <span class="reg-label">เบอร์สีชุดชั่วคราว <span class="reg-hint">(1–23 · ไม่ต้องแนบรูป)</span></span>
+            <p class="reg-hint">ชุดชั่วคราวชายเลข <b x-text="tempIds.male"></b> และหญิงเลข <b x-text="tempIds.female"></b> จะเปลี่ยนเป็นสีเบอร์ที่เลือก · ใน 1 วัน แก๊งและครอบครัวใช้เบอร์สีซ้ำกันไม่ได้</p>
+            <div class="tc-grid" role="group" aria-label="เบอร์สีชุดชั่วคราว">
+              <template x-for="(hex, i) in tempColors" :key="i">
+                <button type="button" class="tc-chip" :disabled="tempTaken.includes(i + 1)" :aria-pressed="f.temp_outfit_color === i + 1"
+                        :title="tempTaken.includes(i + 1) ? 'เบอร์ ' + (i + 1) + ' ถูกใช้ไปแล้ววันนี้' : 'เบอร์ ' + (i + 1)" @click="pickTempColor(i + 1)">
+                  <span class="tc-dot" :style="'background:' + hex"></span>
+                  <span class="tc-num" x-text="i + 1"></span>
+                  <span class="tc-used" x-show="tempTaken.includes(i + 1)">ใช้แล้ว</span>
+                </button>
+              </template>
+            </div>
+            <p class="reg-err" x-show="e('temp_outfit_color')" x-text="e('temp_outfit_color')"></p>
           </div>
         </div>
-
         <h3 class="reg-sec">ไฟล์ชุดที่จะลง</h3>
         <div class="reg-rule">
           <p class="reg-rule-title" x-text="kindInfo.noun_full + 'ลงอะไรได้บ้าง'"></p>
@@ -851,6 +917,25 @@
       </footer>
     </form>
   </div>
+
+    <!-- ═════════ หนังสือสัญญา (ป๊อปอัป) ═════════ -->
+    <template x-if="contractView">
+      <div class="st-modal-back" style="z-index: 90" @mousedown.self="contractView = null" @keydown.escape.window="contractView = null">
+        <div class="st-modal st-modal-full" role="dialog" aria-modal="true" aria-label="หนังสือสัญญา" style="height: calc(100vh - 2rem)">
+          <header class="st-modal-head">
+            <div>
+              <h2 class="st-modal-title">หนังสือสัญญา</h2>
+              <p class="text-xs text-muted" x-text="contractView.number + ' · ' + contractView.me.name + ' VS ' + contractView.opp.name"></p>
+            </div>
+            <div class="flex items-center gap-2">
+              <a :href="'/contract.html?id=' + contractView.id" target="_blank" rel="noopener" class="btn-outline">เปิดในแท็บใหม่</a>
+              <button type="button" class="st-x" @click="contractView = null" aria-label="ปิด">✕</button>
+            </div>
+          </header>
+          <iframe class="st-contract-frame" :src="'/contract.html?id=' + contractView.id + '&embed=1'" title="หนังสือสัญญา"></iframe>
+        </div>
+      </div>
+    </template>
   </main>
 </body>
 </html>

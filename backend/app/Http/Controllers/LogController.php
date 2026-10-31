@@ -19,7 +19,7 @@ class LogController extends Controller
     {
         $f = $request->validate([
             // หมวด = log_name (changes = แก้ไขข้อมูลทั่วไป = default)
-            'type' => ['nullable', Rule::in(['auth', 'access', 'changes', 'transactions', 'groups', 'duty'])],
+            'type' => ['nullable', Rule::in(['auth', 'access', 'changes', 'transactions', 'groups', 'duty', 'stories'])],
             'event' => ['nullable', 'string', 'max:32'],
             'user_id' => ['nullable', 'integer'],
             'q' => ['nullable', 'string', 'max:100'],

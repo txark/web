@@ -2,44 +2,39 @@
 
 namespace App\Enums;
 
-/** หมวดของหน้ากฎ เรียงตามลำดับที่แสดง (ตามลำดับเมนูของเว็บ WAVEVY COUNCIL เดิม) */
+/** หมวดของหน้ากฎ เรียงตามลำดับที่แสดง (กฎหมวดสภา CC ฉบับ 1.2 จาก https://official.wavevycity.com/rules#cat-CC) */
 enum RuleSection: string
 {
-    // หน้า "กฏสภา"
-    case General = 'general';
-    case Supreme = 'supreme';
-    case Ban = 'ban';
-    case Conversion = 'conversion';
-    case Blacklist = 'blacklist';
-    case Sanction = 'sanction';
-
-    // หน้าอื่นของเว็บเดิม
-    case Call = 'call';
-    case Story = 'story';
-    case Protect = 'protect';
-    case Gang = 'gang';
-    case Family = 'family';
+    case Cc = 'cc';
+    case Visit = 'visit';
+    case Evid = 'evid';
     case Fees = 'fees';
-    case Overview = 'overview';
-    case Staff = 'staff';
+    case Summon = 'summon';
+    case Reg = 'reg';
+    case Gang = 'gang';
+    case Buy = 'buy';
+    case Deal = 'deal';
+    case Match = 'match';
+    case Prot = 'prot';
+    case Max = 'max';
+    case Duty = 'duty';
 
     public function label(): string
     {
         return match ($this) {
-            self::General => 'กฎสภา',
-            self::Supreme => 'มาตรการสูงสุดของสภา',
-            self::Ban => 'การตัดสิทธิ์การเข้าร่วมกิจกรรม',
-            self::Conversion => 'โทษบำเพ็ญของสภา',
-            self::Blacklist => 'กฎ Blacklist',
-            self::Sanction => 'กฎการคว่ำบาตร',
-            self::Call => 'ประกาศเรียก',
-            self::Story => 'กฎการเล่นสตอรี่',
-            self::Protect => 'Protect',
-            self::Fees => 'ค่าบริการสภา',
-            self::Gang => 'ขึ้นทะเบียนแก๊ง',
-            self::Family => 'ขึ้นทะเบียนครอบครัว',
-            self::Overview => 'เกี่ยวกับสภา',
-            self::Staff => 'กฎการปฏิบัติหน้าที่ของสภา',
+            self::Cc => 'CC · เกี่ยวกับสภา',
+            self::Visit => 'VISIT · กฎสภา',
+            self::Evid => 'EVID · หลักฐานที่ส่งสภา',
+            self::Fees => 'อัตราค่าบริการ',
+            self::Summon => 'SUMMON · ประกาศเรียก',
+            self::Reg => 'REG · ขึ้นทะเบียนแก๊งและครอบครัว',
+            self::Gang => 'GANG · สมาชิกและสัญลักษณ์แก๊ง',
+            self::Buy => 'BUY · ซื้อเรื่องและเปิดสตอรี่',
+            self::Deal => 'DEAL · สัญญาสตอรี่',
+            self::Match => 'MATCH · ระหว่างเล่นสตอรี่',
+            self::Prot => 'PROT · Protect และการจบสตอรี่',
+            self::Max => 'MAX · มาตรการและบทลงโทษของสภา',
+            self::Duty => 'DUTY · หน้าที่ของเจ้าหน้าที่สภา',
         };
     }
 
@@ -47,29 +42,17 @@ enum RuleSection: string
     public function group(): string
     {
         return match ($this) {
-            self::General, self::Supreme, self::Ban, self::Conversion, self::Blacklist, self::Sanction => 'กฎสภา',
-            self::Call, self::Story, self::Protect => 'สตอรี่และการประกาศเรียก',
-            self::Fees, self::Gang, self::Family => 'ทะเบียนและค่าบริการ',
-            self::Overview, self::Staff => 'เกี่ยวกับสภา',
-        };
-    }
-
-    /** ส่วนท้าย URL ของหน้าต้นฉบับบน Google Sites (ตามที่เว็บเดิมใช้จริง) */
-    private function sourceSlug(): string
-    {
-        return match ($this) {
-            self::General, self::Supreme, self::Ban, self::Conversion, self::Blacklist, self::Sanction => 'กฏสภา',
-            self::Call => 'ประกาศเรยก',
-            self::Story => 'กฏการเลนสตอร',
-            self::Protect => 'protect',
-            self::Fees => 'คาบรการสภา',
-            self::Gang, self::Family => 'เกยวกบ',
-            self::Overview, self::Staff => 'home',
+            self::Cc, self::Visit, self::Evid => 'กฎสภา',
+            self::Fees => 'ค่าบริการ',
+            self::Summon => 'การประกาศเรียก',
+            self::Reg, self::Gang => 'ทะเบียนแก๊งและครอบครัว',
+            self::Buy, self::Deal, self::Match, self::Prot => 'สตอรี่',
+            self::Max, self::Duty => 'มาตรการและเจ้าหน้าที่',
         };
     }
 
     public function sourceUrl(): string
     {
-        return 'https://sites.google.com/view/wavevycouncil/'.rawurlencode($this->sourceSlug());
+        return 'https://official.wavevycity.com/rules#cat-CC';
     }
 }
