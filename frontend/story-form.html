@@ -1,0 +1,624 @@
+<!doctype html>
+<html lang="th" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>สร้างสตอรี่ | WAVEVY COUNCIL</title>
+    <link rel="icon" href="/img/favicon.png" />
+    <script src="/js/theme.js"></script>
+    <link rel="stylesheet" href="/css/output.css" />
+    <script src="/js/config.js"></script>
+    <script src="/js/api.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/pages/story-form.js"></script>
+    <script defer src="/js/layout.js"></script>
+    <script defer src="/js/txnav.js"></script>
+    <script defer src="/js/vendor/alpine.min.js"></script>
+  </head>
+  <body>
+    <div id="site-header"></div>
+
+    <main class="container-app py-8" x-data="storyFormPage()">
+      <div x-show="!ready" class="py-24 text-center text-muted">
+        กำลังตรวจสอบสิทธิ์...
+      </div>
+
+      <div x-show="ready" x-cloak class="tx-layout">
+        <aside id="tx-sidebar" x-data="txSidebar()"></aside>
+        <div class="min-w-0">
+          <header class="rg-head">
+            <div class="min-w-0">
+              <p class="rg-eyebrow">WAVEVY COUNCIL / STORY DETAILS</p>
+              <h1
+                class="rg-title"
+                x-text="editing ? 'แก้ไขข้อมูลสตอรี่' : 'สร้างสตอรี่'"
+              ></h1>
+              <p class="rg-sub">
+                กำหนดคู่สตอรี่และตรวจสอบข้อมูลก่อนบันทึก · ไม่มีค่าบริการ
+                มีเดิมพัน
+              </p>
+            </div>
+            <a href="/stories.html" class="btn-outline">กลับหน้าสตอรี่</a>
+          </header>
+
+          <p x-show="loadError" x-text="loadError" class="penalty-box mt-5"></p>
+          <p x-show="errors._" x-text="errors._" class="penalty-box mt-5"></p>
+
+          <form x-show="!loadError" @submit.prevent="save()" novalidate>
+            <!-- 01 ข้อมูลสตอรี่ -->
+            <section class="st-card">
+              <h2 class="st-card-title">
+                <span class="st-card-no">01</span> ข้อมูลสตอรี่
+              </h2>
+              <div class="st-grid3">
+                <div class="reg-field">
+                  <label class="reg-label" for="f-story_type">ประเภท</label>
+                  <div class="st-select">
+                    <button
+                      type="button"
+                      id="f-story_type"
+                      class="input st-pick"
+                      :disabled="editing"
+                      :aria-expanded="openSel === 'story_type'"
+                      :aria-invalid="!!err('story_type')"
+                      @click="toggleSel('story_type')"
+                    >
+                      <span
+                        class="truncate"
+                        :class="f.story_type === '' ? 'text-muted' : ''"
+                        x-text="labelFor('story_type')"
+                      ></span>
+                      <svg
+                        class="shrink-0"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2.2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="m6 9 6 6 6-6" />
+                      </svg>
+                    </button>
+                    <div
+                      class="st-list"
+                      x-show="openSel === 'story_type'"
+                      x-cloak
+                      @click.outside="closeSel('story_type')"
+                    >
+                      <template
+                        x-for="o in optionsFor('story_type')"
+                        :key="o.value"
+                      >
+                        <button
+                          type="button"
+                          :aria-selected="f.story_type === o.value"
+                          @click="choose('story_type', o.value)"
+                          x-text="o.label"
+                        ></button>
+                      </template>
+                    </div>
+                  </div>
+                </div>
+                <div class="reg-field">
+                  <label class="reg-label" for="f-play_format"
+                    >รูปแบบการเล่น <span class="text-accent">*</span></label
+                  >
+                  <div class="st-select">
+                    <button
+                      type="button"
+                      id="f-play_format"
+                      class="input st-pick"
+                      :aria-expanded="openSel === 'play_format'"
+                      :aria-invalid="!!err('play_format')"
+                      @click="toggleSel('play_format')"
+                    >
+                      <span
+                        class="truncate"
+                        :class="f.play_format === '' ? 'text-muted' : ''"
+                        x-text="labelFor('play_format')"
+                      ></span>
+                      <svg
+                        class="shrink-0"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2.2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="m6 9 6 6 6-6" />
+                      </svg>
+                    </button>
+                    <div
+                      class="st-list"
+                      x-show="openSel === 'play_format'"
+                      x-cloak
+                      @click.outside="closeSel('play_format')"
+                    >
+                      <template
+                        x-for="o in optionsFor('play_format')"
+                        :key="o.value"
+                      >
+                        <button
+                          type="button"
+                          :aria-selected="f.play_format === o.value"
+                          @click="choose('play_format', o.value)"
+                          x-text="o.label"
+                        ></button>
+                      </template>
+                    </div>
+                  </div>
+                  <p
+                    class="reg-err"
+                    x-show="err('play_format')"
+                    x-text="err('play_format')"
+                  ></p>
+                </div>
+                <div class="reg-field">
+                  <label class="reg-label" for="f-start"
+                    >วันและเวลาเริ่มเล่น (เวลาไทย)
+                    <span class="text-accent">*</span></label
+                  >
+                  <input
+                    id="f-start"
+                    type="datetime-local"
+                    x-model="f.starts_at"
+                    class="input"
+                    :aria-invalid="!!err('starts_at')"
+                  />
+                  <p
+                    class="reg-err"
+                    x-show="err('starts_at')"
+                    x-text="err('starts_at')"
+                  ></p>
+                </div>
+              </div>
+              <div class="st-info">
+                <p class="text-xs text-muted">สถานะอัตโนมัติ</p>
+                <p
+                  class="mt-1 text-lg font-semibold"
+                  x-text="autoStatus.title"
+                ></p>
+                <p class="mt-1 text-xs text-muted" x-text="autoStatus.sub"></p>
+              </div>
+            </section>
+
+            <!-- ฝั่ง A / ฝั่ง B -->
+            <div class="st-sides mt-5">
+              <template x-for="side in ['a', 'b']" :key="side">
+                <section
+                  class="st-side"
+                  :class="side === 'a' ? 'st-side-a' : 'st-side-b'"
+                >
+                  <header class="st-side-head">
+                    <span
+                      class="st-badge"
+                      :class="side === 'a' ? 'st-badge-a' : 'st-badge-b'"
+                      x-text="side.toUpperCase()"
+                    ></span>
+                    <div>
+                      <p
+                        class="st-side-title"
+                        x-text="side === 'a' ? 'ฝั่ง A' : 'ฝั่ง B'"
+                      ></p>
+                      <p
+                        class="text-xs text-muted"
+                        x-text="side === 'a' ? 'สีน้ำเงิน' : 'สีแดง'"
+                      ></p>
+                    </div>
+                  </header>
+                  <div class="st-side-body">
+                    <label
+                      class="reg-label"
+                      :for="'f-' + side"
+                      x-text="'ชื่อ' + (f.story_type === 'family' ? 'ครอบครัว' : 'แก๊ง') + ' ฝั่ง ' + side.toUpperCase()"
+                    ></label>
+                    <div class="st-combo">
+                      <template x-if="f[side]">
+                        <div
+                          class="input flex flex-1 items-center justify-between gap-2"
+                          :class="editing ? 'opacity-80' : ''"
+                        >
+                          <span
+                            class="min-w-0 truncate"
+                            x-text="f[side].name"
+                          ></span>
+                          <button
+                            type="button"
+                            class="text-xs text-muted hover:text-accent"
+                            x-show="!editing"
+                            @click="clear(side)"
+                          >
+                            เปลี่ยน
+                          </button>
+                        </div>
+                      </template>
+                      <template x-if="!f[side]">
+                        <input
+                          :id="'f-' + side"
+                          class="input"
+                          x-model="combo[side].q"
+                          @input.debounce.250ms="typing(side)"
+                          @focus="typing(side)"
+                          placeholder="พิมพ์ค้นหาหรือกดเลือกรายชื่อ"
+                          autocomplete="off"
+                          :aria-invalid="!!err('group_' + side + '_id')"
+                        />
+                      </template>
+                      <button
+                        type="button"
+                        class="st-combo-btn"
+                        x-show="!editing"
+                        @click="toggleList(side)"
+                        aria-label="เลือกจากรายชื่อ"
+                      >
+                        <svg
+                          class="mx-auto"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2.2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          aria-hidden="true"
+                        >
+                          <path d="m6 9 6 6 6-6" />
+                        </svg>
+                      </button>
+                      <div
+                        class="st-list"
+                        x-show="combo[side].open"
+                        x-cloak
+                        @click.outside="combo[side].open = false"
+                      >
+                        <p
+                          class="px-3 py-2 text-sm text-muted"
+                          x-show="combo[side].items.length === 0"
+                        >
+                          ไม่พบรายชื่อ
+                        </p>
+                        <template x-for="g in combo[side].items" :key="g.id">
+                          <button type="button" @click="pick(side, g)">
+                            <span x-text="g.name"></span>
+                            <span
+                              class="text-muted"
+                              x-text="g.short_name ? '· ' + g.short_name : ''"
+                            ></span>
+                          </button>
+                        </template>
+                      </div>
+                    </div>
+                    <p
+                      class="reg-err"
+                      x-show="err('group_' + side + '_id')"
+                      x-text="err('group_' + side + '_id')"
+                    ></p>
+                  </div>
+                </section>
+              </template>
+            </div>
+
+            <!-- 02 เงื่อนไขการแข่งขัน -->
+            <section class="st-card">
+              <h2 class="st-card-title">
+                <span class="st-card-no">02</span> เงื่อนไขการแข่งขัน
+              </h2>
+              <div class="st-grid2">
+                <div class="reg-field">
+                  <label class="reg-label" for="f-fights"
+                    >จำนวนไฟต์ <span class="text-accent">*</span></label
+                  >
+                  <div class="st-select">
+                    <button
+                      type="button"
+                      id="f-fights"
+                      class="input st-pick"
+                      :aria-expanded="openSel === 'fights'"
+                      :aria-invalid="!!err('fights')"
+                      @click="toggleSel('fights')"
+                    >
+                      <span
+                        class="truncate"
+                        :class="f.fights === '' ? 'text-muted' : ''"
+                        x-text="labelFor('fights')"
+                      ></span>
+                      <svg
+                        class="shrink-0"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2.2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="m6 9 6 6 6-6" />
+                      </svg>
+                    </button>
+                    <div
+                      class="st-list"
+                      x-show="openSel === 'fights'"
+                      x-cloak
+                      @click.outside="closeSel('fights')"
+                    >
+                      <template
+                        x-for="o in optionsFor('fights')"
+                        :key="o.value"
+                      >
+                        <button
+                          type="button"
+                          :aria-selected="f.fights === o.value"
+                          @click="choose('fights', o.value)"
+                          x-text="o.label"
+                        ></button>
+                      </template>
+                    </div>
+                  </div>
+                  <input
+                    x-show="f.fights === 'custom'"
+                    x-cloak
+                    x-model="f.fights_custom"
+                    inputmode="numeric"
+                    maxlength="2"
+                    autocomplete="off"
+                    class="input mt-2"
+                    placeholder="กรอกจำนวนไฟต์"
+                    aria-label="จำนวนไฟต์ที่กำหนดเอง"
+                    @input="f.fights_custom = f.fights_custom.replace(/\D/g, '')"
+                  />
+                  <p
+                    class="reg-hint mt-1"
+                    x-text="f.fights ? 'ฝั่งที่ได้ ' + (f.fights === 'custom' ? (f.fights_custom || '…') : f.fights) + ' คะแนนก่อนเป็นผู้ชนะ' : 'เลือกจำนวนไฟต์เพื่อกำหนดคะแนนชนะ'"
+                  ></p>
+                  <p
+                    class="reg-err"
+                    x-show="err('fights')"
+                    x-text="err('fights')"
+                  ></p>
+                </div>
+                <div class="reg-field">
+                  <label class="reg-label" for="f-venue"
+                    >สถานที่ไฟต์ <span class="text-accent">*</span></label
+                  >
+                  <div class="st-select">
+                    <button
+                      type="button"
+                      id="f-venue"
+                      class="input st-pick"
+                      :aria-expanded="openSel === 'venue'"
+                      :aria-invalid="!!err('venue')"
+                      @click="toggleSel('venue')"
+                    >
+                      <span
+                        class="truncate"
+                        :class="f.venue === '' ? 'text-muted' : ''"
+                        x-text="labelFor('venue')"
+                      ></span>
+                      <svg
+                        class="shrink-0"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2.2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="m6 9 6 6 6-6" />
+                      </svg>
+                    </button>
+                    <div
+                      class="st-list"
+                      x-show="openSel === 'venue'"
+                      x-cloak
+                      @click.outside="closeSel('venue')"
+                    >
+                      <template x-for="o in optionsFor('venue')" :key="o.value">
+                        <button
+                          type="button"
+                          :aria-selected="f.venue === o.value"
+                          @click="choose('venue', o.value)"
+                          x-text="o.label"
+                        ></button>
+                      </template>
+                    </div>
+                  </div>
+                  <p
+                    class="reg-err"
+                    x-show="err('venue')"
+                    x-text="err('venue')"
+                  ></p>
+                </div>
+                <div class="reg-field">
+                  <label class="reg-label" for="f-stake"
+                    >เดิมพันฝั่งละ (WVDL)
+                    <span class="text-accent">*</span></label
+                  >
+                  <input
+                    id="f-stake"
+                    x-model="f.stake_amount"
+                    inputmode="numeric"
+                    autocomplete="off"
+                    class="input"
+                    :aria-invalid="!!err('stake_amount')"
+                  />
+                  <div
+                    class="mt-2 flex flex-wrap items-center gap-2"
+                    role="group"
+                    aria-label="เดิมพันที่ใช้บ่อย"
+                  >
+                    <template x-for="n in options.stake_presets" :key="n">
+                      <button
+                        type="button"
+                        class="chip"
+                        :aria-pressed="stakeNum === n"
+                        @click="setStake(n)"
+                        x-text="money(n)"
+                      ></button>
+                    </template>
+                    <button
+                      type="button"
+                      class="chip"
+                      :aria-pressed="stakeNum === 0"
+                      @click="setStake(0)"
+                    >
+                      ไม่วางเดิมพัน
+                    </button>
+                  </div>
+                  <p
+                    class="reg-hint mt-2"
+                    x-text="'พิมพ์ยอดเองได้ · มาตรฐาน ' + money(options.stake_min) + '–' + money(options.stake_max) + ' WVDL (สองฝั่งตกลงสูง/ต่ำกว่านี้ได้)'"
+                  ></p>
+                  <p
+                    class="reg-hint mt-1"
+                    x-show="stakeHint"
+                    x-text="'⚠ ' + stakeHint"
+                  ></p>
+                  <p
+                    class="reg-err"
+                    x-show="err('stake_amount')"
+                    x-text="err('stake_amount')"
+                  ></p>
+                </div>
+                <div class="reg-field">
+                  <label class="reg-label" for="f-guns"
+                    >จำนวนปืน <span class="text-accent">*</span></label
+                  >
+                  <input
+                    id="f-guns"
+                    x-model="f.guns"
+                    inputmode="numeric"
+                    maxlength="2"
+                    autocomplete="off"
+                    class="input"
+                    @input="f.guns = f.guns.replace(/\D/g, '')"
+                    :aria-invalid="!!err('guns')"
+                  />
+                  <p class="reg-hint mt-1">
+                    ไม่เล่นปืน = 0 · ขั้นต่ำตามกฎ: แก๊งละ 2 ครอบครัวละ 1 กระบอก
+                  </p>
+                  <p
+                    class="reg-err"
+                    x-show="err('guns')"
+                    x-text="err('guns')"
+                  ></p>
+                </div>
+              </div>
+
+              <div class="st-groups">
+                <template x-for="g in choiceGroups" :key="g.key">
+                  <fieldset
+                    class="st-group"
+                    :class="g.wide ? 'st-group-wide' : ''"
+                  >
+                    <legend class="st-group-title">
+                      <span x-text="g.label"></span
+                      ><small x-show="g.hint" x-text="g.hint"></small>
+                    </legend>
+                    <div class="st-seg" role="group" :aria-label="g.label">
+                      <template x-for="o in g.options" :key="o.value">
+                        <button
+                          type="button"
+                          class="st-seg-btn"
+                          :aria-pressed="f[g.key] === o.value"
+                          @click="setOpt(g.key, o.value)"
+                        >
+                          <span class="st-seg-main"
+                            ><svg
+                              class="st-seg-tick"
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="3"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              aria-hidden="true"
+                            >
+                              <path d="m5 12.5 4.5 4.5L19 7.5" /></svg
+                            ><span x-text="o.label"></span
+                          ></span>
+                          <small x-show="o.hint" x-text="o.hint"></small>
+                        </button>
+                      </template>
+                    </div>
+                    <p
+                      class="reg-err"
+                      x-show="err(g.key)"
+                      x-text="err(g.key)"
+                    ></p>
+                  </fieldset>
+                </template>
+              </div>
+              <div class="st-info">
+                <p class="text-sm text-muted">เวลา LOCK SLOT (UTC+7)</p>
+                <p
+                  class="mt-1 text-lg font-semibold"
+                  x-text="lockInfo.title"
+                ></p>
+                <p class="mt-1 text-xs text-muted" x-text="lockInfo.sub"></p>
+              </div>
+            </section>
+
+            <!-- 03 รายละเอียดเพิ่มเติม -->
+            <section class="st-card">
+              <h2 class="st-card-title">
+                <span class="st-card-no">03</span> รายละเอียดเพิ่มเติม
+              </h2>
+              <div class="reg-field">
+                <label class="reg-label" for="f-extra"
+                  >รายละเอียดสตอรี่
+                  <span class="reg-hint"
+                    >(ไม่บังคับ · เงื่อนไขนอกเหนือมาตรฐานต้องผ่านสภา)</span
+                  ></label
+                >
+                <textarea
+                  id="f-extra"
+                  x-model="f.extra_conditions"
+                  rows="5"
+                  maxlength="2000"
+                  class="input"
+                ></textarea>
+                <p
+                  class="reg-err"
+                  x-show="err('extra_conditions')"
+                  x-text="err('extra_conditions')"
+                ></p>
+              </div>
+            </section>
+
+            <div class="mt-5 flex justify-end gap-2">
+              <a href="/stories.html" class="btn-outline">ยกเลิก</a>
+              <button
+                type="submit"
+                class="btn-solid"
+                :disabled="busy"
+                x-text="busy ? 'กำลังบันทึก...' : (editing ? 'บันทึกการแก้ไข' : 'สร้างสตอรี่')"
+              ></button>
+            </div>
+          </form>
+
+          <p class="mt-8 text-xs text-muted">
+            WAVEVY COUNCIL · เวลาไทย (UTC+7) · เมื่อถึงเวลา LOCK SLOT
+            ระบบล็อกสล็อตของทั้งสองฝั่ง
+            และห้ามทำธุรกรรมของทั้งสองฝั่งจนกว่าสตอรี่จะสิ้นสุดหรือยกเลิก
+          </p>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>

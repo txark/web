@@ -51,11 +51,16 @@ class GroupManagementTest extends TestCase
             'logo' => UploadedFile::fake()->createWithContent('logo.png', self::PNG),
             'leader' => ['ic_name' => 'Boss One', 'ic_phone' => '555-0100', 'discord_id' => '123456789012345678'],
             'co_leaders' => [['ic_name' => 'Deputy One', 'ic_phone' => '', 'discord_id' => '223456789012345678']],
-            'temp_outfit_image' => UploadedFile::fake()->createWithContent('temp.png', self::PNG),
-            'temp_outfit_male' => '101',
-            'temp_outfit_female' => '202',
+            'temp_outfit_color' => self::nextColor(), // เบอร์สีชุดชั่วคราว: เปลี่ยนทุกครั้งเพราะวันเดียวกันซ้ำกันไม่ได้
             'outfit_zip' => UploadedFile::fake()->createWithContent('outfit.zip', self::ZIP),
         ], $over);
+    }
+
+    private static int $color = 0;
+
+    private static function nextColor(): int
+    {
+        return (self::$color++ % 23) + 1;
     }
 
     private function url(Group|string $g = '', string $suffix = ''): string
@@ -157,8 +162,9 @@ class GroupManagementTest extends TestCase
         // ชื่อ .png แต่เนื้อไม่ใช่ PNG / .zip ปลอม
         $this->register(['logo' => UploadedFile::fake()->createWithContent('logo.png', 'not a png')])
             ->assertUnprocessable()->assertJsonValidationErrors('logo');
-        $this->register(['temp_outfit_image' => UploadedFile::fake()->createWithContent('t.png', 'GIF89a')])
-            ->assertUnprocessable()->assertJsonValidationErrors('temp_outfit_image');
+        $this->register(['temp_outfit_color' => 0])->assertUnprocessable()->assertJsonValidationErrors('temp_outfit_color');
+        $this->register(['temp_outfit_color' => 24])->assertUnprocessable()->assertJsonValidationErrors('temp_outfit_color');
+        $this->register(['temp_outfit_color' => null])->assertUnprocessable()->assertJsonValidationErrors('temp_outfit_color');
         $this->register(['outfit_zip' => UploadedFile::fake()->createWithContent('o.zip', 'plain text')])
             ->assertUnprocessable()->assertJsonValidationErrors('outfit_zip');
         $this->assertDatabaseCount('groups', 0);
@@ -202,10 +208,10 @@ class GroupManagementTest extends TestCase
         $this->register(['co_leaders' => [$dep(1), $dep(2), $dep(3)]])->assertUnprocessable()->assertJsonValidationErrors('co_leaders');
         $this->register(['co_leaders' => [$dep(1), $dep(2)]])->assertCreated()->assertJsonPath('data.members_count', 3);
 
-        // ครอบครัว: 1 คนเท่านั้น
+        // ครอบครัว: 2 คน (REG-006.4)
         $family = ['type' => 'family', 'declared_members' => 8];
-        $this->register($family + ['name' => 'Home', 'co_leaders' => [$dep(1), $dep(2)]])->assertUnprocessable()->assertJsonValidationErrors('co_leaders');
-        $this->register($family + ['name' => 'Home', 'co_leaders' => [$dep(1)]])->assertCreated()->assertJsonPath('data.members_count', 2);
+        $this->register($family + ['name' => 'Home', 'co_leaders' => [$dep(1), $dep(2), $dep(3)]])->assertUnprocessable()->assertJsonValidationErrors('co_leaders');
+        $this->register($family + ['name' => 'Home', 'co_leaders' => [$dep(1), $dep(2)]])->assertCreated()->assertJsonPath('data.members_count', 3);
     }
 
     public function test_family_deputy_limit_also_applies_when_adding_members_later(): void
@@ -213,7 +219,8 @@ class GroupManagementTest extends TestCase
         $this->actAs(Role::Member);
         $family = $this->group([], 'family');
         $this->postJson($this->url($family, '/members'), ['character_name' => 'Dep One', 'position' => 'co_leader'])->assertOk();
-        $this->postJson($this->url($family, '/members'), ['character_name' => 'Dep Two', 'position' => 'co_leader'])->assertUnprocessable();
+        $this->postJson($this->url($family, '/members'), ['character_name' => 'Dep Two', 'position' => 'co_leader'])->assertOk();
+        $this->postJson($this->url($family, '/members'), ['character_name' => 'Dep Three', 'position' => 'co_leader'])->assertUnprocessable();
 
         $gang = $this->group();
         $this->postJson($this->url($gang, '/members'), ['character_name' => 'Dep One', 'position' => 'co_leader'])->assertOk();
@@ -232,17 +239,15 @@ class GroupManagementTest extends TestCase
             ->assertCreated()->assertJsonPath('data.members_count', 1);
     }
 
-    public function test_deputy_discord_id_and_temp_outfit_numbers_are_optional(): void
+    public function test_deputy_discord_id_is_optional(): void
     {
         Storage::fake('public');
         Storage::fake('local');
         $this->actAs(Role::Member);
 
-        // รองไม่กรอก Discord ID + ไม่กรอกเลขชุดชั่วคราวเลย → ผ่าน
+        // รองไม่กรอก Discord ID → ผ่าน
         $this->register([
             'co_leaders' => [['ic_name' => 'Deputy One', 'ic_phone' => '', 'discord_id' => '']],
-            'temp_outfit_male' => null,
-            'temp_outfit_female' => null,
         ])->assertCreated()->assertJsonPath('data.members_count', 2);
         $this->assertNull(GroupMember::where('character_name', 'Deputy One')->first()->discord_id);
 
@@ -322,6 +327,31 @@ class GroupManagementTest extends TestCase
             ->assertJsonPath('data.protect_requested', false)->assertJsonPath('data.protect_days_left', 0);
     }
 
+    public function test_temp_outfit_is_a_color_number_with_fixed_outfit_ids_and_cannot_repeat_within_a_day(): void
+    {
+        Storage::fake('public');
+        Storage::fake('local');
+        $this->actAs(Role::Member);
+
+        $r = $this->register(['temp_outfit_color' => 5])->assertCreated()->assertJsonPath('data.temp_outfit_color', 5)
+            ->assertJsonPath('data.temp_outfit_male', '1254')->assertJsonPath('data.temp_outfit_female', '1300')->assertJsonPath('data.has_temp_outfit', false);
+
+        // วันเดียวกัน แก๊งหรือครอบครัวก็ใช้เบอร์เดิมไม่ได้
+        $this->register(['name' => 'Home', 'short_name' => 'HM', 'type' => 'family', 'declared_members' => 8, 'temp_outfit_color' => 5])
+            ->assertUnprocessable()->assertJsonValidationErrors('temp_outfit_color');
+        $this->register(['name' => 'Home', 'short_name' => 'HM', 'type' => 'family', 'declared_members' => 8, 'temp_outfit_color' => 6])->assertCreated();
+
+        $this->getJson('/api/council/groups/temp-colors')->assertOk()
+            ->assertJsonPath('taken', [5, 6])->assertJsonPath('colors', 23)->assertJsonPath('male', '1254')->assertJsonPath('female', '1300');
+
+        // ข้ามวัน (เวลาไทย) ใช้เบอร์เดิมได้อีก
+        \Illuminate\Support\Carbon::setTestNow(now()->addDay());
+        $this->actAs(Role::Member);
+        $this->getJson('/api/council/groups/temp-colors')->assertOk()->assertJsonPath('taken', []);
+        $this->register(['name' => 'Tomorrow', 'short_name' => 'TMR', 'temp_outfit_color' => 5])->assertCreated();
+        \Illuminate\Support\Carbon::setTestNow();
+    }
+
     public function test_registration_files_are_stored_and_private_files_need_council_access(): void
     {
         Storage::fake('public');
@@ -331,11 +361,10 @@ class GroupManagementTest extends TestCase
         $id = $this->register()->assertCreated()->json('data.id');
         $g = Group::find($id);
         Storage::disk('public')->assertExists($g->logo_path);
-        Storage::disk('local')->assertExists($g->temp_outfit_path);
         Storage::disk('local')->assertExists($g->outfit_zip_path);
 
         $this->get($this->url($g, '/files/outfit_zip'))->assertOk();
-        $this->get($this->url($g, '/files/temp_outfit'))->assertOk();
+        $this->getJson($this->url($g, '/files/temp_outfit'))->assertNotFound(); // ชุดชั่วคราวไม่แนบรูปแล้ว
         $this->getJson($this->url($g, '/files/other'))->assertNotFound();
 
         // ข้อมูลติดต่อและไฟล์ส่วนตัวไม่รั่วออก API สาธารณะ

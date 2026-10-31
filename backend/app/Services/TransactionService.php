@@ -9,6 +9,7 @@ use App\Enums\Role;
 use App\Enums\TransactionKind;
 use App\Enums\TransactionStatus;
 use App\Models\Group;
+use App\Models\Story;
 use App\Models\GroupMember;
 use App\Models\Transaction;
 use App\Models\User;
@@ -50,6 +51,7 @@ class TransactionService
         abort_if(in_array($kind, [TransactionKind::OutfitAdd, TransactionKind::OutfitFile], true), 422, 'ชนิดธุรกรรมนี้ถูกรวมเป็น "ลงชุด/แก้ไขชุด" แล้ว');
 
         $group = $this->resolveGroup($kind, $group);
+        $this->assertNoActiveStory($group);
         $payload = $this->validate($kind, $group, $payload);
 
         $stored = [];
@@ -148,6 +150,14 @@ class TransactionService
 
     // ───────────────────────── ตรวจข้อมูลตามชนิด ─────────────────────────
 
+    /** DEAL-008: ระหว่างมีสัญญาสตอรี่ ห้ามทำธุรกรรมจนประกาศยุติสตอรี่ */
+    private function assertNoActiveStory(?Group $group): void
+    {
+        if ($group && ($story = Story::activeFor($group))) {
+            throw ValidationException::withMessages(['group_id' => "{$group->name} อยู่ระหว่างสตอรี่ {$story->number} ห้ามทำธุรกรรมจนประกาศยุติสตอรี่ (DEAL-008)"]);
+        }
+    }
+
     private function resolveGroup(TransactionKind $kind, ?Group $group): ?Group
     {
         if (! $kind->needsGroup()) {
@@ -173,6 +183,8 @@ class TransactionService
             TransactionKind::Recolor => [
                 'color_hex' => ['required', 'regex:/^#[0-9A-Fa-f]{6}$/'],
                 'color_name' => ['required', 'string', 'max:60'],
+                // ชุดต้องปรับตามสีใหม่ จึงต้องแนบไฟล์ชุดใหม่ (.ZIP) ซึ่งจะแทนไฟล์ชุดหลักของกลุ่มเมื่อมีผล
+                'outfit_zip' => ['required', 'file', 'max:51200', $this->zipRule()],
             ],
             TransactionKind::ChangeLeader => [
                 'name' => ['required', 'string', 'max:120'],
@@ -662,7 +674,7 @@ class TransactionService
             $payload['logo_path'] = $path;
         }
 
-        if (in_array($kind, [TransactionKind::Outfit, TransactionKind::OutfitAdd, TransactionKind::OutfitFile], true) && ($payload['outfit_zip'] ?? null) instanceof UploadedFile) {
+        if (in_array($kind, [TransactionKind::Outfit, TransactionKind::OutfitAdd, TransactionKind::OutfitFile, TransactionKind::Recolor], true) && ($payload['outfit_zip'] ?? null) instanceof UploadedFile) {
             $path = $payload['outfit_zip']->store('transactions/outfits', 'local');
             $stored[] = ['local', $path];
             unset($payload['outfit_zip']);
@@ -713,7 +725,7 @@ class TransactionService
         match ($tx->kind) {
             TransactionKind::Register => $group = $this->doRegister($tx, $by),
             TransactionKind::Rename => $this->doRename($tx, $group),
-            TransactionKind::Recolor => $group->update(['color_hex' => $tx->payload['color_hex'], 'color_name' => $tx->payload['color_name']]),
+            TransactionKind::Recolor => $this->doRecolor($tx, $group),
             TransactionKind::ChangeLeader => $this->doChangeLeader($tx, $group),
             TransactionKind::ReleaseSlot => $this->doRelease($tx, $group, true),
             TransactionKind::ReleaseFree => $this->doRelease($tx, $group, false),
@@ -863,7 +875,7 @@ class TransactionService
 
     /**
      * ลงชุด/แก้ไขชุด: บวกจำนวนส่วนลงเพิ่ม แล้วตั้งจำนวนส่วนเปลี่ยน/แทน
-     * ถ้ามีส่วนเปลี่ยน/แทน ไฟล์ .ZIP จะแทนไฟล์ชุดหลักของกลุ่ม ถ้ามีแต่ส่วนลงเพิ่ม ไฟล์เก็บไว้กับธุรกรรมเป็นหลักฐาน
+     * ถ้ามีส่วนเปลี่ยน/แทน ไฟล์ .ZIP จะเป็นไฟล์ชุดล่าสุดของกลุ่ม (ไฟล์เดิมยังเก็บไว้) ถ้ามีแต่ส่วนลงเพิ่ม ไฟล์เก็บไว้กับธุรกรรมเป็นหลักฐาน
      */
     private function doOutfit(Transaction $tx, Group $group): void
     {
@@ -882,15 +894,21 @@ class TransactionService
             if (! $path || ! Storage::disk('local')->exists($path)) {
                 throw ValidationException::withMessages(['outfit_zip' => 'ไม่พบไฟล์ชุดที่แนบไว้ จึงเปลี่ยนไฟล์ชุดไม่ได้']);
             }
-            $new = 'groups/outfits/'.basename($path);
-            Storage::disk('local')->move($path, $new);
-            if ($group->outfit_zip_path && $group->outfit_zip_path !== $new) {
-                Storage::disk('local')->delete($group->outfit_zip_path);
-            }
-            $update['outfit_zip_path'] = $new;
+            $update += $this->adoptOutfitZip($group, $path);
         }
 
         $group->update($update);
+    }
+
+    /** เปลี่ยนสีหลัก และใช้ไฟล์ชุดที่แนบมาเป็นไฟล์ชุดล่าสุดของกลุ่ม (ไฟล์เดิมยังเก็บไว้) */
+    private function doRecolor(Transaction $tx, Group $group): void
+    {
+        $path = $tx->payload['outfit_zip_path'] ?? null;
+        if (! $path || ! Storage::disk('local')->exists($path)) {
+            throw ValidationException::withMessages(['outfit_zip' => 'ไม่พบไฟล์ชุดที่แนบไว้ จึงเปลี่ยนสีไม่ได้']);
+        }
+
+        $group->update(['color_hex' => $tx->payload['color_hex'], 'color_name' => $tx->payload['color_name']] + $this->adoptOutfitZip($group, $path));
     }
 
     private function doOutfitAdd(Transaction $tx, Group $group): void
@@ -902,7 +920,7 @@ class TransactionService
         $group->update(['outfit_counts' => $counts]);
     }
 
-    /** แทนที่ไฟล์ชุดเดิมด้วยไฟล์ใหม่ที่แนบไว้กับธุรกรรม แล้วลบไฟล์เก่า */
+    /** ใช้ไฟล์ใหม่ที่แนบไว้กับธุรกรรมเป็นไฟล์ชุดล่าสุด (ไฟล์เดิมยังเก็บไว้) */
     private function doOutfitFile(Transaction $tx, Group $group): void
     {
         $path = $tx->payload['outfit_zip_path'] ?? null;
@@ -910,13 +928,27 @@ class TransactionService
             throw ValidationException::withMessages(['outfit_zip' => 'ไม่พบไฟล์ชุดที่แนบไว้ จึงเปลี่ยนไฟล์ชุดไม่ได้']);
         }
 
+        // จำนวนชุดของชนิดที่ถูกแทนเปลี่ยนเป็นจำนวนใหม่ ชนิดอื่นคงเดิม
+        $group->update($this->adoptOutfitZip($group, $path) + ['outfit_counts' => array_merge($group->outfit_counts ?? [], $tx->payload['counts'])]);
+    }
+
+    /**
+     * ใช้ไฟล์ที่แนบกับธุรกรรมเป็นไฟล์ชุดล่าสุดของกลุ่ม โดยไม่ลบไฟล์เดิม (เก็บทุกเวอร์ชัน)
+     * ไฟล์ตอนขึ้นทะเบียนอยู่ใน outfit_zip_original_path ตลอด
+     *
+     * @return array<string, string> ค่าที่ต้องอัปเดตลงกลุ่ม
+     */
+    private function adoptOutfitZip(Group $group, string $path): array
+    {
         $new = 'groups/outfits/'.basename($path);
         Storage::disk('local')->move($path, $new);
-        if ($group->outfit_zip_path && $group->outfit_zip_path !== $new) {
-            Storage::disk('local')->delete($group->outfit_zip_path);
+
+        $update = ['outfit_zip_path' => $new];
+        if (! $group->outfit_zip_original_path && $group->outfit_zip_path && $group->outfit_zip_path !== $new) {
+            $update['outfit_zip_original_path'] = $group->outfit_zip_path; // ทะเบียนเก่าที่ยังไม่เคยบันทึกไฟล์ตั้งต้น
         }
-        // จำนวนชุดของชนิดที่ถูกแทนเปลี่ยนเป็นจำนวนใหม่ ชนิดอื่นคงเดิม
-        $group->update(['outfit_zip_path' => $new, 'outfit_counts' => array_merge($group->outfit_counts ?? [], $tx->payload['counts'])]);
+
+        return $update;
     }
 
     private function doDissolve(Group $group): void

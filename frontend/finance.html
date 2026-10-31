@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="th" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>รายรับ-รายจ่าย / ค่าบริการ | WAVEVY COUNCIL</title>
+  <link rel="icon" href="/img/favicon.png">
+  <script src="/js/theme.js"></script>
+  <link rel="stylesheet" href="/css/output.css">
+  <script src="/js/config.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/pages/finance.js"></script>
+  <script defer src="/js/layout.js"></script>
+  <script defer src="/js/txnav.js"></script>
+  <script defer src="/js/vendor/alpine.min.js"></script>
+</head>
+<body>
+  <div id="site-header"></div>
+
+  <main class="container-app py-8" x-data="financePage()">
+    <div x-show="!ready" class="py-24 text-center text-muted">กำลังตรวจสอบสิทธิ์...</div>
+
+    <div x-show="ready" x-cloak class="tx-layout">
+      <aside id="tx-sidebar" x-data="txSidebar()"></aside>
+      <div class="min-w-0">
+
+        <header class="rg-head">
+          <div class="min-w-0">
+            <p class="rg-eyebrow">WAVEVY COUNCIL / FINANCE</p>
+            <h1 class="rg-title">รายรับ-รายจ่าย / ค่าบริการ</h1>
+            <p class="rg-sub">รายรับดึงจากค่าบริการของธุรกรรมที่อนุมัติแล้วโดยอัตโนมัติ · รายจ่ายของสภากรอกเองตามหมวด · เห็นเฉพาะรองประธานขึ้นไป</p>
+          </div>
+          <div class="rg-actions">
+            <button type="button" class="btn-outline" @click="exportCsv()" :disabled="loading">ส่งออก CSV</button>
+            <button type="button" class="rg-primary-btn" @click="openCreate()">+ บันทึกรายจ่าย</button>
+          </div>
+        </header>
+
+        <p x-show="msg" x-text="msg" class="note-box mt-5"></p>
+        <p x-show="error" x-text="error" class="penalty-box mt-5"></p>
+
+        <!-- ช่วงวันที่ -->
+        <section class="panel mt-6 space-y-3 p-4">
+          <div class="flex flex-wrap items-center gap-2" role="group" aria-label="ช่วงเวลา">
+            <template x-for="p in presets" :key="p.key">
+              <button type="button" class="chip" :aria-pressed="preset === p.key" @click="setPreset(p.key)" x-text="p.label"></button>
+            </template>
+            <span class="ml-auto flex flex-wrap items-center gap-2 text-sm text-muted">
+              <label class="flex items-center gap-2">ตั้งแต่ <input type="date" x-model="from" :max="to || undefined" class="input w-auto" aria-label="ตั้งแต่วันที่"></label>
+              <label class="flex items-center gap-2">ถึง <input type="date" x-model="to" :min="from || undefined" class="input w-auto" aria-label="ถึงวันที่"></label>
+            </span>
+          </div>
+        </section>
+
+        <!-- สรุปยอด -->
+        <section class="fn-cards mt-4" x-show="summary" aria-label="สรุปยอด">
+          <div class="fn-card fn-in">
+            <p class="fn-label">รายรับ (ค่าบริการ)</p>
+            <p class="fn-num" x-text="'+ ' + money(summary && summary.income)"></p>
+            <p class="fn-sub" x-text="(summary ? summary.income_count : 0) + ' รายการ · ' + (summary ? summary.currency : 'WVDL')"></p>
+          </div>
+          <div class="fn-card fn-out">
+            <p class="fn-label">รายจ่าย</p>
+            <p class="fn-num" x-text="'− ' + money(summary && summary.expense)"></p>
+            <p class="fn-sub" x-text="(summary ? summary.expense_count : 0) + ' รายการ · ' + (summary ? summary.currency : 'WVDL')"></p>
+          </div>
+          <div class="fn-card" :class="summary && summary.balance < 0 ? 'fn-neg' : 'fn-bal'">
+            <p class="fn-label">คงเหลือ</p>
+            <p class="fn-num" x-text="(summary && summary.balance < 0 ? '− ' : '') + money(Math.abs(summary ? summary.balance : 0))"></p>
+            <p class="fn-sub" x-text="rangeLabel"></p>
+          </div>
+        </section>
+
+        <!-- สรุปตามชนิดค่าบริการ / หมวดรายจ่าย -->
+        <section class="fn-split mt-4" x-show="summary">
+          <div class="panel p-4">
+            <h2 class="fn-h">รายรับตามชนิดค่าบริการ</h2>
+            <p class="fn-empty" x-show="summary && summary.by_kind.length === 0">ยังไม่มีรายรับในช่วงนี้</p>
+            <ul class="fn-bars">
+              <template x-for="k in (summary ? summary.by_kind : [])" :key="k.key">
+                <li>
+                  <button type="button" class="fn-bar" :class="category === k.key ? 'is-on' : ''" @click="pickCategory(k.key, k.label)" :title="'กรองเฉพาะ ' + k.label">
+                    <span class="fn-bar-top"><b x-text="k.label"></b><span x-text="money(k.amount) + ' · ' + k.count + ' ครั้ง'"></span></span>
+                    <span class="fn-track"><i class="fn-fill fn-fill-in" :style="'width:' + pct(summary.by_kind, k) + '%'"></i></span>
+                  </button>
+                </li>
+              </template>
+            </ul>
+          </div>
+          <div class="panel p-4">
+            <h2 class="fn-h">รายจ่ายตามหมวด</h2>
+            <p class="fn-empty" x-show="summary && summary.by_category.length === 0">ยังไม่มีรายจ่ายในช่วงนี้</p>
+            <ul class="fn-bars">
+              <template x-for="k in (summary ? summary.by_category : [])" :key="k.key">
+                <li>
+                  <button type="button" class="fn-bar" :class="category === k.key ? 'is-on' : ''" @click="pickCategory(k.key, k.label)" :title="'กรองเฉพาะ ' + k.label">
+                    <span class="fn-bar-top"><b x-text="k.label"></b><span x-text="money(k.amount) + ' · ' + k.count + ' รายการ'"></span></span>
+                    <span class="fn-track"><i class="fn-fill fn-fill-out" :style="'width:' + pct(summary.by_category, k) + '%'"></i></span>
+                  </button>
+                </li>
+              </template>
+            </ul>
+          </div>
+        </section>
+
+        <!-- รายการ -->
+        <section class="panel mt-4">
+          <div class="space-y-3 p-4">
+            <div class="flex flex-wrap items-center gap-2" role="group" aria-label="ประเภทรายการ">
+              <button type="button" class="chip" :aria-pressed="type === ''" @click="type = ''">ทั้งหมด</button>
+              <button type="button" class="chip" :aria-pressed="type === 'income'" @click="type = 'income'">รายรับ</button>
+              <button type="button" class="chip" :aria-pressed="type === 'expense'" @click="type = 'expense'">รายจ่าย</button>
+              <input type="search" x-model.debounce.300ms="q" class="input ml-auto w-full sm:w-80" placeholder="ค้นหารายการ / ชื่อแก๊ง / ผู้บันทึก" aria-label="ค้นหา" autocomplete="off">
+            </div>
+            <div class="flex flex-wrap items-center gap-2 text-sm" x-show="hasFilter">
+              <span class="badge badge-info inline-flex items-center gap-1" x-show="category">หมวด/ชนิด: <b x-text="categoryLabel"></b>
+                <button type="button" class="ml-1 opacity-70 hover:opacity-100" @click="category = ''; categoryLabel = ''; reload()" aria-label="เอาตัวกรองหมวดออก">✕</button>
+              </span>
+              <button type="button" class="text-muted underline" @click="clearFilters()">ล้างตัวกรอง</button>
+            </div>
+          </div>
+
+          <p x-show="loading && rows.length === 0" class="rg-empty">กำลังโหลด...</p>
+          <p x-show="!loading && rows.length === 0 && !error" class="rg-empty">ไม่พบรายการในช่วงและเงื่อนไขที่เลือก</p>
+
+          <div class="fn-table-wrap" x-show="rows.length > 0">
+            <table class="fn-table">
+              <thead>
+                <tr><th>วันที่</th><th>รายการ</th><th>หมวด / ชนิด</th><th>อ้างอิง</th><th>ผู้บันทึก</th><th class="fn-r">จำนวน (WVDL)</th><th class="fn-act"><span class="sr-only">จัดการ</span></th></tr>
+              </thead>
+              <tbody>
+                <template x-for="r in rows" :key="r.id">
+                  <tr>
+                    <td class="fn-nowrap" x-text="when(r)"></td>
+                    <td>
+                      <b x-text="r.title"></b>
+                      <small class="fn-note" x-show="r.note" x-text="r.note"></small>
+                    </td>
+                    <td><span class="fn-tag" :class="r.type === 'income' ? 'fn-tag-in' : 'fn-tag-out'" x-text="r.category_label"></span></td>
+                    <td class="fn-nowrap fn-mute" x-text="r.ref || '—'"></td>
+                    <td class="fn-nowrap" x-text="r.by || '—'"></td>
+                    <td class="fn-r fn-nowrap" :class="r.type === 'income' ? 'fn-pos' : 'fn-negt'" x-text="(r.type === 'income' ? '+ ' : '− ') + money(r.amount)"></td>
+                    <td class="fn-act">
+                      <span x-show="r.type === 'expense'" class="fn-acts">
+                        <button type="button" class="gd-ghost" @click="openEdit(r)">แก้ไข</button>
+                        <button type="button" class="gd-ghost" @click="openDelete(r)">ลบ</button>
+                      </span>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="fn-pager" x-show="meta.last_page > 1">
+            <button type="button" class="gd-ghost" :disabled="page <= 1 || loading" @click="go(page - 1)">‹ ก่อนหน้า</button>
+            <span class="text-sm text-muted" x-text="'หน้า ' + page + ' / ' + meta.last_page + ' · ทั้งหมด ' + meta.total + ' รายการ'"></span>
+            <button type="button" class="gd-ghost" :disabled="page >= meta.last_page || loading" @click="go(page + 1)">ถัดไป ›</button>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- บันทึก/แก้ไขรายจ่าย -->
+    <div x-show="dlg === 'form'" x-cloak class="gd-dlg-back" role="dialog" aria-modal="true" aria-labelledby="fn-dlg-title" @keydown.escape.window="closeDlg()" @mousedown.self="closeDlg()">
+      <form class="gd-dlg fn-dlg" @submit.prevent="save()" novalidate>
+        <header class="gd-dlg-head">
+          <h3 id="fn-dlg-title" class="gd-dlg-title" x-text="f.id ? 'แก้ไขรายจ่าย' : 'บันทึกรายจ่ายของสภา'"></h3>
+          <button type="button" class="reg-close" aria-label="ปิด" @click="closeDlg()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+        </header>
+        <div class="gd-dlg-body">
+          <p class="penalty-box mb-3" x-show="errs._" x-text="errs._"></p>
+          <div class="reg-grid">
+            <div class="reg-field">
+              <label class="reg-label" for="fn-date">วันที่จ่าย</label>
+              <input id="fn-date" type="date" x-model="f.spent_at" class="input" :aria-invalid="!!e('spent_at')">
+              <p class="reg-err" x-show="e('spent_at')" x-text="e('spent_at')"></p>
+            </div>
+            <div class="reg-field">
+              <label class="reg-label" for="fn-amount">จำนวนเงิน <span class="reg-hint">(WVDL)</span></label>
+              <input id="fn-amount" type="text" inputmode="numeric" x-model="f.amount" class="input" placeholder="เช่น 250000" autocomplete="off" :aria-invalid="!!e('amount')">
+              <p class="reg-err" x-show="e('amount')" x-text="e('amount')"></p>
+            </div>
+            <div class="reg-field reg-wide">
+              <span class="reg-label">หมวด</span>
+              <div class="flex flex-wrap gap-2" role="group" aria-label="หมวดรายจ่าย">
+                <template x-for="c in (summary ? summary.expense_categories : [])" :key="c.key">
+                  <button type="button" class="chip" :aria-pressed="f.category === c.key" @click="f.category = c.key" x-text="c.label"></button>
+                </template>
+              </div>
+              <p class="reg-err" x-show="e('category')" x-text="e('category')"></p>
+            </div>
+            <div class="reg-field reg-wide">
+              <label class="reg-label" for="fn-title">รายการ</label>
+              <input id="fn-title" type="text" x-model="f.title" maxlength="120" class="input" placeholder="เช่น รางวัลชนะสตอรี่" autocomplete="off" :aria-invalid="!!e('title')">
+              <p class="reg-err" x-show="e('title')" x-text="e('title')"></p>
+            </div>
+            <div class="reg-field reg-wide">
+              <label class="reg-label" for="fn-note">หมายเหตุ <span class="reg-hint">(ไม่บังคับ)</span></label>
+              <textarea id="fn-note" x-model="f.note" rows="3" maxlength="1000" class="input"></textarea>
+              <p class="reg-err" x-show="e('note')" x-text="e('note')"></p>
+            </div>
+          </div>
+        </div>
+        <footer class="gd-dlg-foot">
+          <button type="button" class="btn-outline" @click="closeDlg()">ยกเลิก</button>
+          <button type="submit" class="btn-solid" :disabled="busy" x-text="busy ? 'กำลังบันทึก...' : 'บันทึก'"></button>
+        </footer>
+      </form>
+    </div>
+
+    <!-- ยืนยันลบรายจ่าย -->
+    <div x-show="dlg === 'delete'" x-cloak class="gd-dlg-back" role="dialog" aria-modal="true" aria-labelledby="fn-del-title" @keydown.escape.window="closeDlg()" @mousedown.self="closeDlg()">
+      <div class="gd-dlg fn-dlg">
+        <header class="gd-dlg-head"><h3 id="fn-del-title" class="gd-dlg-title">ลบรายจ่ายนี้?</h3></header>
+        <div class="gd-dlg-body">
+          <p class="penalty-box mb-3" x-show="errs._" x-text="errs._"></p>
+          <p x-show="target"><b x-text="target ? target.title : ''"></b> · <span x-text="target ? money(target.amount) + ' WVDL' : ''"></span></p>
+          <p class="gd-muted mt-2">รายการจะถูกซ่อนจากยอดสรุป และมีบันทึกการลบในบันทึกกิจกรรม</p>
+        </div>
+        <footer class="gd-dlg-foot">
+          <button type="button" class="btn-outline" @click="closeDlg()">ยกเลิก</button>
+          <button type="button" class="btn-solid" :disabled="busy" @click="remove()" x-text="busy ? 'กำลังลบ...' : 'ลบรายการ'"></button>
+        </footer>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

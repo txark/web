@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="th" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>หนังสือสัญญาสตอรี่ | WAVEVY COUNCIL</title>
+  <link rel="icon" href="/img/favicon.png">
+  <link rel="stylesheet" href="/css/output.css">
+  <script src="/js/config.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/story-fmt.js"></script>
+  <script src="/js/pages/contract.js"></script>
+  <script defer src="/js/vendor/alpine.min.js"></script>
+  <style>
+    html, body { background: #050d14; }
+    .ct-wrap { display: flex; min-height: 100vh; flex-direction: column; align-items: center; padding: 24px 12px 32px; }
+    .ct-fit { width: 1240px; transform-origin: top left; }
+    .ct-box { overflow: hidden; }
+    .ct-msg { margin: 20vh auto 0; color: #9db6c4; text-align: center; }
+    .ct-embed { min-height: 0; padding: 12px 8px; }
+    .ct-foot { margin-top: 18px; color: #5d7685; font-size: 12px; text-align: center; }
+  </style>
+</head>
+<body>
+  <main class="ct-wrap" :class="embed ? 'ct-embed' : ''" x-data="contractPage()" @resize.window="fit()">
+    <p class="ct-msg" x-show="loading">กำลังโหลดหนังสือสัญญา...</p>
+    <p class="ct-msg" x-show="error" x-cloak x-text="error"></p>
+
+    <div x-show="cur" x-cloak class="ct-box" :style="'height:' + boxH + 'px;width:' + boxW + 'px'">
+      <div class="ct-fit" :style="'transform:scale(' + scale + ')'">
+        <template x-if="cur">
+          <article id="story-contract" class="st-contract st-paper" >
+              <div class="st-p-inner">
+                <i class="st-p-corner tl"></i><i class="st-p-corner tr"></i><i class="st-p-corner bl"></i><i class="st-p-corner br"></i>
+                <header class="st-p-head">
+                  <div class="st-p-brand">
+                    <img src="/img/logo.png" alt="" class="st-p-crest">
+                    <div><p class="st-p-orgen">WAVEVY COUNCIL</p><p class="st-p-org">สภาเมืองคลื่น</p></div>
+                  </div>
+                  <div class="st-p-titlebox">
+                    <p class="st-p-eyebrow">STORY AGREEMENT</p>
+                    <h2 class="st-p-title">หนังสือสัญญา</h2>
+                    <p class="st-p-sub">ข้อตกลงการเล่นสตอรี่ · <span x-text="typeLabel(cur.story_type)"></span></p>
+                  </div>
+                  <div class="st-p-refbox">
+                    <p><span>เลขที่เอกสาร</span><b x-text="cur.number"></b></p>
+                    <p><span>สถานะสตอรี่</span><b class="st-p-status" x-text="cur.phase_label"></b></p>
+                  </div>
+                </header>
+
+                <div class="st-p-parties">
+                  <div class="st-p-party">
+                    <div class="st-c-logo" :style="logoStyle(cur.group_a)"><img x-show="cur.group_a.logo_url" :src="cur.group_a.logo_url" alt=""><span x-show="!cur.group_a.logo_url" x-text="(cur.group_a.short_name || cur.group_a.name.slice(0, 3)).toUpperCase()"></span></div>
+                    <p class="st-c-name"><span class="st-c-gold" x-text="'[' + (cur.group_a.short_name || cur.group_a.name.slice(0, 3)).toUpperCase() + ']'"></span> <span x-text="cur.group_a.name"></span></p>
+                  </div>
+                  <div class="st-p-vs"><small>STORY MATCH</small><p class="st-p-with">VS</p><small>WAVEVY CITY</small></div>
+                  <div class="st-p-party">
+                    <div class="st-c-logo" :style="logoStyle(cur.group_b)"><img x-show="cur.group_b.logo_url" :src="cur.group_b.logo_url" alt=""><span x-show="!cur.group_b.logo_url" x-text="(cur.group_b.short_name || cur.group_b.name.slice(0, 3)).toUpperCase()"></span></div>
+                    <p class="st-c-name"><span class="st-c-gold" x-text="'[' + (cur.group_b.short_name || cur.group_b.name.slice(0, 3)).toUpperCase() + ']'"></span> <span x-text="cur.group_b.name"></span></p>
+                  </div>
+                </div>
+
+
+                <div class="st-p-time">
+                  <div><span>วันและเวลาเริ่มเล่น · เวลาไทย</span><b x-text="dateLong(cur.starts_at) + ' เวลา ' + timeHm(cur.starts_at)"></b></div>
+                  <div><span x-text="lockNow(cur) ? 'เวลา LOCK SLOT · ล็อกทันทีที่สร้างสตอรี่' : 'เวลา LOCK SLOT · ก่อนเล่น ' + Math.round((new Date(cur.starts_at) - new Date(cur.lock_at)) / 60000) + ' นาที'"></span><b x-text="dateLong(cur.lock_at) + ' เวลา ' + timeHm(cur.lock_at)"></b></div>
+                </div>
+
+                <h3 class="st-p-sec"><em>01</em>เงื่อนไขการแข่งขัน</h3>
+                <dl class="st-p-grid">
+                  <div><dt>จำนวนไฟต์ / คะแนนชนะ</dt><dd x-text="cur.fights + ' ไฟต์ · ถึง ' + cur.fights"></dd></div>
+                  <div><dt>รูปแบบการเล่น</dt><dd x-text="picked(cur, 'play_format')"></dd></div>
+                  <div><dt>สถานที่ไฟต์</dt><dd x-text="picked(cur, 'venue')"></dd></div>
+                  <div><dt>เดิมพันฝั่งละ</dt><dd x-text="money(cur.stake_amount)"></dd></div>
+                  <div><dt>จำนวนปืน</dt><dd x-text="cur.guns > 0 ? cur.guns : 'ไม่เล่นปืน'"></dd></div>
+                  <div><dt>การแจ้งใบ</dt><dd x-text="cur.ticket_policy"></dd></div>
+                  <div x-show="hasReserve(cur)"><dt>การสลับ Slot ตัวสำรอง</dt><dd x-text="yesNo(cur.allow_reserve_swap)"></dd></div>
+                  <div><dt>การเพิ่ม–ถอน Slot</dt><dd x-text="yesNo(cur.allow_slot_change)"></dd></div>
+                  <div><dt>ปลด TOXIC</dt><dd x-text="toxic(cur)"></dd></div>
+                  <div class="st-p-wide"><dt>วันที่สร้างสตอรี่</dt><dd x-text="dateLong(cur.created_at) + ' เวลา ' + timeHm(cur.created_at)"></dd></div>
+                  <div><dt>ประเภทสตอรี่</dt><dd x-text="typeLabel(cur.story_type)"></dd></div>
+                </dl>
+
+                <template x-if="cur.extra_conditions">
+                  <div>
+                    <h3 class="st-p-sec"><em>02</em>รายละเอียดเพิ่มเติม</h3>
+                    <p class="st-p-extra" x-text="cur.extra_conditions"></p>
+                  </div>
+                </template>
+
+                <div class="st-p-bottom">
+                <section class="st-p-clause st-p-general">
+                  <p class="st-p-text">คู่สัญญาทั้งสองฝ่ายรับทราบและยินยอมปฏิบัติตามกฎและข้อปฏิบัติของสภา คำตัดสินของสภาถือเป็นที่สุด</p>
+                </section>
+
+                <div class="st-p-sign">
+                  <div class="st-p-signer">
+                    <div class="st-p-sigrow"><em>ลงชื่อ</em><span class="st-p-signature" x-text="cur.created_by ? cur.created_by.name : ''"></span></div>
+                    <p x-text="'(' + (cur.created_by ? cur.created_by.name : '') + ')'"></p>
+                    <small x-text="'ผู้รับรองโดยสภา' + (cur.created_by && cur.created_by.role_label ? ' · ' + cur.created_by.role_label : '')"></small>
+                  </div>
+                </div>
+                </div>
+
+                <footer class="st-p-foot">
+                  <span class="st-c-gold" style="letter-spacing:.3em">WAVEVY CITY</span>
+                  <span>เอกสารออกโดยระบบของสภาเมืองคลื่น · เลขที่ <span x-text="cur.number"></span> · ออกเมื่อ <span x-text="dateLong(cur.created_at) + ' ' + timeHm(cur.created_at) + ' น.'"></span></span>
+                </footer>
+              </div>
+            </article>
+        </template>
+      </div>
+    </div>
+    <p class="ct-foot" x-show="cur && !embed" x-cloak x-text="(mode === 'member' ? 'เปิดจากระบบสภา' : 'เอกสารนี้เปิดอ่านได้เฉพาะผู้ที่มีลิงก์') + ' · WAVEVY COUNCIL'"></p>
+  </main>
+</body>
+</html>

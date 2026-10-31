@@ -20,6 +20,7 @@ class ActivityResource extends JsonResource
         'transactions' => 'ธุรกรรม',
         'groups' => 'แก๊ง/ครอบครัว',
         'duty' => 'เวร',
+        'stories' => 'สตอรี่',
         'default' => 'แก้ไขข้อมูล',
     ];
 
@@ -35,6 +36,11 @@ class ActivityResource extends JsonResource
         'approved' => 'อนุมัติ',
         'rejected' => 'ไม่อนุมัติ',
         'cancelled' => 'ยกเลิก',
+        'started' => 'สร้าง',
+        'ended' => 'สิ้นสุด',
+        'scored' => 'บันทึกคะแนน',
+        'shared' => 'สร้างลิงก์แชร์',
+        'unshared' => 'ยกเลิกลิงก์แชร์',
         'start' => 'เข้าเวร',
         'end' => 'ออกเวร',
         'system_end' => 'ระบบปิดเวร',

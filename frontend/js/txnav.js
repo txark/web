@@ -5,8 +5,8 @@
   const ITEMS = [
     { href: '/manage-groups.html', label: 'จัดการแก๊ง/ครอบครัว', hint: 'ขึ้นทะเบียน สมาชิก สถานะ' },
     { href: '/outfits.html', label: 'ลงชุดเพิ่ม/แก้ไขชุด', hint: 'ชุดแก๊งและครอบครัว' },
-    { label: 'สตอรี่', hint: 'สัญญาสตอรี่ เริ่ม–จบ', soon: true },
-    { label: 'รายรับ-รายจ่าย / ค่าบริการ', hint: 'ค่าบริการและค่าใช้จ่ายของสภา', soon: true, min: 'vice_president' },
+    { href: '/stories.html', label: 'สตอรี่', hint: 'สัญญาสตอรี่ เริ่ม–จบ' },
+    { href: '/finance.html', label: 'รายรับ-รายจ่าย / ค่าบริการ', hint: 'ค่าบริการและค่าใช้จ่ายของสภา', min: 'vice_president' },
   ];
 
   const here = location.pathname;

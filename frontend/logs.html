@@ -110,6 +110,16 @@
                   <div class="flex gap-3"><dt class="w-28 shrink-0 text-muted" x-text="k"></dt><dd class="min-w-0 break-words" x-text="v"></dd></div>
                 </template>
               </dl>
+              <div x-show="swatch(r)" x-cloak>
+                <p class="mb-1 text-muted">สีที่เปลี่ยน</p>
+                <p class="flex flex-wrap items-center gap-2">
+                  <span class="rg-dot" :style="swatch(r) ? 'background:' + swatch(r).from.hex : ''"></span>
+                  <span class="text-muted" x-text="swatch(r) ? ((swatch(r).from.name || '') + ' ' + swatch(r).from.hex).trim() : ''"></span>
+                  <span aria-hidden="true">→</span>
+                  <span class="rg-dot" :style="swatch(r) ? 'background:' + swatch(r).to.hex : ''"></span>
+                  <b class="text-accent" x-text="swatch(r) ? ((swatch(r).to.name || '') + ' ' + swatch(r).to.hex).trim() : ''"></b>
+                </p>
+              </div>
               <div x-show="diff(r).length">
                 <p class="mb-1 text-muted">ข้อมูลที่เปลี่ยน</p>
                 <ul class="space-y-1">

@@ -38,8 +38,11 @@ class GroupAdminResource extends JsonResource
             'declared_members' => $this->declared_members,
             'temp_outfit_male' => $this->temp_outfit_male,
             'temp_outfit_female' => $this->temp_outfit_female,
+            'temp_outfit_color' => $this->temp_outfit_color,
             'has_temp_outfit' => (bool) $this->temp_outfit_path,
             'has_outfit_zip' => (bool) $this->outfit_zip_path,
+            // มีไฟล์ตอนขึ้นทะเบียนแยกจากไฟล์ล่าสุด (ถูกแก้ไข/เปลี่ยนสีมาแล้ว)
+            'has_outfit_zip_original' => (bool) $this->outfit_zip_original_path && $this->outfit_zip_original_path !== $this->outfit_zip_path,
             'protect_requested' => $this->protect_requested,
             'protect_from' => $this->protect_from,
             'outfit_counts' => $this->outfit_counts ?? [],

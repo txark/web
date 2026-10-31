@@ -126,7 +126,8 @@ class OutfitTransactionTest extends TestCase
         $path = $g->fresh()->outfit_zip_path;
         $this->assertNotSame('groups/outfits/old.zip', $path);
         Storage::disk('local')->assertExists($path);
-        Storage::disk('local')->assertMissing('groups/outfits/old.zip');
+        Storage::disk('local')->assertExists('groups/outfits/old.zip'); // ไฟล์เดิมไม่ถูกทับ/ลบ
+        $this->assertSame('groups/outfits/old.zip', $g->fresh()->outfit_zip_original_path);
         $this->assertSame(['suit' => 2, 'polo' => 0, 'hoodie' => 1], $g->fresh()->outfit_counts);
         $this->assertSame(['hoodie', 'polo'], $res->json('data.payload.replace.types'));
         $this->assertStringContainsString('เปลี่ยน/แทน Hoodie (1 ชิ้น), Polo (0 ชิ้น)', $res->json('data.summary'));
@@ -176,7 +177,8 @@ class OutfitTransactionTest extends TestCase
         ])->assertCreated();
 
         $this->assertSame(['suit' => 2, 'hoodie' => 0, 'armor' => 1, 'tshirt' => 1], $g->fresh()->outfit_counts);
-        Storage::disk('local')->assertMissing('groups/outfits/old.zip');
+        Storage::disk('local')->assertExists('groups/outfits/old.zip'); // ไฟล์เดิมไม่ถูกทับ/ลบ
+        $this->assertSame('groups/outfits/old.zip', $g->fresh()->outfit_zip_original_path);
         Storage::disk('local')->assertExists($g->fresh()->outfit_zip_path);
         $this->assertSame(1, Transaction::count());
         $this->assertStringContainsString('ลงเพิ่ม Suit 1, Armor 1 · เปลี่ยน/แทน Hoodie → T-Shirt', $res->json('data.summary'));

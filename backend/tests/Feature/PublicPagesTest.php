@@ -25,15 +25,30 @@ class PublicPagesTest extends TestCase
 
         $response = $this->getJson('/api/public/rules')->assertOk();
 
-        $keys = collect($response->json('data'))->pluck('key')->all();
-        $this->assertSame([
-            'general', 'supreme', 'ban', 'conversion', 'blacklist', 'sanction',
-            'call', 'story', 'protect', 'gang', 'family', 'fees', 'overview', 'staff',
-        ], $keys);
+        $this->assertSame(['cc', 'visit', 'evid', 'fees', 'summon', 'reg', 'gang', 'buy', 'deal', 'match', 'prot', 'max', 'duty'], collect($response->json('data'))->pluck('key')->all());
 
-        $general = $response->json('data.0');
-        $this->assertSame('กฎสภา', $general['label']);
-        $this->assertCount(25, collect($general['rules'])->where('kind', 'rule'));
+        // กฎหมวดสภา CC ฉบับ 1.2: 138 ข้อหลักจาก PDF (ถอด VISIT-011 และย้ายตารางราคา CC-004 ไปหมวดค่าบริการ = 137 การ์ด)
+        // ทุกหมวดแสดงแบบเดียวกัน: การ์ดข้อกฎมีชื่อเรื่องเด่น ไม่มีรหัสข้อ และไม่มีหมวดย่อย
+        $all = collect($response->json('data'))->flatMap(fn ($s) => $s['rules']);
+        $this->assertSame(137, $all->where('kind', 'rule')->count());
+        // ไม่แสดงหัวข้อ (ชื่อเรื่อง) ของแต่ละข้อ ยกเว้น MATCH ข้อ 16 และ MAX ข้อ 4-5
+        $this->assertSame(['เงื่อนไขเพิ่มเติม', 'ผลของ Blacklist', 'ผลของการคว่ำบาตร'], $all->where('kind', 'rule')->whereNotNull('title')->pluck('title')->values()->all());
+        // หมวดย่อยมีเฉพาะอัตราค่าบริการ (จัดกลุ่มรายการ) และ REG (แยกแก๊ง / ครอบครัว)
+        $this->assertSame(['สมาชิก', 'ชุด', 'แก้ไขข้อมูล', 'คูลดาวน์และ Protect', 'แก๊ง', 'ครอบครัว', 'แก๊งและครอบครัว'], $all->where('kind', 'heading')->pluck('title')->all());
+        $this->assertSame(0, $all->filter(fn ($r) => preg_match('/[A-Z]+-\d{3} — /u', ($r['title'] ?? '').($r['body'] ?? '')) === 1)->count());
+
+        $rulesOf = fn (string $key) => collect(collect($response->json('data'))->firstWhere('key', $key)['rules']);
+        $this->assertCount(3, $rulesOf('cc')->where('kind', 'rule'));
+        $this->assertCount(23, $rulesOf('duty')->where('kind', 'rule'));
+        $this->assertCount(13, $rulesOf('visit')->where('kind', 'rule'));
+        $this->assertStringStartsWith('เมื่อคำให้การสองฝ่าย', $rulesOf('evid')->first()['body']);
+
+        // หลายข้อใต้หัวข้อเดียวรวมเป็นการ์ดเดียว: ย่อหน้านำ + หัวข้อย่อย (•)
+        $summon = $rulesOf('summon')->first(fn ($r) => str_contains($r['body'], 'ครั้งที่ 1: ปรับ'));
+        $this->assertStringContainsString("มีผลดังนี้
+• ครั้งที่ 1: ปรับ 500,000 WVDL", $summon['body']);
+        // MATCH: เงื่อนไขเพิ่มเติมเป็นการ์ดเดียว ไม่แยก 8 ข้อ
+        $this->assertSame(8, substr_count($rulesOf('match')->first(fn ($r) => str_contains($r['body'], 'ซองปืนได้เฉพาะ'))['body'], '•'));
     }
 
     public function test_sections_are_grouped_contiguously_for_the_table_of_contents(): void
@@ -44,7 +59,7 @@ class PublicPagesTest extends TestCase
 
         // กลุ่มเดียวกันต้องอยู่ติดกัน และเรียงตามลำดับกลุ่ม
         $this->assertSame(
-            ['กฎสภา', 'สตอรี่และการประกาศเรียก', 'ทะเบียนและค่าบริการ', 'เกี่ยวกับสภา'],
+            ['กฎสภา', 'ค่าบริการ', 'การประกาศเรียก', 'ทะเบียนแก๊งและครอบครัว', 'สตอรี่', 'มาตรการและเจ้าหน้าที่'],
             $groups->unique()->values()->all(),
         );
         $this->assertSame($groups->unique()->count(), $groups->chunkWhile(fn ($v, $k, $chunk) => $v === $chunk->last())->count());
@@ -53,7 +68,7 @@ class PublicPagesTest extends TestCase
     public function test_rule_note_label_defaults_and_penalty_is_returned(): void
     {
         Rule::create([
-            'section' => 'general', 'sort_order' => 10, 'body' => 'ข้อทดสอบ',
+            'section' => 'cc', 'sort_order' => 10, 'body' => 'ข้อทดสอบ',
             'note' => 'โน้ต', 'penalty' => 'ปรับ 1',
         ]);
 
@@ -65,9 +80,9 @@ class PublicPagesTest extends TestCase
 
     public function test_unpublished_rules_are_hidden_and_sorted_by_order(): void
     {
-        Rule::create(['section' => 'general', 'sort_order' => 20, 'body' => 'B']);
-        Rule::create(['section' => 'general', 'sort_order' => 10, 'body' => 'A']);
-        Rule::create(['section' => 'general', 'sort_order' => 5, 'body' => 'hidden', 'is_published' => false]);
+        Rule::create(['section' => 'cc', 'sort_order' => 20, 'body' => 'B']);
+        Rule::create(['section' => 'cc', 'sort_order' => 10, 'body' => 'A']);
+        Rule::create(['section' => 'cc', 'sort_order' => 5, 'body' => 'hidden', 'is_published' => false]);
 
         $bodies = collect($this->getJson('/api/public/rules')->json('data.0.rules'))->pluck('body')->all();
 
@@ -88,14 +103,14 @@ class PublicPagesTest extends TestCase
     {
         $this->seed(RuleSeeder::class);
 
-        // ประธานแก้กฎในหมวด general แล้ว และหมวด story ถูกลบไป
-        Rule::where('section', 'general')->orderBy('sort_order')->first()->update(['body' => 'แก้ไขโดยประธาน']);
-        Rule::where('section', 'story')->delete();
+        // ประธานแก้กฎในหมวด cc แล้ว และหมวด summon ถูกลบไป
+        Rule::where('section', 'cc')->orderBy('sort_order')->first()->update(['body' => 'แก้ไขโดยประธาน']);
+        Rule::where('section', 'summon')->delete();
 
         $this->seed(RuleSeeder::class);
 
-        $this->assertSame('แก้ไขโดยประธาน', Rule::where('section', 'general')->orderBy('sort_order')->first()->body);
-        $this->assertGreaterThan(0, Rule::where('section', 'story')->count());
+        $this->assertSame('แก้ไขโดยประธาน', Rule::where('section', 'cc')->orderBy('sort_order')->first()->body);
+        $this->assertGreaterThan(0, Rule::where('section', 'summon')->count());
     }
 
     public function test_each_section_reports_when_the_source_was_last_checked(): void
@@ -105,13 +120,13 @@ class PublicPagesTest extends TestCase
 
         $sections = collect($this->getJson('/api/public/rules')->json('data'));
 
-        $this->assertCount(14, $sections);
+        $this->assertCount(13, $sections);
         $sections->each(fn ($s) => $this->assertSame('2026-10-28', $s['source_checked_at']));
     }
 
     public function test_section_without_checked_date_returns_null_instead_of_failing(): void
     {
-        Rule::create(['section' => 'general', 'sort_order' => 10, 'body' => 'ข้อทดสอบ']);
+        Rule::create(['section' => 'cc', 'sort_order' => 10, 'body' => 'ข้อทดสอบ']);
 
         $this->getJson('/api/public/rules')
             ->assertOk()
@@ -123,11 +138,11 @@ class PublicPagesTest extends TestCase
         $this->travelTo('2026-10-28 10:00:00');
         $this->seed(RuleSeeder::class);
 
-        $this->artisan('rules:source-checked', ['sections' => ['story'], '--date' => '2026-11-05'])->assertSuccessful();
+        $this->artisan('rules:source-checked', ['sections' => ['summon'], '--date' => '2026-11-05'])->assertSuccessful();
 
         $by = collect($this->getJson('/api/public/rules')->json('data'))->pluck('source_checked_at', 'key');
-        $this->assertSame('2026-11-05', $by['story']);
-        $this->assertSame('2026-10-28', $by['general']);
+        $this->assertSame('2026-11-05', $by['summon']);
+        $this->assertSame('2026-10-28', $by['cc']);
     }
 
     public function test_source_checked_command_validates_input(): void
@@ -139,12 +154,12 @@ class PublicPagesTest extends TestCase
     public function test_seeder_does_not_overwrite_an_existing_checked_date(): void
     {
         $this->seed(RuleSeeder::class);
-        Artisan::call('rules:source-checked', ['sections' => ['general'], '--date' => '2026-01-15']);
+        Artisan::call('rules:source-checked', ['sections' => ['cc'], '--date' => '2026-01-15']);
 
         $this->seed(RuleSeeder::class);
 
         $by = collect($this->getJson('/api/public/rules')->json('data'))->pluck('source_checked_at', 'key');
-        $this->assertSame('2026-01-15', $by['general']);
+        $this->assertSame('2026-01-15', $by['cc']);
     }
 
     public function test_every_section_has_a_source_page_and_fees_are_priced(): void
@@ -153,11 +168,10 @@ class PublicPagesTest extends TestCase
 
         $data = collect($this->getJson('/api/public/rules')->json('data'));
 
-        $data->each(fn ($s) => $this->assertStringStartsWith('https://sites.google.com/view/wavevycouncil/', $s['source_url']));
+        $data->each(fn ($s) => $this->assertStringStartsWith('https://official.wavevycity.com/rules', $s['source_url']));
 
-        $fees = $data->firstWhere('key', 'fees')['rules'];
+        $fees = collect($data->firstWhere('key', 'fees')['rules'])->where('kind', 'price')->values();
         $this->assertCount(10, $fees);
-        $this->assertSame('price', $fees[0]['kind']);
         $this->assertSame('ออกลอย', $fees[0]['title']);
         $this->assertSame('500,000 WVDL', $fees[0]['body']);
     }

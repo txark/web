@@ -129,34 +129,34 @@ class GroupRecordTest extends TestCase
 
         $this->postJson($this->url($g), ['kind' => 'fine'])->assertUnprocessable()->assertJsonValidationErrors(['category', 'amount', 'charge']);
         $this->postJson($this->url($g), ['kind' => 'fine', 'category' => 'nope', 'amount' => 100, 'charge' => 'x'])->assertUnprocessable()->assertJsonValidationErrors('category');
-        $this->postJson($this->url($g), ['kind' => 'fine', 'category' => 'general', 'amount' => 0, 'charge' => 'x'])->assertUnprocessable()->assertJsonValidationErrors('amount');
-        $this->postJson($this->url($g), ['kind' => 'fine', 'category' => 'general', 'amount' => 'abc', 'charge' => 'x'])->assertUnprocessable()->assertJsonValidationErrors('amount');
+        $this->postJson($this->url($g), ['kind' => 'fine', 'category' => 'visit', 'amount' => 0, 'charge' => 'x'])->assertUnprocessable()->assertJsonValidationErrors('amount');
+        $this->postJson($this->url($g), ['kind' => 'fine', 'category' => 'visit', 'amount' => 'abc', 'charge' => 'x'])->assertUnprocessable()->assertJsonValidationErrors('amount');
         $this->assertDatabaseCount('group_records', 0);
 
-        $this->postJson($this->url($g), ['kind' => 'fine', 'category' => 'general', 'amount' => 250000, 'charge' => 'ผิดกฎข้อ 3', 'note' => 'ยังไม่ชำระ'])->assertCreated()
-            ->assertJsonPath('data.data.amount', 250000)->assertJsonPath('data.data.category_label', 'กฎสภา')->assertJsonPath('data.data.charge', 'ผิดกฎข้อ 3');
+        $this->postJson($this->url($g), ['kind' => 'fine', 'category' => 'visit', 'amount' => 250000, 'charge' => 'ผิดกฎข้อ 3', 'note' => 'ยังไม่ชำระ'])->assertCreated()
+            ->assertJsonPath('data.data.amount', 250000)->assertJsonPath('data.data.category_label', 'VISIT · กฎสภา')->assertJsonPath('data.data.charge', 'ผิดกฎข้อ 3');
 
         $list = $this->getJson($this->url($g))->assertOk();
         $list->assertJsonCount(1, 'data');
-        $this->assertContains('general', collect($list->json('meta.fine_categories'))->pluck('value')->all());
-        $this->assertSame('กฎสภา', collect($list->json('meta.fine_categories'))->firstWhere('value', 'general')['label']);
+        $this->assertContains('visit', collect($list->json('meta.fine_categories'))->pluck('value')->all());
+        $this->assertSame('VISIT · กฎสภา', collect($list->json('meta.fine_categories'))->firstWhere('value', 'visit')['label']);
     }
 
     public function test_fine_choices_come_from_the_rules_table(): void
     {
         $this->council();
         $g = Group::factory()->create();
-        $a = Rule::create(['section' => 'general', 'sort_order' => 1, 'kind' => 'rule', 'body' => 'ห้ามถืออาวุธในเขตสภา', 'penalty' => 'ฝ่าฝืนปรับ 500,000 WVDL / รายบุคคล หรือบำเพ็ญ 2,000 ไม้', 'is_published' => true]);
-        $range = Rule::create(['section' => 'story', 'sort_order' => 1, 'kind' => 'rule', 'body' => 'ห้ามออกนอกวงสตอรี่', 'penalty' => 'ปรับ 500,000 - 5,000,000 WVDL ต่อครั้ง', 'is_published' => true]);
-        Rule::create(['section' => 'general', 'sort_order' => 2, 'kind' => 'rule', 'body' => 'ข้อที่ไม่มีบทลงโทษ', 'penalty' => null, 'is_published' => true]);
-        Rule::create(['section' => 'general', 'sort_order' => 3, 'kind' => 'text', 'body' => 'ย่อหน้าธรรมดา', 'penalty' => 'ปรับ 1,000,000 WVDL', 'is_published' => true]);
-        $hidden = Rule::create(['section' => 'staff', 'sort_order' => 1, 'kind' => 'rule', 'body' => 'ข้อที่ยังไม่เผยแพร่', 'penalty' => 'ปรับ 1,000,000 WVDL', 'is_published' => false]);
+        $a = Rule::create(['section' => 'visit', 'sort_order' => 1, 'kind' => 'rule', 'body' => 'ห้ามถืออาวุธในเขตสภา', 'penalty' => 'ฝ่าฝืนปรับ 500,000 WVDL / รายบุคคล หรือบำเพ็ญ 2,000 ไม้', 'is_published' => true]);
+        $range = Rule::create(['section' => 'match', 'sort_order' => 1, 'kind' => 'rule', 'body' => 'ห้ามออกนอกวงสตอรี่', 'penalty' => 'ปรับ 500,000 - 5,000,000 WVDL ต่อครั้ง', 'is_published' => true]);
+        Rule::create(['section' => 'visit', 'sort_order' => 2, 'kind' => 'rule', 'body' => 'ข้อที่ไม่มีบทลงโทษ', 'penalty' => null, 'is_published' => true]);
+        Rule::create(['section' => 'visit', 'sort_order' => 3, 'kind' => 'text', 'body' => 'ย่อหน้าธรรมดา', 'penalty' => 'ปรับ 1,000,000 WVDL', 'is_published' => true]);
+        $hidden = Rule::create(['section' => 'duty', 'sort_order' => 1, 'kind' => 'rule', 'body' => 'ข้อที่ยังไม่เผยแพร่', 'penalty' => 'ปรับ 1,000,000 WVDL', 'is_published' => false]);
 
         $meta = $this->getJson($this->url($g))->assertOk()->json('meta');
 
         // หมวด: เฉพาะที่มีข้อกฎเป็นเหตุปรับได้ (เผยแพร่ + kind=rule + มีบทลงโทษ)
-        $this->assertSame(['general', 'story'], collect($meta['fine_sections'])->pluck('value')->all());
-        $this->assertSame('กฎสภา', collect($meta['fine_sections'])->firstWhere('value', 'general')['label']);
+        $this->assertSame(['visit', 'match'], collect($meta['fine_sections'])->pluck('value')->all());
+        $this->assertSame('VISIT · กฎสภา', collect($meta['fine_sections'])->firstWhere('value', 'visit')['label']);
 
         $rules = collect($meta['fine_rules']);
         $this->assertSame([$a->id, $range->id], $rules->pluck('id')->all());
@@ -172,11 +172,11 @@ class GroupRecordTest extends TestCase
     {
         $this->council();
         $g = Group::factory()->create();
-        $rule = Rule::create(['section' => 'story', 'sort_order' => 1, 'kind' => 'rule', 'body' => 'ห้ามออกนอกวงสตอรี่', 'penalty' => 'ปรับ 1,000,000 WVDL ต่อคน', 'is_published' => true]);
+        $rule = Rule::create(['section' => 'match', 'sort_order' => 1, 'kind' => 'rule', 'body' => 'ห้ามออกนอกวงสตอรี่', 'penalty' => 'ปรับ 1,000,000 WVDL ต่อคน', 'is_published' => true]);
 
         // ไม่ต้องส่งหมวด/ข้อหา: ดึงจากข้อกฎ (ค่าที่ส่งมาทับไม่ได้)
-        $this->postJson($this->url($g), ['kind' => 'fine', 'rule_id' => $rule->id, 'amount' => 1000000, 'category' => 'general', 'charge' => 'อย่างอื่น'])->assertCreated()
-            ->assertJsonPath('data.data.category', 'story')->assertJsonPath('data.data.category_label', 'กฎการเล่นสตอรี่')
+        $this->postJson($this->url($g), ['kind' => 'fine', 'rule_id' => $rule->id, 'amount' => 1000000, 'category' => 'visit', 'charge' => 'อย่างอื่น'])->assertCreated()
+            ->assertJsonPath('data.data.category', 'match')->assertJsonPath('data.data.category_label', 'MATCH · ระหว่างเล่นสตอรี่')
             ->assertJsonPath('data.data.charge', 'ห้ามออกนอกวงสตอรี่')->assertJsonPath('data.data.rule_id', $rule->id)
             ->assertJsonPath('data.data.rule_penalty', 'ปรับ 1,000,000 WVDL ต่อคน')->assertJsonPath('data.data.amount', 1000000);
 
@@ -189,7 +189,7 @@ class GroupRecordTest extends TestCase
     {
         $this->council();
         $g = Group::factory()->create();
-        $hidden = Rule::create(['section' => 'general', 'sort_order' => 1, 'kind' => 'rule', 'body' => 'x', 'penalty' => 'ปรับ 500,000 WVDL', 'is_published' => false]);
+        $hidden = Rule::create(['section' => 'visit', 'sort_order' => 1, 'kind' => 'rule', 'body' => 'x', 'penalty' => 'ปรับ 500,000 WVDL', 'is_published' => false]);
 
         $this->postJson($this->url($g), ['kind' => 'fine', 'rule_id' => 999999, 'amount' => 100])->assertUnprocessable()->assertJsonValidationErrors('rule_id');
         $this->postJson($this->url($g), ['kind' => 'fine', 'rule_id' => $hidden->id, 'amount' => 100])->assertUnprocessable()->assertJsonValidationErrors('rule_id');
@@ -198,7 +198,7 @@ class GroupRecordTest extends TestCase
         $this->assertDatabaseCount('group_records', 0);
 
         // ข้อกฎที่เลือกแล้วยังต้องใส่จำนวนเงิน
-        $ok = Rule::create(['section' => 'general', 'sort_order' => 2, 'kind' => 'rule', 'body' => 'y', 'penalty' => 'ปรับ 500,000 WVDL', 'is_published' => true]);
+        $ok = Rule::create(['section' => 'visit', 'sort_order' => 2, 'kind' => 'rule', 'body' => 'y', 'penalty' => 'ปรับ 500,000 WVDL', 'is_published' => true]);
         $this->postJson($this->url($g), ['kind' => 'fine', 'rule_id' => $ok->id])->assertUnprocessable()->assertJsonValidationErrors('amount');
         $this->postJson($this->url($g), ['kind' => 'fine', 'rule_id' => $ok->id, 'amount' => 500000])->assertCreated();
     }
@@ -207,7 +207,7 @@ class GroupRecordTest extends TestCase
     {
         $this->council();
         $g = Group::factory()->create();
-        $rule = Rule::create(['section' => 'general', 'sort_order' => 1, 'kind' => 'rule', 'body' => 'ห้ามถืออาวุธ', 'penalty' => 'ฝ่าฝืนปรับ 500,000 WVDL / รายบุคคล หรือบำเพ็ญ 2,000 ไม้', 'is_published' => true]);
+        $rule = Rule::create(['section' => 'visit', 'sort_order' => 1, 'kind' => 'rule', 'body' => 'ห้ามถืออาวุธ', 'penalty' => 'ฝ่าฝืนปรับ 500,000 WVDL / รายบุคคล หรือบำเพ็ญ 2,000 ไม้', 'is_published' => true]);
 
         // ส่งบำเพ็ญ: ต้องระบุจำนวนไม้ ไม่ต้องมีจำนวนเงิน
         $this->postJson($this->url($g), ['kind' => 'fine', 'rule_id' => $rule->id, 'penalty_type' => 'penance'])->assertUnprocessable()->assertJsonValidationErrors('penance_units');
@@ -233,9 +233,9 @@ class GroupRecordTest extends TestCase
     {
         $this->council();
         $g = Group::factory()->create();
-        $both = Rule::create(['section' => 'general', 'sort_order' => 1, 'kind' => 'rule', 'body' => 'a', 'penalty' => 'ปรับ 500,000 WVDL หรือบำเพ็ญ 2,000 ไม้', 'is_published' => true]);
-        $only = Rule::create(['section' => 'general', 'sort_order' => 2, 'kind' => 'rule', 'body' => 'b', 'penalty' => 'ฝ่าฝืนบำเพ็ญ 1,000 ไม้ / 1 คำ', 'is_published' => true]);
-        $money = Rule::create(['section' => 'general', 'sort_order' => 3, 'kind' => 'rule', 'body' => 'c', 'penalty' => 'ปรับ 1,000,000 WVDL', 'is_published' => true]);
+        $both = Rule::create(['section' => 'visit', 'sort_order' => 1, 'kind' => 'rule', 'body' => 'a', 'penalty' => 'ปรับ 500,000 WVDL หรือบำเพ็ญ 2,000 ไม้', 'is_published' => true]);
+        $only = Rule::create(['section' => 'visit', 'sort_order' => 2, 'kind' => 'rule', 'body' => 'b', 'penalty' => 'ฝ่าฝืนบำเพ็ญ 1,000 ไม้ / 1 คำ', 'is_published' => true]);
+        $money = Rule::create(['section' => 'visit', 'sort_order' => 3, 'kind' => 'rule', 'body' => 'c', 'penalty' => 'ปรับ 1,000,000 WVDL', 'is_published' => true]);
 
         $rules = collect($this->getJson($this->url($g))->json('meta.fine_rules'));
         $this->assertSame(['amount' => 500000, 'penance' => 2000], $rules->firstWhere('id', $both->id) ? ['amount' => $rules->firstWhere('id', $both->id)['amount'], 'penance' => $rules->firstWhere('id', $both->id)['penance']] : []);
@@ -325,7 +325,7 @@ class GroupRecordTest extends TestCase
         $this->council();
         $g = Group::factory()->create();
 
-        $this->postJson($this->url($g), ['kind' => 'fine', 'category' => 'gang', 'charge' => 'ทะเลาะในเมือง', 'amount' => 500000, 'note' => 'ครั้งแรก'])->assertCreated();
+        $this->postJson($this->url($g), ['kind' => 'fine', 'category' => 'visit', 'charge' => 'ทะเลาะในเมือง', 'amount' => 500000, 'note' => 'ครั้งแรก'])->assertCreated();
 
         $this->council(Role::VicePresident);
         $row = collect($this->getJson('/api/logs?log=groups')->assertOk()->json('data'))->firstWhere('log', 'groups');
