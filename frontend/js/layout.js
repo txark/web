@@ -5,74 +5,77 @@
   if (!host) return;
 
   const here = location.pathname;
+  const ic = (n) => `<i class="ic" data-icon="${n}" aria-hidden="true"></i>`;
   const onHome = here === '/' || here === '/index.html';
   const cur = (cond) => (cond ? ' aria-current="page"' : '');
 
   // ผู้เยี่ยมชม/แก๊ง/ครอบครัว
   const publicNav = [
-    ['/rules.html', 'กฎและข้อปฏิบัติ'],
-    ['/groups.html', 'ทำเนียบ'],
+    ['/rules.html', 'กฎและข้อปฏิบัติ', 'book-open'],
+    ['/groups.html', 'ทำเนียบ', 'users'],
   ]
-    .map(([href, label]) => `<a href="${href}" class="nav-pill"${cur(href === here)}>${label}</a>`)
+    .map(([href, label, icon]) => `<a href="${href}" class="nav-pill"${cur(href === here)}>${ic(icon)}${label}</a>`)
     .join('');
 
   // เมนู "จัดการ" (ดรอปดาวน์): เฉพาะรองประธานขึ้นไป
   const manage = [
-    ['/users.html', 'จัดการผู้ใช้'],
-    ['/duty-report.html', 'สรุปชั่วโมงเวร'],
-    ['/logs.html', 'บันทึกกิจกรรม'],
+    ['/users.html', 'จัดการผู้ใช้', 'users'],
+    ['/duty-report.html', 'สรุปชั่วโมงเวร', 'clock'],
+    ['/logs.html', 'บันทึกกิจกรรม', 'file-text'],
   ];
   // Admin: จัดการผู้ใช้ · บันทึกกิจกรรม · ตั้งค่าระบบ (ไม่มีเมนูงานสภา)
   const adminManage = [
-    ['/users.html', 'จัดการผู้ใช้'],
-    ['/logs.html', 'บันทึกกิจกรรม'],
-    ['/system-settings.html', 'ตั้งค่าระบบ'],
+    ['/users.html', 'จัดการผู้ใช้', 'users'],
+    ['/logs.html', 'บันทึกกิจกรรม', 'file-text'],
+    ['/system-settings.html', 'ตั้งค่าระบบ', 'sliders'],
   ];
   const manageActive = manage.some(([href]) => href === here);
   const manageItems = manage
-    .map(([href, label]) => `<a href="${href}" role="menuitem" class="menu-item"${cur(href === here)}>${label}</a>`)
+    .map(([href, label, icon]) => `<a href="${href}" role="menuitem" class="menu-item"${cur(href === here)}>${ic(icon)}${label}</a>`)
     .join('');
 
+  const adminItems = adminManage
+    .map(([href, label, icon]) => `<a href="${href}" role="menuitem" class="menu-item"${cur(href === here)}>${ic(icon)}${label}</a>`)
+    .join('');
+  const adminActive = adminManage.some(([href]) => href === here);
   // สภา (Council ขึ้นไป): กฎ · ธุรกรรม (รวมจัดการแก๊ง/ครอบครัว) · ประกาศเรียก · แจ้งเตือนงานค้าง
   // ยังไม่เข้าเวร: ใช้ได้เฉพาะ "กฎ" ที่เหลือเป็นปุ่มล็อก (หน้าแรกและออกจากระบบใช้ได้เสมอ)
-  const locked = (label) => `<span class="nav-pill nav-locked" title="ต้องเข้าเวรก่อน" aria-disabled="true">🔒 ${label}</span>`;
+  const locked = (label) => `<span class="nav-pill nav-locked" title="ต้องเข้าเวรก่อน" aria-disabled="true">${ic('lock')}${label}</span>`;
   const councilNav = `
-    <a href="/rules.html" class="nav-pill"${cur(here === '/rules.html')}>กฎ</a>
+    <a href="/rules.html" class="nav-pill"${cur(here === '/rules.html')}>${ic('book-open')}กฎ</a>
     <template x-if="duty && dutyOk"><span class="contents">
-      <a href="/transactions.html" class="nav-pill"${cur(here === '/transactions.html' || here === '/manage-groups.html' || here === '/outfits.html')}>ธุรกรรม</a>
-      <a href="/announcements.html" class="nav-pill"${cur(here === '/announcements.html')}>ประกาศเรียก</a>
+      <a href="/transactions.html" class="nav-pill"${cur(here === '/transactions.html' || here === '/requests.html' || here === '/manage-groups.html' || here === '/outfits.html')}>${ic('arrow-left-right')}ธุรกรรม</a>
+      <a href="/summons.html" class="nav-pill"${cur(here === '/summons.html' || here === '/fines.html' || here === '/penalties.html' || here === '/announcements.html')}>${ic('megaphone')}ประกาศ</a>
+      <a href="/activity-rounds.html" class="nav-pill"${cur(here === '/activity-rounds.html')}>${ic('activity')}รายงานความเคลื่อนไหว</a>
       <a href="/tasks.html" class="nav-pill inline-flex items-center gap-1.5" x-data="alertBadge()"${cur(here === '/tasks.html')}>
-        <span class="lg:hidden">งานค้าง</span><span class="hidden lg:inline">แจ้งเตือนงานค้าง</span>
+        ${ic('bell')}<span class="lg:hidden">งานค้าง</span><span class="hidden lg:inline">แจ้งเตือนงานค้าง</span>
         <span x-show="count > 0" x-text="count > 99 ? '99+' : count" class="nav-badge" :title="count + ' งานค้าง'" aria-label="จำนวนงานค้าง"></span>
       </a>
-      <template x-if="can('vice_president')">
+      <template x-if="can('vice_president') && !isAdmin">
         <div class="relative" x-data="menuDropdown()" @keydown.escape.window="open = false" @click.outside="open = false">
           <button type="button" x-ref="btn" class="nav-pill inline-flex items-center gap-1" :aria-expanded="open" aria-haspopup="menu" @click="toggle()"${manageActive ? ' aria-current="page"' : ''}>
-            จัดการ <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+            ${ic('sliders')}จัดการ <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
           </button>
           <div x-show="open" x-cloak role="menu" class="menu-panel" :style="'top:' + top + 'px; left:' + left + 'px'" @click="open = false">${manageItems}</div>
         </div>
       </template>
+      <template x-if="isAdmin">
+        <div class="relative" x-data="menuDropdown()" @keydown.escape.window="open = false" @click.outside="open = false">
+          <button type="button" x-ref="btn" class="nav-pill inline-flex items-center gap-1" :aria-expanded="open" aria-haspopup="menu" @click="toggle()"${adminActive ? ' aria-current="page"' : ''}>
+            ${ic('sliders')}จัดการ <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div x-show="open" x-cloak role="menu" class="menu-panel" :style="'top:' + top + 'px; left:' + left + 'px'" @click="open = false">${adminItems}</div>
+        </div>
+      </template>
     </span></template>
-    <template x-if="duty && !dutyOk"><span class="contents">${locked('ธุรกรรม')}${locked('ประกาศเรียก')}${locked('งานค้าง')}</span></template>`;
+    <template x-if="duty && !dutyOk"><span class="contents">${locked('ธุรกรรม')}${locked('ประกาศ')}${locked('รายงานความเคลื่อนไหว')}${locked('งานค้าง')}</span></template>`;
 
-  const adminItems = adminManage
-    .map(([href, label]) => `<a href="${href}" role="menuitem" class="menu-item"${cur(href === here)}>${label}</a>`)
-    .join('');
-  const adminActive = adminManage.some(([href]) => href === here);
-  const adminNav = `
-    <a href="/rules.html" class="nav-pill"${cur(here === '/rules.html')}>กฎ</a>
-    <div class="relative" x-data="menuDropdown()" @keydown.escape.window="open = false" @click.outside="open = false">
-      <button type="button" x-ref="btn" class="nav-pill inline-flex items-center gap-1" :aria-expanded="open" aria-haspopup="menu" @click="toggle()"${adminActive ? ' aria-current="page"' : ''}>
-        จัดการ <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
-      </button>
-      <div x-show="open" x-cloak role="menu" class="menu-panel" :style="'top:' + top + 'px; left:' + left + 'px'" @click="open = false">${adminItems}</div>
-    </div>`;
+  // แก๊ง/ครอบครัว: ทางเข้าส่วนยื่นเรื่องกับสภา
+  const myGroupLink = `<template x-if="user && (user.role === 'gang' || user.role === 'family')"><a href="/my-group.html" class="nav-pill"${cur(here === '/my-group.html')}>${ic('shield')}<span x-text="user.role === 'family' ? 'ครอบครัวของฉัน' : 'แก๊งของฉัน'"></span></a></template>`;
 
   const nav = `
     <template x-if="!user"><span class="contents" :class="loading ? 'invisible' : ''">${publicNav}</span></template>
-    <template x-if="user && !can('member') && !isAdmin"><span class="contents">${publicNav}</span></template>
-    <template x-if="user && isAdmin"><span class="contents">${adminNav}</span></template>
+    <template x-if="user && !can('member')"><span class="contents">${publicNav}${myGroupLink}</span></template>
     <template x-if="user && can('member')"><span class="contents">${councilNav}</span></template>`;
 
   const moon = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
@@ -85,6 +88,8 @@
       try {
         this.count = (await API.get('/api/council/alerts')).meta.count;
       } catch (e) {}
+      // ตัวเลขอัปเดตตามการตรวจงานค้างใหม่ (js/reminder-popup.js) โดยไม่ต้องรีเฟรชหน้า
+      window.addEventListener('alerts:count', (e) => { this.count = e.detail; });
     },
   });
 
@@ -115,7 +120,7 @@
         </a>
 
         <!-- มือถือ: เมนูลงมาแถวที่สอง -->
-        <nav class="order-3 flex w-full items-center gap-1 overflow-x-auto sm:order-none sm:mr-auto sm:w-auto" x-show="${onHome ? 'false' : 'true'}">${nav}
+        <nav class="order-3 flex w-full items-center gap-1 overflow-x-auto sm:order-none sm:mr-auto sm:w-auto" x-show="${onHome ? "user && (user.role === 'gang' || user.role === 'family')" : 'true'}">${nav}
         </nav>
 
         <div class="flex items-center gap-2 text-sm">
@@ -171,4 +176,11 @@
     paint();
   });
   paint();
+  // เตือนความจำของสภา: เด้งกลางจอพร้อมเสียงทุก 5 นาที (ทำงานเฉพาะสภา; สคริปต์ตรวจสิทธิ์เอง)
+  if (!document.querySelector('script[data-reminder-popup]')) {
+    const rp = document.createElement('script');
+    rp.src = '/js/reminder-popup.js';
+    rp.dataset.reminderPopup = '1';
+    document.head.appendChild(rp);
+  }
 })();

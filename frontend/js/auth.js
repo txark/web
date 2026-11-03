@@ -1,5 +1,5 @@
 // สถานะผู้ใช้ปัจจุบัน + guard หน้า. ใช้ผ่าน Alpine: x-data="authState()"
-// Admin อยู่นอกลำดับสภา: ไม่ผ่านการตรวจสิทธิ์ระดับใด ๆ (ใช้ can('admin') หรือ require(..., { also: ['admin'] }))
+// Admin ใช้งานได้เท่าสภา (ระดับ member) ไม่ถึงรองประธาน/ประธาน (ใช้ can('admin') หรือ require(..., { also: ['admin'] }) สำหรับหน้าเฉพาะ Admin)
 const ROLE_LEVEL = { gang: 1, family: 1, trainee: 2, member: 2, operations: 2, senior: 2, secretary: 2, vice_president: 3, president: 4, admin: 0 };
 
 // เข้า/ออกเวรของสภา: สถานะกลางที่ทุกส่วนของหน้าใช้ร่วมกัน (เมนูบน หน้าแรก ตัวตรวจสิทธิ์)
@@ -115,8 +115,10 @@ function authState() {
 
     can(minRole) {
       if (!this.user) return false;
-      if (this.user.role === 'admin' || minRole === 'admin') return this.user.role === minRole;
-      return (ROLE_LEVEL[this.user.role] ?? 0) >= ROLE_LEVEL[minRole];
+      if (minRole === 'admin') return this.user.role === 'admin';
+      // Admin ใช้งานได้เท่าสภา (ระดับ member) แต่ไม่ถึงรองประธาน/ประธาน (หน้าจัดการผู้ใช้/บันทึกกิจกรรมใช้ { also: ['admin'] })
+      const level = this.user.role === 'admin' ? ROLE_LEVEL.member : (ROLE_LEVEL[this.user.role] ?? 0);
+      return level >= ROLE_LEVEL[minRole];
     },
 
     get isAdmin() {

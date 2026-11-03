@@ -76,10 +76,12 @@ class StoryTest extends TestCase
     public function test_only_council_can_use_stories(): void
     {
         $this->getJson(self::URL)->assertOk();
-        foreach ([Role::Gang, Role::Family, Role::Admin] as $role) {
+        foreach ([Role::Gang, Role::Family] as $role) {
             $this->council($role);
             $this->getJson(self::URL)->assertForbidden();
         }
+        $this->council(Role::Admin); // Admin ใช้งานเหมือนสภา
+        $this->getJson(self::URL)->assertOk();
     }
 
     public function test_create_stores_the_contract_in_thai_time_and_phase_is_waiting(): void

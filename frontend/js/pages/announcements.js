@@ -1,6 +1,9 @@
 function announcementsPage() {
   const MONTHS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
-  const TYPE_BADGE = { general: 'badge badge-info', summon: 'badge badge-sanction', event: 'badge badge-normal' };
+  const TYPE_BADGE = { general: 'badge badge-info', important: 'badge badge-blacklist', summon: 'badge badge-info', fine: 'badge badge-blacklist', penalty: 'badge badge-sanction', event: 'badge badge-normal' };
+  const DISCORD_EMOJI = ':60711imloved5:';        // อิโมจิ Discord นำหน้าบรรทัดแท็กท้ายข้อความ (ถ้ามีรหัส ใส่เป็น <:60711imloved5:รหัส>)
+  const DISCORD_ROLE = '<@&1566131447566180403>';   // แท็กบทบาท Wavevy Whitelist ท้ายประกาศ
+  const ESC = '';   // รหัสสี ANSI ในกล่องโค้ด Discord (เรื่อง = สีฟ้า)
   const pad = (n) => String(n).padStart(2, '0');
   const firstError = (e, fallback) => (e.errors && Object.values(e.errors)[0][0]) || e.message || fallback;
 
@@ -21,18 +24,30 @@ function announcementsPage() {
     items: [],
     meta: null,
     page: 1,
-    type: '',
+    type: '',   // '' = ประกาศธรรมดา + สำคัญ (หน้านี้คือ "ประกาศทั่วไป"; เรียก/ปรับ/โทษ มีหน้าของตัวเอง)
     status: '',
+    copiedKey: null,
     loading: true,
     error: '',
     msg: '',
 
     types: [
       { value: '', label: 'ทั้งหมด' },
-      { value: 'general', label: 'ประกาศทั่วไป' },
-      { value: 'summon', label: 'ประกาศเรียก' },
-      { value: 'event', label: 'กิจกรรม' },
+      { value: 'general', label: 'ประกาศธรรมดา' },
+      { value: 'important', label: 'ประกาศสำคัญ' },
     ],
+    // ประเภทที่สร้างใหม่ได้ (ประกาศเดิมที่เป็น ทั่วไป/กิจกรรม ยังแก้ไขได้ตามประเภทเดิม)
+    formTypes: [
+      { value: 'general', label: 'ประกาศธรรมดา' },
+      { value: 'important', label: 'ประกาศสำคัญ' },
+    ],
+    legacyTypes: { summon: 'ประกาศเรียก', fine: 'ประกาศปรับ', penalty: 'ประกาศโทษ', event: 'กิจกรรม' },
+    groupLabel(t) {
+      return t === 'summon' ? 'เรียกกลุ่ม (ถ้ามี)' : t === 'fine' ? 'กลุ่มที่ถูกปรับ (ถ้ามี)' : t === 'penalty' ? 'กลุ่มที่ถูกลงโทษ (ถ้ามี)' : 'เกี่ยวกับกลุ่ม (ถ้ามี)';
+    },
+    dueLabel(t) {
+      return t === 'summon' ? 'นัดพบวันเวลา (ถ้ามี)' : t === 'fine' ? 'กำหนดชำระค่าปรับ (ถ้ามี)' : t === 'penalty' ? 'โทษมีผลถึง (ถ้ามี)' : 'กำหนดวันเวลา (ถ้ามี)';
+    },
     statuses: [
       { value: '', label: 'ทุกสถานะ' },
       { value: 'published', label: 'เผยแพร่แล้ว' },
@@ -73,6 +88,7 @@ function announcementsPage() {
       this.error = '';
       const p = new URLSearchParams({ page: this.page });
       if (this.type) p.set('type', this.type);
+      else p.set('scope', 'general');
       if (this.status) p.set('status', this.status);
 
       try {
@@ -178,6 +194,34 @@ function announcementsPage() {
 
     canDelete(a) {
       return !!this.me && (a.created_by === this.me.id || ['vice_president', 'president'].includes(this.me.role));
+    },
+
+    /** ข้อความ Discord: [ ประกาศจากสภา WAVEVY CITY ] (ธรรมดา) หรือ [ ประกาศสำคัญจากสภา WAVEVY CITY ] (สำคัญ) + เรื่อง/เนื้อหาในกล่องโค้ด + แท็กบทบาท */
+    announceText(a) {
+      return [
+        `# [ ${a.type === 'important' ? 'ประกาศสำคัญจากสภา' : 'ประกาศจากสภา'} WAVEVY CITY ]`,
+        '```ansi',
+        `${ESC}[2;34mเรื่อง  ${a.title}${ESC}[0m`,
+        '',
+        '  ' + a.body.trim(),
+        '```',
+        `${DISCORD_EMOJI}  : ${DISCORD_ROLE}`,
+      ].join('\n');
+    },
+
+    async copyAnnounce(a) {
+      const text = this.announceText(a);
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (e) {
+        const t = document.createElement('textarea');
+        t.value = text;
+        document.body.appendChild(t);
+        t.select();
+        document.execCommand('copy');
+        t.remove();
+      }
+      this.copiedKey = a.id;
     },
 
     // ── แสดงผล ──

@@ -12,6 +12,8 @@ enum TransactionKind: string
     case ReleaseSlot = 'release_slot';
     case ReleaseFree = 'release_free';
     case Dissolve = 'dissolve';
+    case RemoveProtect = 'remove_protect';   // ปลด Protect (CC-004.10)
+    case ActivityReport = 'activity_report';   // รายงานความเคลื่อนไหว (แก๊ง/ครอบครัวยื่น สภารับทราบ → นับเป็นรายงานตัวล่าสุด)
     case Outfit = 'outfit';
     case OutfitAdd = 'outfit_add';     // เดิม: รวมเข้า Outfit แล้ว (คงไว้อ่านธุรกรรมเก่า)
     case OutfitCounts = 'outfit_counts';
@@ -27,6 +29,8 @@ enum TransactionKind: string
             self::ReleaseSlot => 'ออกสล็อต',
             self::ReleaseFree => 'ออกลอย',
             self::Dissolve => 'ยุบ',
+            self::RemoveProtect => 'ปลด Protect',
+            self::ActivityReport => 'รายงานความเคลื่อนไหว',
             self::Outfit => 'ลงชุด/แก้ไขชุด',
             self::OutfitAdd => 'ลงชุดเพิ่ม',
             self::OutfitCounts => 'แก้จำนวนชุด',

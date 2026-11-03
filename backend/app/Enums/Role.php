@@ -81,8 +81,12 @@ enum Role: string
     /** Admin อยู่นอกลำดับสภา: ผ่านเฉพาะการตรวจ "Admin" เอง และไม่ผ่านการตรวจสิทธิ์ระดับอื่นเลย */
     public function atLeast(self $min): bool
     {
-        if ($this === self::Admin || $min === self::Admin) {
-            return $this === $min;
+        if ($min === self::Admin) {
+            return $this === self::Admin;
+        }
+        // Admin ใช้งานได้เท่าสภา (ระดับ Member ลงมา) แต่ไม่ถึงรองประธาน/ประธาน; หน้าจัดการผู้ใช้/บันทึกกิจกรรมเปิดให้ Admin ด้วย role:...,admin แยกต่างหาก
+        if ($this === self::Admin) {
+            return $min->level() <= self::Member->level();
         }
 
         return $this->level() >= $min->level();
@@ -93,7 +97,7 @@ enum Role: string
         return $this === self::Admin;
     }
 
-    /** ลำดับสภา (ประธาน…สภาฝึกหัด) ไม่รวมแก๊ง/ครอบครัว/Admin */
+    /** ลำดับสภา (ประธาน…สภาฝึกหัด) ไม่รวมแก๊ง/ครอบครัว; Admin ใช้งานได้เท่าสภาแต่ไม่ใช่ยศในสภา */
     public function isCouncil(): bool
     {
         return $this->atLeast(self::Trainee) && ! $this->isAdmin();
@@ -112,14 +116,17 @@ enum Role: string
     /**
      * บทบาทที่ผู้ที่มีบทบาทนี้ "กำหนดให้คนอื่นได้": ต่ำกว่าตัวเองเท่านั้น
      * กันการยกระดับสิทธิ์ตัวเองหรือเพื่อน (รองประธานตั้งได้ถึงสภา, ประธานถึงรองประธาน)
-     * Admin ตั้งยศให้ใครไม่ได้ และ Admin คนใหม่กำหนดผ่าน ADMIN_DISCORD_IDS ใน .env เท่านั้น
+     * Admin คนใหม่กำหนดผ่าน ADMIN_DISCORD_IDS ใน .env เท่านั้น
      *
      * @return list<self>
      */
     public function assignable(): array
     {
-        // เฉพาะประธานกับรองประธานแต่งตั้ง/เปลี่ยนยศได้; Admin ตั้งยศให้ใครไม่ได้ และไม่มีใครตั้งเป็น Admin ผ่านหน้าเว็บ
-        if ($this->isAdmin() || ! $this->atLeast(self::VicePresident)) {
+        // Admin ตั้ง/เปลี่ยนยศให้ได้ทุกบทบาท (ยกเว้น Admin); ประธานกับรองประธานตั้งได้เฉพาะต่ำกว่าตัวเอง; ไม่มีใครตั้งเป็น Admin ผ่านหน้าเว็บ
+        if ($this->isAdmin()) {
+            return array_values(array_filter(self::cases(), fn (self $r) => ! $r->isAdmin()));
+        }
+        if (! $this->atLeast(self::VicePresident)) {
             return [];
         }
 

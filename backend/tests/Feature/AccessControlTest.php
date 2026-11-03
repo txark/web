@@ -172,32 +172,35 @@ class AccessControlTest extends TestCase
         $this->assertSame('secretary', $values(Role::VicePresident)[0]); // เรียงยศสูง→ต่ำ
         $this->assertSame([...$council, 'family', 'gang'], $values(Role::VicePresident));
         $this->assertEqualsCanonicalizing(['vice_president', ...$council, 'gang', 'family'], $values(Role::President));
-        $this->assertSame([], $values(Role::Admin), 'Admin ตั้งยศให้ใครไม่ได้');
+        $this->assertEqualsCanonicalizing(['president', 'vice_president', ...$council, 'gang', 'family'], $values(Role::Admin), 'Admin ตั้งได้ทุกบทบาทยกเว้น Admin');
     }
 
     // ───────── Admin อยู่นอกลำดับสภา ─────────
 
-    public function test_admin_opens_user_management_and_logs_but_not_council_work(): void
+    public function test_admin_works_like_council_but_not_vice_president_only_pages(): void
     {
         $admin = $this->as(Role::Admin);
 
         $this->actingAs($admin)->getJson('/api/users')->assertOk();
         $this->actingAs($admin)->getJson('/api/logs')->assertOk();
 
-        foreach (['/api/council/groups', '/api/council/alerts', '/api/council/announcements', '/api/council/duty-report', '/api/duty'] as $url) {
-            $this->actingAs($admin)->getJson($url)->assertForbidden();
+        // งานสภาใช้ได้เหมือนสภา (Admin ไม่ต้องเข้าเวร)
+        foreach (['/api/council/groups', '/api/council/alerts', '/api/council/announcements', '/api/duty'] as $url) {
+            $this->actingAs($admin)->getJson($url)->assertOk();
         }
-        $this->actingAs($admin)->postJson('/api/duty/start')->assertForbidden();
+        // แต่หน้าเฉพาะรองประธานขึ้นไป (สรุปชั่วโมงเวร ฯลฯ) ยังไม่ใช่ของ Admin
+        $this->actingAs($admin)->getJson('/api/council/duty-report')->assertForbidden();
     }
 
-    public function test_admin_manages_accounts_but_cannot_change_ranks_or_touch_other_admins(): void
+    public function test_admin_manages_and_changes_ranks_but_cannot_touch_other_admins(): void
     {
         $admin = $this->as(Role::Admin);
         $member = $this->as(Role::Member);
         $other = $this->as(Role::Admin);
 
         $this->actingAs($admin)->patchJson("/api/users/{$member->id}", ['disabled' => true])->assertOk();
-        $this->actingAs($admin)->patchJson("/api/users/{$member->id}", ['role' => 'senior'])->assertUnprocessable()->assertJsonValidationErrors('role');
+        $this->actingAs($admin)->patchJson("/api/users/{$member->id}", ['role' => 'senior'])->assertOk()->assertJsonPath('data.role', 'senior');
+        $this->actingAs($admin)->patchJson("/api/users/{$member->id}", ['role' => 'admin'])->assertUnprocessable()->assertJsonValidationErrors('role'); // ตั้งเป็น Admin ผ่านหน้าเว็บไม่ได้
         $this->actingAs($admin)->patchJson("/api/users/{$other->id}", ['disabled' => true])->assertForbidden();
     }
 
@@ -211,16 +214,14 @@ class AccessControlTest extends TestCase
         }
     }
 
-    public function test_only_president_and_vice_president_change_council_ranks(): void
+    public function test_only_admin_president_and_vice_president_change_council_ranks(): void
     {
         $target = $this->as(Role::Member);
 
         foreach ([Role::Gang, Role::Family, Role::Trainee, Role::Member, Role::Operations, Role::Senior, Role::Secretary] as $role) {
             $this->actingAs($this->as($role))->patchJson("/api/users/{$target->id}", ['role' => 'senior'])->assertForbidden();
         }
-        // Admin เข้าหน้าจัดการได้ แต่ตั้งยศไม่ได้
-        $this->actingAs($this->as(Role::Admin))->patchJson("/api/users/{$target->id}", ['role' => 'senior'])->assertUnprocessable();
-        foreach ([Role::VicePresident, Role::President] as $role) {
+        foreach ([Role::Admin, Role::VicePresident, Role::President] as $role) {
             $this->actingAs($this->as($role))->patchJson("/api/users/{$target->id}", ['role' => 'senior'])->assertOk()->assertJsonPath('data.role', 'senior');
             $target->refresh()->update(['role' => Role::Member]);
         }
@@ -259,8 +260,37 @@ class AccessControlTest extends TestCase
         $this->actingAs($this->as(Role::President))->postJson('/api/users', $payload('vice_president'))->assertCreated();
         $this->actingAs($this->as(Role::President))->postJson('/api/users', $payload('president'))->assertUnprocessable();
 
-        $this->actingAs($this->as(Role::Admin))->postJson('/api/users', $payload('president'))->assertUnprocessable()->assertJsonValidationErrors('role');
-        $this->actingAs($this->as(Role::Admin))->postJson('/api/users', $payload('gang'))->assertUnprocessable();
+        $this->actingAs($this->as(Role::Admin))->postJson('/api/users', $payload('president'))->assertCreated();
+        $this->actingAs($this->as(Role::Admin))->postJson('/api/users', $payload('gang'))->assertCreated();
+        $this->actingAs($this->as(Role::Admin))->postJson('/api/users', $payload('admin'))->assertUnprocessable()->assertJsonValidationErrors('role');
+    }
+
+    public function test_gang_and_family_accounts_are_linked_to_a_matching_group(): void
+    {
+        $vp = $this->as(Role::VicePresident);
+        $gang = \App\Models\Group::factory()->state(['type' => 'gang'])->create();
+        $family = \App\Models\Group::factory()->state(['type' => 'family'])->create();
+        $payload = fn (string $role, ?int $group) => ['discord_id' => (string) fake()->unique()->numerify('##################'), 'character_name' => 'X', 'role' => $role, 'group_id' => $group];
+
+        $this->actingAs($vp)->postJson('/api/users', $payload('gang', $gang->id))->assertCreated()->assertJsonPath('data.group.id', $gang->id);
+        $this->actingAs($vp)->postJson('/api/users', $payload('gang', $family->id))->assertUnprocessable()->assertJsonValidationErrors('group_id');
+        $this->actingAs($vp)->postJson('/api/users', $payload('family', $family->id))->assertCreated();
+        $this->actingAs($vp)->postJson('/api/users', $payload('gang', null))->assertCreated()->assertJsonPath('data.group', null); // ยังไม่ขึ้นทะเบียน
+        // บทบาทอื่นไม่มีสังกัด
+        $this->actingAs($vp)->postJson('/api/users', $payload('member', $gang->id))->assertCreated()->assertJsonPath('data.group', null);
+
+        // ตำแหน่งในกลุ่ม: ระบุหัวหน้า/รอง (ค่าเริ่มต้นหัวหน้า) ไม่มีสังกัด = ไม่มีตำแหน่ง
+        $pos = $this->actingAs($vp)->postJson('/api/users', $payload('gang', $gang->id) + ['group_position' => 'co_leader'])->assertCreated();
+        $pos->assertJsonPath('data.group_position', 'co_leader')->assertJsonPath('data.group_position_label', 'Co-Leader');
+        $this->actingAs($vp)->postJson('/api/users', $payload('gang', $gang->id))->assertCreated()->assertJsonPath('data.group_position', 'leader');
+        $this->actingAs($vp)->postJson('/api/users', $payload('gang', null) + ['group_position' => 'leader'])->assertCreated()->assertJsonPath('data.group_position', null);
+        $this->actingAs($vp)->postJson('/api/users', $payload('gang', $gang->id) + ['group_position' => 'boss'])->assertUnprocessable();
+
+        // เปลี่ยนสังกัด / เปลี่ยนบทบาทแล้วล้างสังกัดที่ไม่ตรง
+        $u = $this->as(Role::Gang);
+        $this->actingAs($vp)->patchJson("/api/users/{$u->id}", ['group_id' => $gang->id])->assertOk()->assertJsonPath('data.group.id', $gang->id);
+        $this->actingAs($vp)->patchJson("/api/users/{$u->id}", ['role' => 'family'])->assertOk()->assertJsonPath('data.group', null);
+        $this->actingAs($vp)->patchJson("/api/users/{$u->id}", ['group_id' => $gang->id])->assertUnprocessable();
     }
 
     public function test_store_validation_has_thai_messages(): void
@@ -336,17 +366,36 @@ class AccessControlTest extends TestCase
         $this->assertNull($target->fresh()->disabled_at);
     }
 
-    public function test_only_never_logged_in_users_can_be_deleted(): void
+    public function test_admin_president_and_vice_president_can_delete_users_even_with_history(): void
+    {
+        $veteran = $this->as(Role::Gang); // เคยเข้าระบบแล้ว
+        $member = $this->as(Role::Member);
+        $pending = User::factory()->create();
+
+        $this->actingAs($this->as(Role::VicePresident))->deleteJson("/api/users/{$pending->id}")->assertNoContent();
+        $this->actingAs($this->as(Role::President))->deleteJson("/api/users/{$veteran->id}")->assertNoContent();
+        $this->actingAs($this->as(Role::Admin))->deleteJson("/api/users/{$member->id}")->assertNoContent();
+
+        // ซ่อนบัญชี (ไม่ลบแถว) และระงับสิทธิ์ ไม่ปรากฏในรายการ
+        $this->assertNotNull($veteran->fresh()->removed_at);
+        $this->assertNotNull($veteran->fresh()->disabled_at);
+        $ids = collect($this->actingAs($this->as(Role::President))->getJson('/api/users?per_page=100')->json('data'))->pluck('id');
+        $this->assertFalse($ids->contains($veteran->id));
+
+        // เพิ่ม Discord ID เดิมกลับมาได้ (ใช้บัญชีเดิมต่อ)
+        $res = $this->actingAs($this->as(Role::President))->postJson('/api/users', ['discord_id' => $veteran->discord_id, 'character_name' => 'Back Again', 'role' => 'member'])->assertCreated();
+        $this->assertSame($veteran->id, $res->json('data.id'));
+        $this->assertNull($veteran->fresh()->removed_at);
+        $this->assertSame(1, User::where('discord_id', $veteran->discord_id)->count());
+    }
+
+    public function test_cannot_delete_self_equal_rank_or_admin(): void
     {
         $vp = $this->as(Role::VicePresident);
-        $pending = User::factory()->create(); // เพิ่มไว้แต่ยังไม่เคยเข้าระบบ
-        $veteran = $this->as(Role::Gang);
-
-        $this->actingAs($vp)->deleteJson("/api/users/{$pending->id}")->assertNoContent();
-        $this->assertDatabaseMissing('users', ['id' => $pending->id]);
-
-        $this->actingAs($vp)->deleteJson("/api/users/{$veteran->id}")->assertStatus(409);
-        $this->assertDatabaseHas('users', ['id' => $veteran->id]);
+        $this->actingAs($vp)->deleteJson("/api/users/{$vp->id}")->assertForbidden();
+        $this->actingAs($vp)->deleteJson('/api/users/'.$this->as(Role::VicePresident)->id)->assertForbidden();
+        $this->actingAs($vp)->deleteJson('/api/users/'.$this->as(Role::Admin)->id)->assertForbidden();
+        $this->actingAs($this->as(Role::Admin))->deleteJson('/api/users/'.$this->as(Role::Admin)->id)->assertForbidden();
     }
 
     // ───────── รายการ / ตัวกรอง ─────────

@@ -2,8 +2,9 @@ function groupsPage() {
   return {
     types: [
       { value: '', label: 'ทั้งหมด' },
-      { value: 'gang', label: 'แก๊ง' },
-      { value: 'family', label: 'ครอบครัว' },
+      { value: 'gang', label: 'Gang' },
+      { value: 'lady', label: 'Lady Gang' },
+      { value: 'family', label: 'Family' },
     ],
     q: '',
     type: '',
@@ -39,7 +40,7 @@ function groupsPage() {
       this.error = '';
       const params = new URLSearchParams({ page: this.page });
       if (this.q.trim()) params.set('q', this.q.trim());
-      if (this.type) params.set('type', this.type);
+      if (this.type) params.set('kind', this.type);
       if (this.status) params.set('status', this.status);
 
       try {
@@ -78,6 +79,15 @@ function groupsPage() {
         sanction: 'badge badge-sanction',
         inactive: 'badge badge-muted',
       }[status] || 'badge badge-muted';
+    },
+
+    /** ป้ายประเภทกลุ่ม (ภาษาอังกฤษ): Gang / Lady Gang / Family */
+    typeTag(g) {
+      return g.type === 'family' ? 'Family' : g.is_lady ? 'Lady Gang' : 'Gang';
+    },
+
+    storyType(t) {
+      return { gang: 'Gang', family: 'Family', lady: 'Lady Gang' }[t] || t || '—';
     },
 
     fmtDate(iso) {

@@ -34,7 +34,23 @@ class TransactionService
     /** ชนิดชุดทั้งหมด และชนิดที่ครอบครัวลงได้ */
     private const OUTFIT_KEYS = ['suit', 'hoodie', 'tshirt', 'polo', 'armor', 'gun', 'mod1', 'mod2', 'accessories'];
 
+    /** ลงชุดแทนได้เฉพาะ MOD 1 / MOD 2 / Accessories (ชุดอื่นที่ลงไว้แล้วใช้ "แก้ไขชุด") */
+    private const REPLACE_OUTFIT_KEYS = ['mod1', 'mod2', 'accessories'];
+
     private const FAMILY_OUTFIT_KEYS = ['hoodie', 'tshirt', 'polo', 'accessories'];
+
+    /** ชนิดธุรกรรมที่แก๊ง/ครอบครัวยื่นเองได้ (ต้องให้สภาอนุมัติเสมอ) */
+    public const GROUP_SUBMITTABLE = [
+        TransactionKind::Register,
+        TransactionKind::ChangeLeader,
+        TransactionKind::Outfit,
+        TransactionKind::Rename,
+        TransactionKind::Recolor,
+        TransactionKind::ActivityReport,
+    ];
+
+    /** จำนวนตัวละครขั้นต่ำในรูปรายงานความเคลื่อนไหว (สภาตรวจจากรูป ผู้ยื่นต้องยืนยัน) */
+    public const ACTIVITY_MIN_CHARACTERS = 6;
 
     private const PNG = "\x89PNG\r\n\x1a\n";
 
@@ -47,11 +63,19 @@ class TransactionService
      */
     public function submit(User $actor, TransactionKind $kind, ?Group $group, array $payload, bool $approvalRequired = false): Transaction
     {
-        abort_unless($actor->atLeast(Role::Trainee) && ! $actor->role->isAdmin(), 403, 'เฉพาะสภาเท่านั้นที่ทำธุรกรรมได้');
+        if (in_array($actor->role, [Role::Gang, Role::Family], true)) {
+            // แก๊ง/ครอบครัวยื่นได้เฉพาะบางชนิด และต้องรอสภาอนุมัติเสมอ
+            abort_unless(in_array($kind, self::GROUP_SUBMITTABLE, true), 403, 'ธุรกรรมชนิดนี้ต้องทำผ่านสภา');
+            $approvalRequired = true;
+        } else {
+            abort_unless($actor->atLeast(Role::Trainee), 403, 'เฉพาะสภาเท่านั้นที่ทำธุรกรรมได้');
+        }
         abort_if(in_array($kind, [TransactionKind::OutfitAdd, TransactionKind::OutfitFile], true), 422, 'ชนิดธุรกรรมนี้ถูกรวมเป็น "ลงชุด/แก้ไขชุด" แล้ว');
 
         $group = $this->resolveGroup($kind, $group);
-        $this->assertNoActiveStory($group);
+        if ($kind !== TransactionKind::ActivityReport) {
+            $this->assertNoActiveStory($group); // รายงานความเคลื่อนไหวยื่นได้แม้อยู่ในสตอรี่
+        }
         $payload = $this->validate($kind, $group, $payload);
 
         $stored = [];
@@ -117,7 +141,8 @@ class TransactionService
 
     public function cancel(Transaction $tx, User $actor): Transaction
     {
-        abort_unless($actor->atLeast(Role::Trainee) && ! $actor->role->isAdmin(), 403, 'เฉพาะสภาเท่านั้นที่จัดการธุรกรรมได้');
+        $ownGroupRequest = in_array($actor->role, [Role::Gang, Role::Family], true) && $tx->requested_by === $actor->id;
+        abort_unless($ownGroupRequest || $actor->atLeast(Role::Trainee), 403, 'เฉพาะสภาเท่านั้นที่จัดการธุรกรรมได้');
         abort_unless($tx->isPending(), 409, 'ธุรกรรมนี้ถูกดำเนินการไปแล้ว (ไม่ได้อยู่ในสถานะรออนุมัติ)');
         abort_unless($tx->requested_by === $actor->id || $actor->atLeast(Role::VicePresident), 403, 'ยกเลิกได้เฉพาะผู้ส่งหรือรองประธานขึ้นไป');
 
@@ -133,7 +158,7 @@ class TransactionService
 
     private function assertCanReview(Transaction $tx, User $reviewer): void
     {
-        abort_unless($reviewer->atLeast(Role::Trainee) && ! $reviewer->role->isAdmin(), 403, 'เฉพาะสภาเท่านั้นที่อนุมัติได้');
+        abort_unless($reviewer->atLeast(Role::Trainee), 403, 'เฉพาะสภาเท่านั้นที่อนุมัติได้');
         abort_if($tx->requested_by === $reviewer->id, 403, 'อนุมัติธุรกรรมที่ตัวเองส่งไม่ได้');
     }
 
@@ -186,9 +211,12 @@ class TransactionService
                 // ชุดต้องปรับตามสีใหม่ จึงต้องแนบไฟล์ชุดใหม่ (.ZIP) ซึ่งจะแทนไฟล์ชุดหลักของกลุ่มเมื่อมีผล
                 'outfit_zip' => ['required', 'file', 'max:51200', $this->zipRule()],
             ],
+            // position = leader (ค่าเริ่มต้น) หรือ co_leader (รองหัวหน้า: replace_name = รองคนเดิมที่ถูกแทน, เว้นว่าง = เพิ่มรองใหม่)
             TransactionKind::ChangeLeader => [
+                'position' => ['sometimes', Rule::in(['leader', 'co_leader'])],
+                'replace_name' => ['nullable', 'string', 'max:120'],
                 'name' => ['required', 'string', 'max:120'],
-                'discord_id' => ['required', 'regex:/^\d{17,20}$/'],
+                'discord_id' => [($payload['position'] ?? 'leader') === 'co_leader' ? 'nullable' : 'required', 'regex:/^\d{17,20}$/'],
                 'phone' => ['required', 'string', 'max:30', 'regex:/^[0-9 \-+]+$/'],
             ],
             // กรอกชื่อสมาชิกที่ออกได้หลายคน; เหตุผลและสล็อตไม่บังคับ
@@ -201,6 +229,11 @@ class TransactionService
             TransactionKind::Dissolve => [
                 'reason' => ['required', 'string', 'max:2000'],
             ],
+            TransactionKind::RemoveProtect => [
+                'reason' => ['nullable', 'string', 'max:2000'],
+            ],
+            // รายงานความเคลื่อนไหว: หัว/รอง (จำนวนรองตรงกับที่กลุ่มมีจริง) + ชื่อสมาชิก 1 คน + รูปตัวละครใส่ชุดกลุ่ม
+            TransactionKind::ActivityReport => $this->activityRules($group),
             TransactionKind::OutfitCounts => $this->outfitRules($group),
             TransactionKind::Outfit => $this->outfitMergedRules($group),
             // ลงชุดเพิ่มต้องแนบไฟล์ชุดที่จะลงด้วย (เก็บไว้กับธุรกรรมเป็นหลักฐาน ไม่แทนที่ไฟล์ชุดหลักของกลุ่ม)
@@ -250,14 +283,19 @@ class TransactionService
     private function outfitMergedRules(Group $group): array
     {
         $allowed = array_keys($group->outfitLimits());
+        $replaceable = array_values(array_intersect($allowed, self::REPLACE_OUTFIT_KEYS));
         $rules = [
             'add' => ['nullable', 'array'],
             'replace' => ['nullable', 'array'],
             'replace.types' => ['nullable', 'array'],
-            'replace.types.*' => ['string', 'distinct', Rule::in($allowed)],
+            'replace.types.*' => ['string', 'distinct', Rule::in($replaceable)],
             'replace.counts' => ['nullable', 'array'],
             'replace.swaps' => ['nullable', 'array'],
-            'replace.swaps.*' => ['string', Rule::in($allowed)],
+            'replace.swaps.*' => ['string', Rule::in($replaceable)],
+            // แก้ไขชุด: ชนิดที่ลงทะเบียนไว้แล้วและส่งไฟล์ชุดที่แก้ไขใหม่ (จำนวนไม่เปลี่ยน)
+            'edit' => ['nullable', 'array'],
+            'edit.types' => ['nullable', 'array'],
+            'edit.types.*' => ['string', 'distinct', Rule::in($allowed)],
             'outfit_zip' => ['required', 'file', 'max:51200', $this->zipRule()],
             'note' => ['nullable', 'string', 'max:2000'],
         ];
@@ -277,11 +315,21 @@ class TransactionService
         $replace = $d['replace'] ?? [];
         $types = $replace['types'] ?? [];
 
-        if (! $add && ! $types) {
-            throw ValidationException::withMessages(['add' => 'กรุณากรอกจำนวนชุดที่จะลงเพิ่ม หรือเลือกชุดที่จะเปลี่ยน/แทนอย่างน้อย 1 อย่าง']);
+        $editTypes = $d['edit']['types'] ?? [];
+        if (! $add && ! $types && ! $editTypes) {
+            throw ValidationException::withMessages(['add' => 'กรุณากรอกจำนวนชุดที่จะลงเพิ่ม เลือกชุดที่จะลงแทน หรือเลือกชุดที่จะแก้ไขอย่างน้อย 1 อย่าง']);
         }
 
         $errors = [];
+
+        // แก้ไขชุด: ต้องเป็นชนิดที่ลงทะเบียนไว้แล้ว และไม่ซ้ำกับส่วนลงเพิ่ม/ลงแทน
+        foreach ($editTypes as $type) {
+            if (($group->outfit_counts[$type] ?? 0) <= 0) {
+                $errors['edit.types'] = 'ยังไม่มีชุดชนิดนี้ที่ลงทะเบียนไว้ จึงแก้ไขชุดไม่ได้';
+            } elseif (in_array($type, $types, true) || isset($add[$type])) {
+                $errors['edit.types'] = 'ชนิดที่แก้ไขต้องไม่ซ้ำกับส่วนลงเพิ่ม/ลงแทน';
+            }
+        }
 
         // ส่วนลงเพิ่ม: ชนิดเดียวกันอยู่ได้ส่วนเดียว และที่ลงไว้ + ที่จะเพิ่ม ต้องไม่เกินลิมิต
         $current = $group->outfit_counts ?? [];
@@ -289,7 +337,7 @@ class TransactionService
         foreach ($add as $key => $n) {
             $after[$key] = ($current[$key] ?? 0) + $n;
             if (in_array($key, $types, true)) {
-                $errors["add.{$key}"] = 'ชนิดนี้อยู่ในส่วนเปลี่ยน/แทนชุดแล้ว';
+                $errors["add.{$key}"] = 'ชนิดนี้อยู่ในส่วนลงชุดแทนแล้ว';
             }
         }
         foreach ($group->outfitLimitErrors($after) as $field => $msg) {
@@ -358,7 +406,12 @@ class TransactionService
         $replace = $d['replace'] ?? [];
         $units = count($replace['types'] ?? []) - count(array_unique(array_values($replace['swaps'] ?? [])));
         if ($units > 0) {
-            $items[] = $item('แก้ไขชุด (ต่อชนิด)', $price('outfit_edit'), $units);
+            $items[] = $item('ลงชุดแทน (ต่อชนิด)', $price('outfit_edit'), $units);
+        }
+
+        $editN = count($d['edit']['types'] ?? []);
+        if ($editN > 0) {
+            $items[] = $item('แก้ไขชุด (ต่อชนิด)', $price('outfit_edit'), $editN);
         }
 
         return $items;
@@ -377,6 +430,37 @@ class TransactionService
         $payload['member_names'] = $names;
 
         return $payload;
+    }
+
+    /** @return array<string, array<int, mixed>> */
+    private function activityRules(Group $group): array
+    {
+        $coCount = $group->activeMembers()->where('position', MemberPosition::CoLeader->value)->count();
+        $person = fn (string $p) => ["{$p}.name" => ['required', 'string', 'max:120'], "{$p}.phone" => ['required', 'string', 'max:30', 'regex:/^[0-9 \-+]+$/']];
+
+        return [
+            'round_id' => ['required', 'integer', 'exists:activity_report_rounds,id'],
+            'leader' => ['required', 'array'],
+            ...$person('leader'),
+            // กลุ่มมีรอง 1 คนกรอก 1 · มี 2 คนกรอกทั้งคู่ · ไม่มีรองก็ไม่ต้องกรอก
+            'co_leaders' => $coCount > 0 ? ['required', 'array', "size:{$coCount}"] : ['nullable', 'array', 'max:0'],
+            'co_leaders.*' => ['array'],
+            ...$person('co_leaders.*'),
+            'member_name' => ['required', 'string', 'max:120'],
+            'photo' => ['required', 'file', 'max:8192', $this->imageRule()],
+            'confirm_characters' => ['accepted'],
+            'note' => ['nullable', 'string', 'max:1000'],
+        ];
+    }
+
+    private function imageRule(): \Closure
+    {
+        return function (string $attr, $file, \Closure $fail) {
+            $head = $file instanceof UploadedFile ? (string) @file_get_contents($file->getRealPath(), false, null, 0, 8) : '';
+            if (! str_starts_with($head, self::PNG) && ! str_starts_with($head, "\xFF\xD8\xFF")) {
+                $fail('รูปต้องเป็นไฟล์ .PNG หรือ .JPG เท่านั้น');
+            }
+        };
     }
 
     /** @return array<string, array<int, mixed>> */
@@ -449,6 +533,43 @@ class TransactionService
 
             case TransactionKind::ReleaseSlot:
                 $this->rules->assertSlotsOpen($group); // ล็อกสล็อต → 409
+                break;
+
+            case TransactionKind::ChangeLeader:
+                // ตรวจตั้งแต่ตอนยื่น (และตอนอนุมัติ): คนที่ระบุต้องไม่ได้เป็นหัวหน้า/รองอยู่แล้ว มิฉะนั้นอนุมัติแล้วไม่เกิดการเปลี่ยนแปลง
+                $name = mb_strtolower(trim($d['name']));
+                $current = $group->activeMembers()->whereRaw('lower(character_name) = ?', [$name])->first();
+                if ($current && in_array($current->position, [MemberPosition::Leader, MemberPosition::CoLeader], true)) {
+                    throw ValidationException::withMessages(['name' => "{$d['name']} เป็น{$current->position->label()}ของ {$group->name} อยู่แล้ว"]);
+                }
+                if (($d['position'] ?? 'leader') === 'co_leader' && ! empty($d['replace_name'])
+                    && ! $group->activeMembers()->where('position', MemberPosition::CoLeader->value)->whereRaw('lower(character_name) = ?', [mb_strtolower(trim($d['replace_name']))])->exists()) {
+                    throw ValidationException::withMessages(['replace_name' => "ไม่พบ Co-Leader ชื่อ {$d['replace_name']} ใน {$group->name}"]);
+                }
+                break;
+
+            case TransactionKind::ActivityReport:
+                $round = \App\Models\ActivityReportRound::find($d['round_id']);
+                if (! $round || ! $round->isOpen()) {
+                    throw ValidationException::withMessages(['round_id' => 'ขณะนี้ไม่ได้เปิดรับรายงานความเคลื่อนไหว']);
+                }
+                $already = Transaction::query()->where('group_id', $group->id)->where('kind', TransactionKind::ActivityReport->value)
+                    ->where('payload->round_id', (int) $d['round_id'])->whereIn('status', [TransactionStatus::Pending->value, TransactionStatus::Approved->value])
+                    ->exists();
+                if ($already) {
+                    throw ValidationException::withMessages(['round_id' => 'กลุ่มนี้ยื่นรายงานในรอบนี้แล้ว']);
+                }
+                // กลุ่มที่เป็น Blacklist/คว่ำบาตร เปลี่ยนสถานะด้วยการรายงานไม่ได้ (ต้องจัดการที่ทะเบียน)
+                if (! in_array($group->status, [GroupStatus::Normal, GroupStatus::Inactive], true)) {
+                    throw ValidationException::withMessages(['group_id' => "{$group->name} เป็นสถานะ {$group->status->label()} จึงยื่นรายงานความเคลื่อนไหวไม่ได้ ให้ติดต่อสภา"]);
+                }
+                break;
+
+            case TransactionKind::RemoveProtect:
+                // ปลดได้เฉพาะกลุ่มที่ยังมี Protect ใช้งานอยู่
+                if (! $group->protect_until || ! $group->protect_until->isFuture()) {
+                    throw ValidationException::withMessages(['group_id' => "{$group->name} ไม่มี Protect ที่ใช้งานอยู่ จึงปลดไม่ได้"]);
+                }
                 break;
 
             case TransactionKind::OutfitAdd:
@@ -531,6 +652,8 @@ class TransactionService
             TransactionKind::ReleaseSlot => [$item('ออกสล็อต (ต่อคน)', $price('release_slot'), count($d['member_names'] ?? []))],
             TransactionKind::ReleaseFree => [$item('ออกลอย (ต่อคน)', $price('release_free'), count($d['member_names'] ?? []))],
             TransactionKind::Dissolve => [$item('ยุบ', $price('dissolve'))],
+            TransactionKind::RemoveProtect => [$item('ปลด Protect', $price('remove_protect'))],
+            TransactionKind::ActivityReport => [$item('รายงานความเคลื่อนไหว', $price('activity_report'))],
             TransactionKind::OutfitAdd => [$item('ลงชุดเพิ่ม (ต่อชิ้น)', $price('outfit_add'), array_sum($d['counts'] ?? []))],
             TransactionKind::OutfitCounts => [$item('แก้จำนวนชุด', $price('outfit_counts'))],
             TransactionKind::OutfitFile => [$item('เปลี่ยนไฟล์ชุด', $price('outfit_file'))],
@@ -546,6 +669,26 @@ class TransactionService
             'total' => $total,
             'currency' => (string) config('council.fees.currency'),
         ];
+    }
+
+    /**
+     * ประเมินค่าบริการก่อนยื่น (ไม่บันทึก ไม่ตรวจไฟล์) ให้แก๊ง/ครอบครัวเห็นยอดล่วงหน้า
+     *
+     * @return array<string, mixed>
+     */
+    public function quote(TransactionKind $kind, ?Group $group, array $payload): array
+    {
+        $d = $payload;
+        if ($kind === TransactionKind::Outfit) {
+            $d['add'] = array_filter($this->cleanCounts($payload['add'] ?? []), fn ($n) => $n > 0);
+            $replace = $payload['replace'] ?? [];
+            $d['replace'] = ! empty($replace['types'])
+                ? ['types' => array_values(array_intersect(self::OUTFIT_KEYS, $replace['types'])), 'counts' => $this->cleanCounts($replace['counts'] ?? []), 'swaps' => $replace['swaps'] ?? []]
+                : null;
+            $d['edit'] = ! empty($payload['edit']['types']) ? ['types' => array_values(array_intersect(self::OUTFIT_KEYS, $payload['edit']['types']))] : null;
+        }
+
+        return $this->fee($kind, $d, $group);
     }
 
     /** ชื่อสีต้องตรงกับโค้ด HEX */
@@ -583,6 +726,8 @@ class TransactionService
             } else {
                 $d['replace'] = null;
             }
+            $editTypes = array_values(array_intersect(self::OUTFIT_KEYS, $d['edit']['types'] ?? []));
+            $d['edit'] = $editTypes ? ['types' => $editTypes] : null;
         }
         $d['fee'] = $this->fee($kind, $d, $group);
         if ($kind === TransactionKind::Register) {
@@ -630,6 +775,8 @@ class TransactionService
     private function messages(): array
     {
         return [
+            'replace.types.*.in' => 'ลงชุดแทนได้เฉพาะ MOD 1, MOD 2 และ Accessories (ชุดอื่นที่ลงไว้แล้วให้ใช้ "แก้ไขชุด")',
+            'replace.swaps.*.in' => 'สลับชุดได้เฉพาะระหว่าง MOD 1, MOD 2 และ Accessories',
             'required' => 'กรุณากรอกข้อมูลนี้',
             'required_with' => 'ต้องระบุวันเริ่ม Protect ด้วย',
             'logo.required' => 'กรุณาแนบรูปโลโก้ใหม่ (.PNG)',
@@ -667,6 +814,13 @@ class TransactionService
     /** เก็บไฟล์ไว้ที่ดิสก์ส่วนตัวก่อน (ยังไม่เผยแพร่จนกว่าธุรกรรมมีผล) แล้วเก็บ path ใน payload แทนตัวไฟล์ */
     private function storeFiles(TransactionKind $kind, array $payload, array &$stored): array
     {
+        if ($kind === TransactionKind::ActivityReport && ($payload['photo'] ?? null) instanceof UploadedFile) {
+            $path = $payload['photo']->store('transactions/activity', 'local');
+            $stored[] = ['local', $path];
+            unset($payload['photo']);
+            $payload['photo_path'] = $path;
+        }
+
         if ($kind === TransactionKind::Rename && ($payload['logo'] ?? null) instanceof UploadedFile) {
             $path = $payload['logo']->store('transactions/logos', 'local');
             $stored[] = ['local', $path];
@@ -696,7 +850,7 @@ class TransactionService
     private function pendingFiles(Transaction $tx): array
     {
         $files = [];
-        foreach (['logo_path', 'outfit_zip_path'] as $key) {
+        foreach (['logo_path', 'outfit_zip_path', 'photo_path'] as $key) {
             if ($path = $tx->payload[$key] ?? null) {
                 $files[] = ['local', $path];
             }
@@ -714,6 +868,10 @@ class TransactionService
         if ($tx->kind->needsGroup() && (! $group || $group->trashed())) {
             throw ValidationException::withMessages(['group_id' => 'กลุ่มนี้ถูกยุบไปแล้ว จึงอนุมัติไม่ได้']);
         }
+        // รายงานความเคลื่อนไหวตรวจรอบที่เปิดอยู่ตอนยื่นแล้ว: สภาอนุมัติหลังรอบปิดได้
+        if ($tx->kind === TransactionKind::ActivityReport) {
+            return;
+        }
         $this->domainChecks($tx->kind, $group, $tx->payload);
     }
 
@@ -726,10 +884,12 @@ class TransactionService
             TransactionKind::Register => $group = $this->doRegister($tx, $by),
             TransactionKind::Rename => $this->doRename($tx, $group),
             TransactionKind::Recolor => $this->doRecolor($tx, $group),
-            TransactionKind::ChangeLeader => $this->doChangeLeader($tx, $group),
+            TransactionKind::ChangeLeader => ($tx->payload['position'] ?? 'leader') === 'co_leader' ? $this->doChangeCoLeader($tx, $group) : $this->doChangeLeader($tx, $group),
             TransactionKind::ReleaseSlot => $this->doRelease($tx, $group, true),
             TransactionKind::ReleaseFree => $this->doRelease($tx, $group, false),
             TransactionKind::Dissolve => $this->doDissolve($group),
+            TransactionKind::RemoveProtect => $group->update(['protect_from' => null, 'protect_until' => null, 'protect_requested' => false]),   // Protect เป็น OFF ทันที ล้างวันเริ่ม/สิ้นสุด
+            TransactionKind::ActivityReport => $this->doActivityReport($tx, $group, $by),
             TransactionKind::OutfitAdd => $this->doOutfitAdd($tx, $group),
             TransactionKind::OutfitCounts => $group->update(['outfit_counts' => $tx->payload['counts']]),
             TransactionKind::OutfitFile => $this->doOutfitFile($tx, $group),
@@ -788,7 +948,34 @@ class TransactionService
 
         $tx->update(['group_id' => $group->id]);
 
+        // ผู้ยื่นขอขึ้นทะเบียน (บัญชี gang/family ที่ยังไม่มีสังกัด) ได้สังกัดกลุ่มใหม่ทันที
+        $requester = User::find($tx->requested_by);
+        if ($requester && $requester->group_id === null && $requester->role === ($type === GroupType::Family ? Role::Family : Role::Gang)) {
+            $isLeader = (string) $requester->discord_id === (string) ($p['leader']['discord_id'] ?? '');
+            $requester->update(['group_id' => $group->id, 'group_position' => $isLeader ? 'leader' : 'co_leader']);
+        }
+
         return $group;
+    }
+
+    /** สภารับทราบรายงานความเคลื่อนไหว (ผู้นำ/สมาชิกยืนยันตัว + รูปตัวละครใส่ชุดกลุ่ม): ลงบันทึกรายงานตัว (นับเป็นรายงานตัวล่าสุด) และถ้ากลุ่มขาดการเคลื่อนไหวอยู่ ให้กลับเป็นปกติ */
+    private function doActivityReport(Transaction $tx, Group $group, User $by): void
+    {
+        $p = $tx->payload;
+        $from = $group->status;
+
+        if ($from === GroupStatus::Inactive) {
+            $group->statusHistory()->whereNull('ended_at')->update(['ended_at' => now()]);
+            $group->statusHistory()->create(['status' => GroupStatus::Normal, 'reason' => "รายงานความเคลื่อนไหว ({$tx->number})", 'changed_by' => $by->id, 'started_at' => now()]);
+            $group->update(['status' => GroupStatus::Normal, 'status_reason' => null, 'status_changed_at' => now()]);
+        }
+
+        $group->records()->create([
+            'kind' => 'report',
+            'data' => ['status' => GroupStatus::Normal->value, 'previous_status' => $from->value, 'transaction' => $tx->number, 'round_id' => $p['round_id'] ?? null, 'leader' => $p['leader'] ?? null, 'co_leaders' => $p['co_leaders'] ?? [], 'member_name' => $p['member_name'] ?? null],
+            'note' => ($p['note'] ?? null) ?: 'รายงานความเคลื่อนไหวตามรอบ',
+            'recorded_by' => $by->id,
+        ]);
     }
 
     private function doRename(Transaction $tx, Group $group): void
@@ -843,6 +1030,45 @@ class TransactionService
         ]);
     }
 
+    /** เปลี่ยน/เพิ่มรองหัวหน้า: รองคนเดิมที่ถูกแทนกลับเป็นสมาชิก คนใหม่ที่มีอยู่แล้วในกลุ่มจะถูกเลื่อนขึ้น */
+    private function doChangeCoLeader(Transaction $tx, Group $group): void
+    {
+        $p = $tx->payload;
+        $name = trim($p['name']);
+
+        if (! empty($p['replace_name'])) {
+            $old = $group->activeMembers()->where('position', MemberPosition::CoLeader->value)
+                ->whereRaw('lower(character_name) = ?', [mb_strtolower(trim($p['replace_name']))])->first();
+            if (! $old) {
+                throw ValidationException::withMessages(['replace_name' => "ไม่พบรองหัวหน้าชื่อ {$p['replace_name']} ในกลุ่มนี้"]);
+            }
+            $old->update(['position' => MemberPosition::Member]);
+        }
+
+        $existing = $group->activeMembers()->whereRaw('lower(character_name) = ?', [mb_strtolower($name)])->first();
+        if ($existing && in_array($existing->position, [MemberPosition::Leader, MemberPosition::CoLeader], true)) {
+            throw ValidationException::withMessages(['name' => "{$name} เป็น{$existing->position->label()}อยู่แล้ว"]);
+        }
+
+        $this->rules->assertPositionFree($group, MemberPosition::CoLeader, $existing);
+        if ($existing) {
+            $this->rules->assertSlotAvailable($group, MemberPosition::CoLeader, false, $existing);
+            $existing->update(['position' => MemberPosition::CoLeader, 'is_reserve' => false, 'ic_phone' => $p['phone'], 'discord_id' => $p['discord_id'] ?? $existing->discord_id]);
+
+            return;
+        }
+
+        $this->rules->assertCanAddMember($group, $name, MemberPosition::CoLeader, false, false);
+        $group->members()->create([
+            'character_name' => $name,
+            'ic_phone' => $p['phone'],
+            'discord_id' => $p['discord_id'] ?? null,
+            'position' => MemberPosition::CoLeader,
+            'is_reserve' => false,
+            'joined_at' => now(),
+        ]);
+    }
+
     /** ออกสล็อต (มีคนมายืนยันตัวตนที่หน้าสภา) / ออกลอย (ผู้ออกไม่มายืนยันตัวตน) — ออกได้หลายชื่อในธุรกรรมเดียว */
     private function doRelease(Transaction $tx, Group $group, bool $slot): void
     {
@@ -889,7 +1115,7 @@ class TransactionService
         }
         $update = ['outfit_counts' => $counts];
 
-        if (! empty($p['replace']['types'])) {
+        if (! empty($p['replace']['types']) || ! empty($p['edit']['types'])) {
             $path = $p['outfit_zip_path'] ?? null;
             if (! $path || ! Storage::disk('local')->exists($path)) {
                 throw ValidationException::withMessages(['outfit_zip' => 'ไม่พบไฟล์ชุดที่แนบไว้ จึงเปลี่ยนไฟล์ชุดไม่ได้']);

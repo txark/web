@@ -58,8 +58,9 @@ class GroupController extends Controller
         };
 
         $groups = $query
-            ->with('leader')
+            ->with(['leader', 'leadership'])
             ->withCount('activeMembers')
+            ->withMax(['records as last_report_at' => fn ($q) => $q->where('kind', 'report')], 'created_at')
             ->when($f['type'] ?? null, fn ($q, $v) => $q->where('type', $v))
             ->when($f['kind'] ?? null, fn ($q, $v) => match ($v) {
                 'family' => $q->where('type', GroupType::Family->value),

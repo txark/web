@@ -19,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'log.access' => \App\Http\Middleware\LogAccess::class,
             'active' => \App\Http\Middleware\EnsureActive::class,
             'duty' => \App\Http\Middleware\EnsureOnDuty::class,
+            'group.portal' => \App\Http\Middleware\EnsureGroupPortalOpen::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

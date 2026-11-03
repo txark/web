@@ -14,6 +14,7 @@ function usersPage() {
     rows: [],
     meta: null,
     assignable: [],
+    groups: [],   // แก๊ง/ครอบครัวทั้งหมด ให้เลือกสังกัดของบัญชีบทบาท gang/family
     q: '',
     status: '',
     role: '',
@@ -22,7 +23,7 @@ function usersPage() {
     error: '',
 
     // ฟอร์มเพิ่ม
-    form: { discord_id: '', character_name: '', role: '' },
+    form: { discord_id: '', character_name: '', role: '', group_id: '', group_position: 'leader' },
     formErrors: {},
     saving: false,
     flash: '',
@@ -67,6 +68,7 @@ function usersPage() {
         this.rows = res.data;
         this.meta = res.meta;
         this.assignable = res.assignable_roles;
+        this.groups = res.groups || [];
         if (!this.form.role && this.assignable.length) {
           // ค่าเริ่มต้นของฟอร์ม: บทบาทต่ำสุดที่กำหนดได้ (ปลอดภัยที่สุด)
           this.form.role = (this.assignable.find((r) => r.value === 'member') || this.assignable[this.assignable.length - 1]).value;
@@ -89,10 +91,14 @@ function usersPage() {
           discord_id: this.form.discord_id.trim(),
           character_name: this.form.character_name.trim(),
           role: this.form.role,
+          group_id: this.isGroupRole(this.form.role) && this.form.group_id ? Number(this.form.group_id) : null,
+          group_position: this.form.group_position,
         });
         this.flash = `เพิ่ม ${res.data.character_name} เป็น ${res.data.role_label} แล้ว — เข้าสู่ระบบด้วย Discord ได้ทันที`;
         this.form.discord_id = '';
         this.form.character_name = '';
+        this.form.group_id = '';
+        this.form.group_position = 'leader';
         await this.load();
       } catch (e) {
         if (e.status === 422 && e.errors) {
@@ -103,6 +109,27 @@ function usersPage() {
       } finally {
         this.saving = false;
       }
+    },
+
+    // ── สังกัดแก๊ง/ครอบครัว (บทบาท gang/family) ──
+    isGroupRole(role) {
+      return role === 'gang' || role === 'family';
+    },
+
+    /** กลุ่มที่เลือกได้สำหรับบทบาทนี้ (Gang → แก๊ง/แก๊งหญิง, Family → ครอบครัว) */
+    groupsFor(role) {
+      return this.groups.filter((g) => g.type === (role === 'family' ? 'family' : 'gang'));
+    },
+
+    // สังกัด/ตำแหน่งของบัญชี gang/family: เปลี่ยนแล้วบันทึกทันที (ไม่สำเร็จ → คืนค่าเดิม แจ้งที่หัวหน้า)
+    async changeGroup(u, value, el) {
+      await this.patch(u, { group_id: value ? Number(value) : null, group_position: value ? (u.group_position || 'leader') : null });
+      if (el) el.value = u.group ? u.group.id : '';
+    },
+
+    async changePosition(u, position) {
+      if ((u.group_position || 'leader') === position) return;
+      await this.patch(u, { group_position: position });
     },
 
     // ── แก้ไขบทบาท / ระงับ / ลบ ──
@@ -137,7 +164,7 @@ function usersPage() {
     },
 
     async remove(u) {
-      if (!(await UI.ask(`ลบ ${u.character_name || u.name} ออกจากรายชื่อ ?\n(ลบได้เฉพาะคนที่ยังไม่เคยเข้าระบบ)`, { kind: 'danger', confirmText: 'ลบ' }))) return;
+      if (!(await UI.ask(`ลบ ${u.character_name || u.name} ออกจากรายชื่อ ?\nบัญชีนี้จะเข้าระบบไม่ได้ทันที (ประวัติการใช้งานยังอยู่ครบ) · เพิ่ม Discord ID เดิมกลับมาได้ภายหลัง`, { kind: 'danger', confirmText: 'ลบ' }))) return;
       try {
         await API.del(`/api/users/${u.id}`);
         await this.load();

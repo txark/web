@@ -26,6 +26,9 @@ class UserAdminResource extends JsonResource
             'role_label' => $this->role->label(),
             'role_name' => $this->role->thaiName(),
             // pending = เพิ่มไว้แล้วแต่ยังไม่เคยเข้าระบบ
+            'group' => $this->whenLoaded('group', fn () => $this->group ? ['id' => $this->group->id, 'name' => $this->group->name, 'short_name' => $this->group->short_name, 'type' => $this->group->type->value] : null),
+            'group_position' => $this->group_position,
+            'group_position_label' => $this->group_position === 'co_leader' ? 'Co-Leader' : ($this->group_position === 'leader' ? 'Leader' : null),
             'status' => $this->isDisabled() ? 'disabled' : ($this->last_login_at ? 'active' : 'pending'),
             'disabled_at' => $this->disabled_at?->toIso8601String(),
             'last_login_at' => $this->last_login_at?->toIso8601String(),

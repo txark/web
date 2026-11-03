@@ -49,12 +49,13 @@ class GroupRecordTest extends TestCase
         $this->getJson($this->url($g))->assertForbidden();
         $this->postJson($this->url($g), ['kind' => 'report', 'status' => 'normal'])->assertForbidden();
 
-        $this->council(Role::Admin);
-        $this->postJson($this->url($g), ['kind' => 'report', 'status' => 'normal'])->assertForbidden();
+        // Admin ใช้งานเหมือนสภา และไม่ต้องเข้าเวร
+        $this->council(Role::Admin, onDuty: false);
+        $this->postJson($this->url($g), ['kind' => 'report', 'status' => 'normal'])->assertCreated();
 
         $this->council(Role::Member, onDuty: false);
         $this->postJson($this->url($g), ['kind' => 'report', 'status' => 'normal'])->assertForbidden()->assertJsonPath('code', 'off_duty');
-        $this->assertDatabaseCount('group_records', 0);
+        $this->assertDatabaseCount('group_records', 1); // มีเฉพาะรายการที่ Admin บันทึก (ใช้งานเหมือนสภา)
     }
 
     public function test_report_is_recorded_and_updates_last_report(): void

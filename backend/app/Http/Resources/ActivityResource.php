@@ -105,14 +105,20 @@ class ActivityResource extends JsonResource
             }
         } elseif (isset($p['penalty_type'])) {
             $penance = $p['penalty_type'] === 'penance';
-            $lines[] = ['ประเภท', $penance ? 'ส่งบำเพ็ญ' : 'ค่าปรับ'];
+            $both = $p['penalty_type'] === 'both';
+            $lines[] = ['ประเภท', $both ? 'ค่าปรับและส่งบำเพ็ญ' : ($penance ? 'ส่งบำเพ็ญ' : 'ค่าปรับ')];
             if (! empty($p['category_label'])) {
                 $lines[] = ['หมวด', $p['category_label']];
             }
             if (! empty($p['charge'])) {
                 $lines[] = ['ข้อหา', $p['charge']];
             }
-            $lines[] = $penance ? ['จำนวนไม้', ($p['penance_units'] ?? 0).' ไม้'] : ['จำนวนเงิน', number_format((int) ($p['amount'] ?? 0)).' WVDL'];
+            if ($penance || $both) {
+                $lines[] = ['จำนวนไม้', ($p['penance_units'] ?? 0).' ไม้'];
+            }
+            if (! $penance) {
+                $lines[] = ['จำนวนเงิน', number_format((int) ($p['amount'] ?? 0)).' WVDL'];
+            }
             if (! empty($p['rule_penalty'])) {
                 $lines[] = ['บทลงโทษตามกฎ', $p['rule_penalty']];
             }

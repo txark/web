@@ -128,6 +128,14 @@ class Group extends Model
             ->whereNull('left_at');
     }
 
+    /** หัวหน้าและรองหัวหน้าที่ยังอยู่ (ใช้ดึงชื่ออัตโนมัติในฟอร์มต่างๆ) */
+    public function leadership(): HasMany
+    {
+        return $this->hasMany(GroupMember::class)
+            ->whereIn('position', [MemberPosition::Leader->value, MemberPosition::CoLeader->value])
+            ->whereNull('left_at');
+    }
+
     public function records(): HasMany
     {
         return $this->hasMany(GroupRecord::class);

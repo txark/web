@@ -13,7 +13,10 @@ class TransactionResource extends JsonResource
     public function toArray(Request $request): array
     {
         $p = $this->payload ?? [];
-        unset($p['logo_path'], $p['outfit_zip_path']); // path ไฟล์ภายในไม่ต้องเปิดเผย
+        $hasLogo = ! empty($p['logo_path']);
+        $hasZip = ! empty($p['outfit_zip_path']);
+        $hasPhoto = ! empty($p['photo_path']);
+        unset($p['logo_path'], $p['outfit_zip_path'], $p['photo_path']); // path ไฟล์ภายในไม่ต้องเปิดเผย
 
         $person = fn ($u) => $u ? ['id' => $u->id, 'name' => $u->character_name ?: $u->name] : null;
 
@@ -26,6 +29,9 @@ class TransactionResource extends JsonResource
             'status_label' => $this->status->label(),
             'summary' => $this->summary($p),
             'payload' => $p,
+            'has_logo' => $hasLogo,
+            'has_outfit_zip' => $hasZip,
+            'has_photo' => $hasPhoto,
             'group' => $this->group ? [
                 'id' => $this->group->id,
                 'name' => $this->group->name,
@@ -85,7 +91,7 @@ class TransactionResource extends JsonResource
                     $lines[] = ['ลงชุดเพิ่ม', self::counts(['counts' => $p['add']])];
                 }
                 if (! empty($p['replace']['types'])) {
-                    $lines[] = ['เปลี่ยน/แทนชุด', self::replaced($p['replace'])];
+                    $lines[] = ['ลงชุดแทน', self::replaced($p['replace'])];
                 }
                 $lines[] = ['ไฟล์ชุด', ! empty($p['replace']['types']) ? 'แทนที่ไฟล์ชุดหลักของกลุ่ม' : 'เก็บไว้กับธุรกรรม (ไม่แทนไฟล์ชุดหลัก)'];
                 break;
@@ -124,7 +130,10 @@ class TransactionResource extends JsonResource
             $parts[] = 'ลงเพิ่ม '.self::counts(['counts' => $p['add']]);
         }
         if (! empty($p['replace']['types'])) {
-            $parts[] = 'เปลี่ยน/แทน '.self::replaced($p['replace']);
+            $parts[] = 'ลงแทน '.self::replaced($p['replace']);
+        }
+        if (! empty($p['edit']['types'])) {
+            $parts[] = 'แก้ไข '.implode(', ', array_map(fn ($k) => self::OUTFIT_LABELS[$k] ?? $k, $p['edit']['types']));
         }
         $text = $parts ? implode(' · ', $parts) : '-';
 
@@ -166,10 +175,15 @@ class TransactionResource extends JsonResource
             TransactionKind::Register => "ขึ้นทะเบียน {$p['name']} ({$p['short_name']})",
             TransactionKind::Rename => "เปลี่ยนชื่อ {$g} → {$p['name']}",
             TransactionKind::Recolor => "เปลี่ยนสี {$g} → {$p['color_hex']} {$p['color_name']} (แนบไฟล์ชุดใหม่)",
-            TransactionKind::ChangeLeader => "เปลี่ยน Leader {$g} → {$p['name']}",
+            TransactionKind::ChangeLeader => ($p['position'] ?? 'leader') === 'co_leader'
+                ? (empty($p['replace_name']) ? "เพิ่มรองหัวหน้า {$g}: {$p['name']}" : "เปลี่ยนรองหัวหน้า {$g}: {$p['replace_name']} → {$p['name']}")
+                : "เปลี่ยน Leader {$g} → {$p['name']}",
             TransactionKind::ReleaseSlot => 'ออกสล็อต '.self::names($p)." จาก {$g}",
             TransactionKind::ReleaseFree => 'ออกลอย '.self::names($p)." จาก {$g}",
             TransactionKind::Dissolve => "ยุบ {$g}",
+            TransactionKind::RemoveProtect => "ปลด Protect {$g}",
+            TransactionKind::ActivityReport => "รายงานความเคลื่อนไหว {$g}: ".($p['leader']['name'] ?? '—').(empty($p['co_leaders']) ? '' : ' / '.implode(', ', array_column($p['co_leaders'], 'name')))." · สมาชิก {$p['member_name']}",
+
             TransactionKind::Outfit => "ลงชุด/แก้ไขชุด {$g}: ".self::outfitParts($p),
             TransactionKind::OutfitAdd => "ลงชุดเพิ่ม {$g}: ".self::counts($p),
             TransactionKind::OutfitCounts => "แก้จำนวนชุด {$g}: ".self::counts($p),

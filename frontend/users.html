@@ -6,6 +6,7 @@
   <title>จัดการผู้ใช้ | WAVEVY COUNCIL</title>
   <link rel="icon" href="/img/favicon.png">
   <script src="/js/theme.js"></script>
+  <script src="/js/icons.js"></script>
   <link rel="stylesheet" href="/css/output.css">
   <script src="/js/config.js"></script>
   <script src="/js/api.js"></script>
@@ -13,6 +14,7 @@
   <script src="/js/ui.js"></script>
   <script src="/js/pages/users.js"></script>
   <script defer src="/js/layout.js"></script>
+  <script defer src="/js/select.js"></script>
   <script defer src="/js/vendor/alpine.min.js"></script>
 </head>
 <body>
@@ -22,8 +24,13 @@
     <div x-show="!ready" class="py-24 text-center text-muted">กำลังตรวจสอบสิทธิ์...</div>
 
     <div x-show="ready" x-cloak>
-      <h1 class="section-title">จัดการผู้ใช้</h1>
-      <p class="mt-1 text-sm text-muted">เพิ่ม Discord ID และกำหนดบทบาท · <b class="font-medium text-fg">ผู้ที่ไม่ได้ถูกเพิ่มจะเข้าระบบไม่ได้</b></p>
+      <header class="rg-head">
+          <div class="min-w-0">
+            <p class="rg-eyebrow">WAVEVY COUNCIL / USERS</p>
+            <h1 class="rg-title"><i class="ic rg-ic" data-icon="users" aria-hidden="true"></i>จัดการผู้ใช้</h1>
+            <p class="rg-sub">เพิ่ม Discord ID และกำหนดบทบาท · <b class="font-medium text-fg">ผู้ที่ไม่ได้ถูกเพิ่มจะเข้าระบบไม่ได้</b></p>
+          </div>
+        </header>
 
       <p x-show="error" x-text="error" class="penalty-box mt-5"></p>
 
@@ -50,6 +57,18 @@
               </template>
             </select>
             <p x-show="formErrors.role" x-text="formErrors.role" class="mt-1 text-sm text-danger"></p>
+          </div>
+          <div x-show="isGroupRole(form.role)" x-cloak class="md:col-span-4">
+            <label class="mb-1 block text-sm text-muted" for="f-group">สังกัด<span x-text="form.role === 'family' ? 'ครอบครัว' : 'แก๊ง'"></span></label>
+            <select id="f-group" x-model="form.group_id" class="input">
+              <option value="">— ยังไม่ขึ้นทะเบียน (ให้ยื่นขอขึ้นทะเบียนเอง) —</option>
+              <template x-for="g in groupsFor(form.role)" :key="g.id"><option :value="g.id" x-text="g.name + ' [' + g.short_name + ']'"></option></template>
+            </select>
+            <p x-show="formErrors.group_id" x-text="formErrors.group_id" class="mt-1 text-sm text-danger"></p>
+            <div class="gd-status-btns mt-3" role="group" aria-label="ตำแหน่งในกลุ่ม" x-show="form.group_id">
+              <button type="button" class="gd-status-btn" :aria-pressed="form.group_position === 'leader'" @click="form.group_position = 'leader'">Leader</button>
+              <button type="button" class="gd-status-btn" :aria-pressed="form.group_position === 'co_leader'" @click="form.group_position = 'co_leader'">Co-Leader</button>
+            </div>
           </div>
           <button type="submit" class="btn-outline justify-center md:mt-[1.65rem]" :disabled="saving || !form.discord_id || !form.character_name">
             <span x-text="saving ? 'กำลังเพิ่ม...' : 'เพิ่มผู้ใช้'"></span>
@@ -107,6 +126,29 @@
                   <p class="text-xs text-muted">
                     Discord ID : <button type="button" class="font-mono text-fg hover:text-accent" @click="copy(u.discord_id, $event)" title="คัดลอก Discord ID" x-text="u.discord_id"></button>
                   </p>
+                  <!-- สังกัด (เฉพาะบทบาท gang/family): เลือกกลุ่ม + กดสลับตำแหน่ง เปลี่ยนแล้วบันทึกทันที -->
+                  <template x-if="isGroupRole(u.role)">
+                    <div class="aff">
+                      <template x-if="u.can_manage && assignable.length > 0">
+                        <div class="aff-row">
+                          <select class="aff-select" @change="changeGroup(u, $event.target.value, $event.target)" :aria-label="'สังกัดของ ' + (u.character_name || u.name)">
+                            <option value="" :selected="!u.group">ยังไม่ขึ้นทะเบียน</option>
+                            <template x-for="g in groupsFor(u.role)" :key="g.id"><option :value="g.id" :selected="u.group && u.group.id === g.id" x-text="g.name + ' [' + g.short_name + ']'"></option></template>
+                          </select>
+                          <div class="aff-seg" role="group" aria-label="ตำแหน่งในกลุ่ม" x-show="u.group">
+                            <button type="button" :aria-pressed="u.group_position !== 'co_leader'" @click="changePosition(u, 'leader')">Leader</button>
+                            <button type="button" :aria-pressed="u.group_position === 'co_leader'" @click="changePosition(u, 'co_leader')">Co-Leader</button>
+                          </div>
+                        </div>
+                      </template>
+                      <template x-if="!(u.can_manage && assignable.length > 0)">
+                        <div class="aff-row">
+                          <span class="aff-group" :class="u.group ? '' : 'is-none'" x-text="u.group ? u.group.name + ' [' + u.group.short_name + ']' : 'ยังไม่ขึ้นทะเบียน'"></span>
+                          <span class="aff-pos" x-show="u.group && u.group_position_label" x-text="u.group_position_label"></span>
+                        </div>
+                      </template>
+                    </div>
+                  </template>
                 </div>
               </div>
 
@@ -139,7 +181,7 @@
                   <button type="button" class="row-btn" @click="toggleDisabled(u)"
                           x-text="u.status === 'disabled' ? 'เปิดใช้งาน' : 'ระงับ'"></button>
                 </template>
-                <template x-if="u.can_manage && u.status === 'pending'">
+                <template x-if="u.can_manage">
                   <button type="button" class="row-btn row-btn-danger" @click="remove(u)">ลบ</button>
                 </template>
               </div>

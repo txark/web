@@ -42,6 +42,19 @@ class AnnouncementTest extends TestCase
         $this->assertSame(0, Announcement::count());
     }
 
+    public function test_fine_and_penalty_announcement_types_have_their_own_labels(): void
+    {
+        $this->actAs(Role::Member);
+
+        $this->postJson('/api/council/announcements', $this->payload(['type' => 'fine', 'title' => 'ปรับ Wolves']))
+            ->assertCreated()->assertJsonPath('data.type_label', 'ประกาศปรับ');
+        $this->postJson('/api/council/announcements', $this->payload(['type' => 'penalty', 'title' => 'โทษ Wolves']))
+            ->assertCreated()->assertJsonPath('data.type_label', 'ประกาศโทษ');
+        $this->postJson('/api/council/announcements', $this->payload(['type' => 'bogus']))->assertUnprocessable()->assertJsonValidationErrors('type');
+
+        $this->getJson('/api/council/announcements?type=fine')->assertOk()->assertJsonCount(1, 'data');
+    }
+
     public function test_council_creates_a_summon_for_a_group(): void
     {
         $user = $this->actAs(Role::Member);

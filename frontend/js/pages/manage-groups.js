@@ -217,7 +217,6 @@ function manageGroupsPage() {
     tabs: [
       { key: 'info', label: 'แก้ไขข้อมูล' },
       { key: 'txn', label: 'สร้างธุรกรรม' },
-      { key: 'report', label: 'บันทึกรายงานตัว' },
       { key: 'protect', label: 'จัดการ Protect' },
       { key: 'fine', label: 'บันทึกค่าปรับ' },
     ],
@@ -236,15 +235,20 @@ function manageGroupsPage() {
     storiesError: '',
     histError: '',
     // อัตราค่าบริการของแต่ละธุรกรรม (โหลดจากเซิร์ฟเวอร์ ค่าตั้งต้นนี้ใช้ก่อนโหลดเสร็จ)
-    fees: { currency: 'WVDL', register: 0, rename: 1000000, rename_logo: 2000000, recolor: 1000000, change_leader: 0, release_slot: 300000, release_free: 500000, dissolve: 0 },
+    fees: { currency: 'WVDL', register: 0, rename: 1000000, rename_logo: 2000000, recolor: 1000000, change_leader: 0, release_slot: 300000, release_free: 500000, dissolve: 0, remove_protect: 1000000 },
     txnKinds: [
       { value: 'rename', label: 'เปลี่ยนชื่อ' },
       { value: 'recolor', label: 'เปลี่ยนสี' },
       { value: 'change_leader', label: 'เปลี่ยน Leader' },
-      { value: 'release_slot', label: 'ออกสล็อต (ผู้ออกมายืนยันตัวตน)' },
       { value: 'release_free', label: 'ออกลอย (ผู้ออกไม่มายืนยันตัวตน)' },
+      { value: 'remove_protect', label: 'ปลด Protect' },
       { value: 'dissolve', label: 'ยุบ' },
     ],
+    /** ชนิดธุรกรรมที่เลือกได้: ปลด Protect ต้องมี Protect ใช้งานอยู่เท่านั้น */
+    get txnKindOptions() {
+      return this.txnKinds.filter((k) => k.value !== 'remove_protect' || this.protectOn);
+    },
+
     txn: blankTxn(),
     txErrors: {},
     txBusy: false,
@@ -271,6 +275,8 @@ function manageGroupsPage() {
     fineSections: [], // หมวดที่มีข้อกฎเป็นเหตุปรับได้ (โหลดจากตารางกฎ)
     fineRules: [], // ข้อกฎที่มีบทลงโทษ พร้อมจำนวนเงินที่อ่านได้จากบทลงโทษ
     records: [],
+    summons: [],
+    loans: [],
     msg: '',
     err: '',
     busy: false,
@@ -383,6 +389,41 @@ function manageGroupsPage() {
       if (this.tempTaken.includes(n)) return;
       this.f.temp_outfit_color = n;
       delete this.createErrors.temp_outfit_color;
+    },
+
+    // ── สร้างธุรกรรมจากหน้ารายการ: เลือกทะเบียนก่อน แล้วเปิดรายละเอียดที่แท็บสร้างธุรกรรม ──
+    txnPick: { show: false, mode: 'registry', q: '', loading: false, error: '', rows: [] },
+
+    get txnPickRows() {
+      const t = this.txnPick.q.trim().toLowerCase();
+      return this.txnPick.rows.filter((r) => !t || [r.name, r.short_name, r.leader].some((v) => (v || '').toLowerCase().includes(t)));
+    },
+
+    async openTxnPicker() {
+      this.txnPick = { show: true, mode: 'registry', q: '', loading: true, error: '', rows: [] };
+      this.$nextTick(() => this.$refs.tpSearch && this.$refs.tpSearch.focus());
+      try {
+        this.txnPick.rows = (await API.get('/api/council/groups?per_page=100')).data.filter((r) => !r.dissolved_at);
+      } catch (e) {
+        this.txnPick.error = firstError(e, 'โหลดรายชื่อไม่สำเร็จ');
+      } finally {
+        this.txnPick.loading = false;
+      }
+    },
+
+    closeTxnPicker() {
+      this.txnPick.show = false;
+    },
+
+    async pickForTxn(r) {
+      // ลงชุดเพิ่ม/แก้ไขชุด ทำที่หน้าลงชุด (เลือกแก๊ง/ครอบครัวนี้ไว้ให้แล้ว)
+      if (this.txnPick.mode === 'outfit') {
+        location.href = '/outfits.html?group=' + encodeURIComponent(r.id);
+        return;
+      }
+      this.closeTxnPicker();
+      await this.openById(r.id);
+      if (this.g) this.tab = 'txn';
     },
 
     openCreate() {
@@ -666,10 +707,14 @@ function manageGroupsPage() {
       this.histLoading = true;
       this.histError = '';
       try {
-        const [tx, rec] = await Promise.all([
+        const [tx, rec, sm, ln] = await Promise.all([
           API.get(`/api/council/transactions?group_id=${this.g.id}&per_page=50`),
           API.get(`/api/council/groups/${this.g.id}/records`),
+          API.get(`/api/council/groups/${this.g.id}/summons`).catch(() => ({ data: [] })),   // ประกาศเรียก: โหลดไม่ได้ไม่ให้ประวัติอื่นพัง
+          API.get(`/api/council/groups/${this.g.id}/loans`).catch(() => ({ data: [] })),     // เงินกู้: เห็นได้เฉพาะรองประธานขึ้นไป (คนอื่นได้ว่าง)
         ]);
+        this.summons = sm.data;
+        this.loans = ln.data;
         this.hist = tx.data;
         if (tx.fees) this.fees = tx.fees;
         this.records = rec.data;
@@ -680,6 +725,8 @@ function manageGroupsPage() {
       } catch (e) {
         this.hist = [];
         this.records = [];
+        this.summons = [];
+        this.loans = [];
         this.histError = e.status === 403 ? 'ดูธุรกรรมได้เฉพาะตอนเข้าเวร' : API.describe(e, 'โหลดประวัติธุรกรรมไม่สำเร็จ');
       } finally {
         this.histLoading = false;
@@ -705,9 +752,12 @@ function manageGroupsPage() {
         if (r.kind === 'inactive') {
           title = 'ขาดการเคลื่อนไหว';
         } else if (r.kind === 'fine') {
+          const n = (v) => Number(v || 0).toLocaleString('th-TH');
           title = d.penalty_type === 'penance'
-            ? 'ส่งบำเพ็ญ ' + Number(d.penance_units || 0).toLocaleString('th-TH') + ' ไม้ · ' + (d.category_label || '')
-            : 'ค่าปรับ ' + Number(d.amount || 0).toLocaleString('th-TH') + ' · ' + (d.category_label || '');
+            ? 'ส่งบำเพ็ญ ' + n(d.penance_units) + ' ไม้ · ' + (d.category_label || '')
+            : d.penalty_type === 'both'
+              ? 'ค่าปรับ ' + n(d.amount) + ' + ส่งบำเพ็ญ ' + n(d.penance_units) + ' ไม้ · ' + (d.category_label || '')
+              : 'ค่าปรับ ' + n(d.amount) + ' · ' + (d.category_label || '');
           lines.push('ข้อหา: ' + (d.charge || '—'));
         } else if (r.kind === 'outfit') {
           title = 'แก้ไขจำนวนชุด';
@@ -723,6 +773,33 @@ function manageGroupsPage() {
         }
         if (r.note) lines.push(r.note);
         items.push({ key: 'r' + r.id, title, meta: r.recorded_by || '', at: r.created_at, lines, tx: null });
+      }
+      for (const l of this.loans) {
+        const n = (v) => Number(v).toLocaleString('th-TH');
+        const lines = ['ผู้กู้: ' + (l.borrower_name || '—'), l.reason ? 'เหตุผล: ' + l.reason : '', 'คืนแล้ว ' + n(l.repaid) + ' · คงเหลือ ' + n(l.outstanding) + ' WVDL'];
+        if (l.status === 'cancelled') lines.push('ยกเลิกแล้ว' + (l.cancel_reason ? ': ' + l.cancel_reason : ''));
+        else if (l.status === 'overdue') lines.push('เกินกำหนด ' + l.days_overdue + ' วัน');
+        else if (l.next_due) lines.push('งวดถัดไปครบกำหนด ' + l.next_due.due_at);
+        items.push({
+          key: 'l' + l.id,
+          title: 'เงินกู้ ' + n(l.principal) + ' WVDL · ' + l.status_label,
+          meta: [l.by, 'WV-LN-' + String(l.id).padStart(6, '0')].filter(Boolean).join(' · '),
+          at: l.loaned_at + 'T00:00:00+07:00',
+          lines: lines.filter(Boolean),
+          tx: null,
+        });
+      }
+      for (const s of this.summons) {
+        const called = s.role === 'summoned';
+        const other = called ? s.summoner : s.summoned;
+        items.push({
+          key: 'c' + s.id,
+          title: called ? 'ถูกเรียกเข้าพบ (ประกาศเรียก)' : 'แจ้งเรียก ' + (other ? other.name : '—') + ' (ประกาศเรียก)',
+          meta: [s.by, s.number].filter(Boolean).join(' · '),
+          at: s.created_at,
+          lines: [called ? 'ถูกเรียกโดย ' + (other ? other.name : '—') : '', 'เหตุผล: ' + s.reason, s.place + ' · ' + (s.dimension === 0 ? 'มิติหลัก' : 'มิติ ' + s.dimension)].filter(Boolean),
+          tx: null,
+        });
       }
       for (const h of this.g.history || []) {
         if ((h.reason || '').startsWith('ขึ้นทะเบียน')) continue;
@@ -759,6 +836,7 @@ function manageGroupsPage() {
       const b = tx.before;
       const a = tx.after;
       if (tx.kind === 'release_slot' || tx.kind === 'release_free') return [`ออก: ${(tx.payload.member_names || []).join(', ')}`];
+      if (tx.kind === 'remove_protect') return ['ปลด Protect (Protect เดิมสิ้นสุดทันที)'];
       if (tx.kind === 'register') return a ? [`ชื่อเต็ม: ${a.name}`, `สมาชิก: ${a.members_count} คน`] : [tx.summary];
       if (!b || !a) return [tx.summary];
       if (a.dissolved) return ['ยุบกลุ่ม'];
@@ -1125,6 +1203,8 @@ function manageGroupsPage() {
           return [{ label: 'เปลี่ยน Leader', amount: f.change_leader }];
         case 'dissolve':
           return [{ label: 'ยุบ', amount: f.dissolve }];
+        case 'remove_protect':
+          return [{ label: 'ปลด Protect', amount: f.remove_protect }];
         case 'release_slot':
         case 'release_free': {
           const n = this.releaseNames.length;
@@ -1164,6 +1244,10 @@ function manageGroupsPage() {
 
     async submitTxn() {
       const t = this.txn;
+      if (t.kind === 'remove_protect' && !this.protectOn) {
+        this.txErrors = { _: 'กลุ่มนี้ไม่มี Protect ที่ใช้งานอยู่ จึงปลด Protect ไม่ได้' };
+        return;
+      }
       const pre = this.txnPreCheck();
       if (Object.keys(pre).length) {
         this.txErrors = pre;
@@ -1379,6 +1463,11 @@ function manageGroupsPage() {
 
     get coLeaders() {
       return this.activeMembers.filter((m) => m.position === 'co_leader');
+    },
+
+    /** Protect ของแถวในรายการ: เปิดอยู่เมื่อมีวันสิ้นสุดและยังไม่ถึง */
+    protectOnRow(r) {
+      return !!r.protect_until && new Date(r.protect_until) > new Date();
     },
 
     /** ป้ายที่หัวการ์ดสรุป: "Protect" เมื่อเปิดอยู่ ถ้าไม่มีก็ไม่แสดง */

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\Role;
 use App\Models\DutyShift;
 use App\Models\User;
+use Illuminate\Support\Carbon;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Validation\ValidationException;
 
@@ -23,6 +24,7 @@ class DutyService
     {
         return config('council.duty.enforced')
             && $user->atLeast(Role::Member)
+            && ! $user->role->isAdmin()   // Admin ใช้งานเมนูสภาได้โดยไม่ต้องเข้าเวร
             && ! in_array($user->role->value, config('council.duty.exempt_roles'), true);
     }
 
@@ -67,6 +69,31 @@ class DutyService
         });
 
         return $closed;
+    }
+
+    /**
+     * วินาทีเวรของแต่ละคนที่ตกอยู่ในช่วง [from, to) (เวรที่คร่อมช่วงถูกตัดตามขอบเขต เวรที่ยังเปิดอยู่นับถึงตอนนี้)
+     * ใช้คำนวณโบนัสรายอาทิตย์ — ปิดเวรที่ถูกทิ้งก่อน เพื่อไม่ให้ชั่วโมงเกินจริง
+     *
+     * @return array<int, int> user_id => วินาที
+     */
+    public function secondsByUser(Carbon $from, Carbon $to): array
+    {
+        $this->closeAllStale();
+
+        $out = [];
+        DutyShift::query()
+            ->where('started_at', '<', $to)
+            ->where(fn ($q) => $q->whereNull('ended_at')->orWhere('ended_at', '>', $from))
+            ->get()
+            ->each(function (DutyShift $s) use (&$out, $from, $to) {
+                $start = $s->started_at->greaterThan($from) ? $s->started_at : $from;
+                $end = $s->ended_at ?? now();
+                $end = $end->lessThan($to) ? $end : $to;
+                $out[$s->user_id] = ($out[$s->user_id] ?? 0) + max(0, (int) $start->diffInSeconds($end, false));
+            });
+
+        return $out;
     }
 
     public function start(User $user): DutyShift

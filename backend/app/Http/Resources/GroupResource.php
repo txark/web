@@ -30,17 +30,12 @@ class GroupResource extends JsonResource
             'status_label' => $this->status->label(),
             'status_since' => $this->status_changed_at,
             'slots_locked' => $this->slots_locked,
+            'protect_active' => (bool) ($this->protect_until && $this->protect_until->isFuture()),
             'registered_at' => $this->registered_at,
             'leader' => $this->whenLoaded('leader', fn () => $this->leader?->character_name),
+            // ประวัติการเล่นสตอรี่ (เฉพาะหน้ารายละเอียด) — ไม่รวมแต้ม
+            'stories' => $this->when($this->relationLoaded('storyHistory'), fn () => $this->storyHistory ?? []),
             'members_count' => $this->whenCounted('activeMembers'),
-            'members' => $this->whenLoaded('activeMembers', fn () => $this->activeMembers
-                ->sortBy(fn ($m) => [$m->position->order(), $m->character_name])
-                ->values()
-                ->map(fn ($m) => [
-                    'character_name' => $m->character_name,
-                    'position' => $m->position->value,
-                    'position_label' => $m->position->label(),
-                ])),
         ];
     }
 }

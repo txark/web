@@ -16,7 +16,7 @@ use Illuminate\Validation\Rule;
 /**
  * บันทึกของทะเบียน: รายงานตัว / ค่าปรับ / ปรับ Protect
  * เป็นรายการต่อท้าย (แก้หรือลบไม่ได้) และการปรับ Protect บันทึกค่าก่อน-หลังลง activity log
- * หมายเหตุ: ค่าปรับที่นี่เป็นแค่บันทึกประวัติ การรับเงินจริงต้องไปบันทึกกองกลางแยกต่างหาก
+ * ค่าปรับเป็นเงิน (WVDL) ที่บันทึกที่นี่ถูกดึงเป็นรายรับของหน้าการเงินโดยอัตโนมัติ (FinanceController::fines) ตามวันที่บันทึก
  */
 class GroupRecordController extends Controller
 {
@@ -26,12 +26,18 @@ class GroupRecordController extends Controller
 
         return response()->json([
             'data' => $records->map(fn (GroupRecord $r) => $this->present($r))->values(),
-            'meta' => [
-                'fine_sections' => $this->fineSections(),
-                'fine_rules' => $this->fineRules(),
-                'fine_categories' => collect(RuleSection::cases())->map(fn (RuleSection $s) => ['value' => $s->value, 'label' => $s->label()])->values(),
-            ],
+            'meta' => $this->fineMeta(),
         ]);
+    }
+
+    /** @return array<string, mixed> หมวดและข้อกฎที่เป็นเหตุปรับได้ (ใช้ทั้งในทะเบียนและหน้าประกาศปรับ) */
+    public function fineMeta(): array
+    {
+        return [
+            'fine_sections' => $this->fineSections(),
+            'fine_rules' => $this->fineRules(),
+            'fine_categories' => collect(RuleSection::cases())->map(fn (RuleSection $s) => ['value' => $s->value, 'label' => $s->label()])->values(),
+        ];
     }
 
     public function store(Request $request, Group $group): JsonResponse
@@ -137,8 +143,8 @@ class GroupRecordController extends Controller
         $d = $request->validate([
             'rule_id' => ['nullable', 'integer', Rule::exists('rules', 'id')->where('is_published', true)],
             'category' => ['required_without:rule_id', 'nullable', Rule::enum(RuleSection::class)],
-            'penalty_type' => ['nullable', Rule::in(['fine', 'penance'])], // fine = ค่าปรับ (WVDL) | penance = ส่งบำเพ็ญ (ไม้)
-            'amount' => ['required_unless:penalty_type,penance', 'nullable', 'integer', 'min:1', 'max:1000000000'],
+            'penalty_type' => ['nullable', Rule::in(['fine', 'penance', 'both'])], // fine = ค่าปรับ (WVDL) | penance = ส่งบำเพ็ญ (ไม้) | both = บันทึกค่าปรับและโทษบำเพ็ญด้วยกัน (กรอกอย่างน้อยหนึ่งอย่าง)
+            'amount' => ['required_unless:penalty_type,penance,both', 'nullable', 'integer', 'min:1', 'max:1000000000'],
             'penance_units' => ['required_if:penalty_type,penance', 'nullable', 'integer', 'min:1', 'max:1000000'],
             'charge' => ['required_without:rule_id', 'nullable', 'string', 'max:1000'],
             'note' => ['nullable', 'string', 'max:2000'],
@@ -157,14 +163,22 @@ class GroupRecordController extends Controller
 
         $rule = isset($d['rule_id']) ? RuleModel::find($d['rule_id']) : null;
         $section = $rule ? $rule->section : RuleSection::from($d['category']);
-        $penance = ($d['penalty_type'] ?? 'fine') === 'penance';
+        $type = $d['penalty_type'] ?? 'fine';
+        if ($type === 'both') {
+            $hasAmount = ! empty($d['amount']);
+            $hasUnits = ! empty($d['penance_units']);
+            if (! $hasAmount && ! $hasUnits) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['amount' => 'กรุณากรอกค่าปรับหรือจำนวนไม้ที่ต้องบำเพ็ญอย่างน้อยหนึ่งอย่าง']);
+            }
+            $type = $hasAmount && $hasUnits ? 'both' : ($hasAmount ? 'fine' : 'penance');
+        }
 
         return $this->create($request, $group, 'fine', [
-            'penalty_type' => $penance ? 'penance' : 'fine',
+            'penalty_type' => $type,
             'category' => $section->value,
             'category_label' => $section->label(),
-            'amount' => $penance ? null : (int) $d['amount'],
-            'penance_units' => $penance ? (int) $d['penance_units'] : null,
+            'amount' => in_array($type, ['fine', 'both'], true) ? (int) $d['amount'] : null,
+            'penance_units' => in_array($type, ['penance', 'both'], true) ? (int) $d['penance_units'] : null,
             'charge' => $rule ? trim((string) $rule->body) : trim($d['charge']),
             'rule_id' => $rule?->id,
             'rule_penalty' => $rule ? trim((string) $rule->penalty) : null,

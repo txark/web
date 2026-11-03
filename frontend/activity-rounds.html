@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="th" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>รายงานความเคลื่อนไหว | WAVEVY COUNCIL</title>
+  <link rel="icon" href="/img/favicon.png">
+  <script src="/js/theme.js"></script>
+  <script src="/js/icons.js"></script>
+  <link rel="stylesheet" href="/css/output.css">
+  <script src="/js/config.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/pages/activity-rounds.js"></script>
+  <script defer src="/js/layout.js"></script>
+  <script defer src="/js/vendor/alpine.min.js"></script>
+</head>
+<body>
+  <div id="site-header"></div>
+
+  <main class="container-app py-8" x-data="activityRoundsPage()">
+    <div x-show="!ready" class="py-24 text-center text-muted">กำลังตรวจสอบสิทธิ์...</div>
+
+    <div x-show="ready" x-cloak>
+      <section class="min-w-0">
+        <header class="rg-head">
+          <div class="min-w-0">
+            <p class="rg-eyebrow">WAVEVY COUNCIL / ACTIVITY</p>
+            <h1 class="rg-title"><i class="ic rg-ic" data-icon="activity" aria-hidden="true"></i>รายงานความเคลื่อนไหว</h1>
+            <p class="rg-sub">เปิดรอบให้แก๊ง/ครอบครัวรายงานว่ายังมีความเคลื่อนไหวในเมือง และลงรายงานตัว · รายงานที่แก๊ง/ครอบครัวยื่นเข้ามา ตรวจแล้วกด "บันทึกรายงานตัว" ที่ส่วนคำร้องด้านล่าง</p>
+          </div>
+        </header>
+
+        <p x-show="err" x-text="err" class="penalty-box mt-5" role="alert"></p>
+        <p x-show="msg" x-text="msg" class="note-box mt-5" role="status"></p>
+
+        <!-- รอบรายงานความเคลื่อนไหว: สภาเปิดเป็นช่วงเวลา แก๊ง/ครอบครัวยื่นได้เฉพาะในรอบที่เปิด -->
+        <!-- คำร้องรายงานความเคลื่อนไหวที่แก๊ง/ครอบครัวยื่นเข้ามา -->
+        <section class="mt-5" aria-labelledby="ar-req">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <h2 id="ar-req" class="type-sub">คำร้องที่ยื่นเข้ามา <span class="badge badge-muted" x-text="items.length"></span></h2>
+            <button type="button" class="btn-outline" @click="loadRequests()" :disabled="loading" x-text="loading ? 'กำลังโหลด...' : 'รีเฟรช'"></button>
+          </div>
+
+          <div class="panel mt-3 p-6 text-center" x-show="!loading && items.length === 0">
+            <span class="empty-ic" aria-hidden="true"><i class="ic" data-icon="check-circle"></i></span>
+            <p class="font-semibold">ไม่มีรายงานที่รอบันทึก</p>
+            <p class="mt-1 text-sm text-muted">เมื่อแก๊ง/ครอบครัวยื่นรายงานความเคลื่อนไหวเข้ามา จะแสดงที่นี่ให้ตรวจรูปและบันทึกรายงานตัว</p>
+          </div>
+
+          <ul class="mt-3 space-y-3" x-show="items.length > 0">
+            <template x-for="t in items" :key="t.id">
+              <li class="card p-4 sm:p-5" :id="'tx-' + t.id" :class="Number(focusId) === t.id ? '!border-[var(--accent)]' : ''">
+                <div class="flex flex-wrap items-center gap-2">
+                  <b class="text-base" x-text="t.group ? t.group.name : '—'"></b>
+                  <span class="badge badge-muted" x-text="t.group ? (t.group.type === 'family' ? 'ครอบครัว' : 'แก๊ง') : ''"></span>
+                  <span class="ml-auto text-xs text-muted" x-text="t.number + ' · ' + stamp(t.created_at)"></span>
+                </div>
+
+                <dl class="rq-detail">
+                  <template x-for="row in details(t)" :key="row[0]">
+                    <div><dt x-text="row[0]"></dt><dd x-text="row[1]"></dd></div>
+                  </template>
+                </dl>
+
+                <div class="mt-3" x-show="t.has_photo">
+                  <p class="text-sm text-muted">รูปตัวละครใส่ชุดกลุ่ม (ต้องมีอย่างน้อย 6 ตัวละคร)</p>
+                  <a :href="photos[t.id]" target="_blank" rel="noopener" x-show="photos[t.id]"><img :src="photos[t.id]" alt="รูปรายงานความเคลื่อนไหว" class="mt-2 max-h-72 rounded-xl border border-line"></a>
+                  <p class="mt-2 text-sm text-muted" x-show="!photos[t.id]">กำลังโหลดรูป...</p>
+                </div>
+
+                <p class="penalty-box mt-3" role="alert" x-show="itemErr[t.id]" x-text="'บันทึกไม่สำเร็จ: ' + itemErr[t.id]"></p>
+                <p class="mt-2 text-xs text-muted" x-text="'ผู้ยื่น: ' + (t.requested_by ? t.requested_by.name : '—')"></p>
+
+                <div class="mt-4 flex flex-wrap items-center gap-2 border-t border-line pt-3">
+                  <template x-if="mine(t)"><p class="text-sm text-muted">คำร้องของคุณเอง — ต้องให้สภาคนอื่นเป็นผู้บันทึกรายงานตัว</p></template>
+                  <template x-if="!mine(t)">
+                    <div class="flex flex-wrap gap-2">
+                      <button type="button" class="rg-primary-btn" :disabled="busy" @click="review(t, 'approve')"><i class="ic" data-icon="check" aria-hidden="true"></i>บันทึกรายงานตัว</button>
+                      <button type="button" class="btn-outline" :disabled="busy" @click="review(t, 'reject')"><i class="ic" data-icon="undo" aria-hidden="true"></i>ตีกลับรายงาน</button>
+                    </div>
+                  </template>
+                  <a x-show="t.group" :href="'/manage-groups.html?id=' + (t.group ? t.group.id : '')" class="ml-auto text-sm text-accent">ดูกลุ่ม →</a>
+                </div>
+              </li>
+            </template>
+          </ul>
+        </section>
+
+        <section class="panel mt-5 p-4 sm:p-5">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <h2 class="type-sub">รอบที่เปิดรับรายงาน</h2>
+            <button type="button" class="btn-outline" @click="showRoundForm = !showRoundForm" x-text="showRoundForm ? 'ยกเลิก' : '+ เปิดรอบใหม่'"></button>
+          </div>
+          <p class="mt-1 text-sm text-muted">แก๊ง/ครอบครัวรายงานได้เฉพาะช่วงที่เปิดรอบ (กลุ่มละ 1 ครั้งต่อรอบ)</p>
+
+          <form x-show="showRoundForm" x-cloak class="reg-grid mt-4" @submit.prevent="createRound()" novalidate>
+            <div class="reg-field reg-wide"><label class="reg-label" for="rd-title">ชื่อรอบ</label><input id="rd-title" class="input" x-model="roundForm.title" maxlength="120" autocomplete="off"><p class="reg-err" x-show="roundErr.title" x-text="roundErr.title"></p></div>
+            <div class="reg-field"><label class="reg-label" for="rd-open">เปิดรับ</label><input id="rd-open" type="datetime-local" class="input" x-model="roundForm.opens_at"><p class="reg-err" x-show="roundErr.opens_at" x-text="roundErr.opens_at"></p></div>
+            <div class="reg-field"><label class="reg-label" for="rd-close">ปิดรับ</label><input id="rd-close" type="datetime-local" class="input" x-model="roundForm.closes_at"><p class="reg-err" x-show="roundErr.closes_at" x-text="roundErr.closes_at"></p></div>
+            <div class="reg-field reg-wide"><button type="submit" class="rg-primary-btn" :disabled="busy" x-text="busy ? 'กำลังบันทึก...' : 'เปิดรอบ'"></button></div>
+          </form>
+
+          <ul class="mt-4 space-y-2" x-show="rounds.length > 0">
+            <template x-for="r in rounds" :key="r.id">
+              <li class="flex flex-wrap items-center gap-2 rounded-xl border border-line px-3 py-2 text-sm">
+                <b x-text="r.title"></b>
+                <span class="badge" :class="r.phase === 'open' ? 'badge-normal' : 'badge-muted'" x-text="r.phase === 'open' ? 'เปิดอยู่' : r.phase === 'upcoming' ? 'รอเปิด' : 'ปิดแล้ว'"></span>
+                <span class="text-xs text-muted" x-text="stamp(r.opens_at) + ' → ' + stamp(r.closes_at) + ' · ยื่นแล้ว ' + r.reports_count + ' กลุ่ม'"></span>
+                <button type="button" class="ml-auto text-danger hover:underline" x-show="r.phase !== 'closed'" @click="closeRound(r)" x-text="r.phase === 'open' ? 'ปิดรอบ' : 'ยกเลิกรอบ'"></button>
+              </li>
+            </template>
+          </ul>
+          <p class="mt-3 text-sm text-muted" x-show="rounds.length === 0">ยังไม่เคยเปิดรอบ</p>
+        </section>
+
+        <!-- รายงานตัวของแก๊ง/ครอบครัว: ลงบันทึกว่ามารายงานตัวแล้ว (ปกติ) หรือขาดการเคลื่อนไหว -->
+        <section class="panel mt-5 p-4 sm:p-5">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <h2 class="type-sub">รายงานตัว</h2>
+            <button type="button" class="btn-outline" @click="toggleReport()" x-text="showReport ? 'ซ่อน' : 'ลงรายงานตัว'"></button>
+          </div>
+          <p class="mt-1 text-sm text-muted">บันทึกรายงานตัวของแก๊ง/ครอบครัว · "รายงานตัว" = ปกติ · "ขาดการเคลื่อนไหว" ใช้กับกลุ่มที่ไม่มารายงานตัว (เรียงกลุ่มที่รายงานตัวนานที่สุดไว้บน)</p>
+
+          <div x-show="showReport" x-cloak>
+            <div class="mt-4 flex flex-col gap-3 md:flex-row md:items-center">
+              <input type="search" class="input md:w-80" x-model.debounce.300ms="repQ" placeholder="ค้นหาชื่อแก๊ง/ครอบครัว" aria-label="ค้นหากลุ่ม" @input="loadGroups()">
+              <div class="flex flex-wrap gap-2">
+                <template x-for="s in repStatuses" :key="s.value">
+                  <button type="button" class="chip" :aria-pressed="repStatus === s.value" @click="repStatus = s.value" x-text="s.label"></button>
+                </template>
+              </div>
+            </div>
+            <p class="mt-3 text-sm" x-show="openRound && !repLoading"><b x-text="'รอบ ' + (openRound ? openRound.title : '')"></b> · รายงานแล้ว <b x-text="roundProgress.done"></b> จาก <b x-text="roundProgress.total"></b> กลุ่ม</p>
+            <p class="mt-3 text-sm text-muted" x-show="!openRound && !repLoading">ตอนนี้ไม่มีรอบที่เปิดรับ</p>
+            <p class="mt-3 text-sm text-muted" x-show="repLoading">กำลังโหลด...</p>
+            <p class="mt-3 text-sm text-muted" x-show="!repLoading && repShown.length === 0">ไม่พบกลุ่มตามเงื่อนไข</p>
+            <!-- แก๊งซ้าย · ครอบครัวขวา -->
+            <div class="rp-cols" x-show="repShown.length > 0">
+              <template x-for="col in repColumns" :key="col.key">
+                <div class="rp-col">
+                  <h3 class="sm-cat-h"><span x-text="col.title"></span><i x-text="col.groups.length"></i></h3>
+                  <p class="rg-empty" x-show="col.groups.length === 0">ไม่มีรายการ</p>
+                  <ul class="space-y-2">
+                    <template x-for="g in col.groups" :key="g.id">
+                      <li class="rp-row">
+                        <div class="min-w-0 flex-1">
+                          <p class="font-medium"><span x-text="g.name"></span> <span class="text-xs text-muted" x-text="'[' + g.short_name + ']' + (g.is_lady ? ' · แก๊งหญิง' : '')"></span></p>
+                          <p class="text-xs text-muted" x-text="'รายงานตัวล่าสุด ' + (g.last_report_at ? stamp(g.last_report_at) : '— (ยังไม่เคย)')"></p>
+                        </div>
+                        <span class="rp-state is-done" x-show="reportedThisRound(g)"><i class="ic" data-icon="check-circle" aria-hidden="true"></i>รายงานตัวเรียบร้อย</span>
+                        <span class="rp-state" :class="g.status === 'normal' ? 'is-normal' : g.status === 'inactive' ? 'is-inactive' : ''" x-show="!reportedThisRound(g)" x-text="g.status_label"></span>
+                        <template x-if="g.status === 'normal' && !reportedThisRound(g)">
+                          <div class="flex flex-wrap gap-2">
+                            <button type="button" class="rg-primary-btn !py-1.5 !text-sm" :disabled="busy" @click="reportIn(g, 'normal')"><i class="ic" data-icon="check" aria-hidden="true"></i>รายงานตัว</button>
+                            <button type="button" class="btn-outline !py-1.5 !text-sm" :disabled="busy" @click="reportIn(g, 'inactive')">ขาดการเคลื่อนไหว</button>
+                          </div>
+                        </template>
+                        <p class="w-full text-xs text-muted" x-show="g.status !== 'normal' && g.status !== 'inactive'" x-text="'สถานะ ' + g.status_label + ' เปลี่ยนด้วยการรายงานตัวไม่ได้ ให้จัดการที่ทะเบียนกลุ่ม'"></p>
+                      </li>
+                    </template>
+                  </ul>
+                </div>
+              </template>
+            </div>
+          </div>
+        </section>
+
+      </section>
+    </div>
+  </main>
+</body>
+</html>

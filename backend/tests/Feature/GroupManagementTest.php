@@ -103,6 +103,20 @@ class GroupManagementTest extends TestCase
 
     // ───────── สร้าง / แก้ไข ─────────
 
+    public function test_list_includes_leader_and_deputy_names(): void
+    {
+        $this->actAs(Role::Member);
+        Storage::fake('public');
+        Storage::fake('local');
+        $this->post($this->url(), $this->reg(), ['Accept' => 'application/json'])->assertCreated();
+
+        $res = $this->getJson($this->url().'?per_page=100')->assertOk();
+        $this->assertSame(
+            [['name' => 'Boss One', 'position' => 'leader'], ['name' => 'Deputy One', 'position' => 'co_leader']],
+            collect($res->json('data.0.leadership'))->map(fn ($m) => ['name' => $m['name'], 'position' => $m['position']])->all()
+        );
+    }
+
     public function test_create_group_with_leader_and_initial_history(): void
     {
         $user = $this->actAs(Role::Member);

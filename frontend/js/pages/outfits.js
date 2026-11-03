@@ -41,6 +41,7 @@ function outfitsPage() {
     note: '',
     types: [],
     swaps: {},
+    editTypes: [],   // แก้ไขชุด: ชนิดที่ลงทะเบียนไว้แล้ว จำนวนไม่เปลี่ยน
 
     fees: { currency: 'WVDL', outfit_add: 500000, outfit_add_special: 1000000, outfit_edit: 500000, outfit_free_hours: 24 },
     busy: false,
@@ -55,6 +56,15 @@ function outfitsPage() {
       this.$watch('kind', () => this.search());
       this.$watch('mode', () => this.resetForm());
       await Promise.all([this.search(), this.loadFees()]);
+      // ลิงก์จากปุ่ม "สร้างธุรกรรม" ของหน้าทะเบียน: /outfits.html?group=12 เลือกแก๊ง/ครอบครัวให้เลย
+      const id = new URLSearchParams(location.search).get('group');
+      if (id) {
+        try {
+          this.pick((await API.get(`/api/council/groups/${encodeURIComponent(id)}`)).data);
+        } catch (e) {
+          this.errors = { _: API.describe(e, 'เปิดแก๊ง/ครอบครัวที่เลือกไม่สำเร็จ') };
+        }
+      }
     },
 
     async loadFees() {
@@ -129,6 +139,23 @@ function outfitsPage() {
       return v === undefined || v === null ? null : Number(v);
     },
 
+    /** ลงชุดแทนได้เฉพาะ MOD 1 / MOD 2 / Accessories */
+    get replaceTypes() {
+      return this.outfitTypes.filter((o) => SPECIAL_KEYS.includes(o.key));
+    },
+
+    /** แก้ไขชุด: เลือก/ยกเลิกชนิดที่ลงทะเบียนไว้แล้ว (ชนิดเดียวกันอยู่ได้ส่วนเดียว) */
+    toggleEdit(key) {
+      if (this.editTypes.includes(key)) {
+        this.editTypes = this.editTypes.filter((t) => t !== key);
+      } else {
+        this.editTypes = [...this.editTypes, key];
+        this.form[key] = '';
+      }
+      delete this.errors['edit.types'];
+      delete this.errors.add;
+    },
+
     /** แก้ไข/แทนชุดได้เฉพาะชนิดที่ลงทะเบียนไว้แล้ว (หรือเลือกไว้แล้ว/เป็นปลายทางการสลับ) */
     canEdit(key) {
       return (this.current(key) || 0) > 0 || this.types.includes(key);
@@ -145,6 +172,7 @@ function outfitsPage() {
       this.zip = null;
       this.note = '';
       this.types = [];
+      this.editTypes = [];
       this.swaps = {};
       this.rform = {};
       if (this.$refs.zipInput) this.$refs.zipInput.value = '';
@@ -211,6 +239,7 @@ function outfitsPage() {
         for (const [from, to] of Object.entries(this.swaps)) if (from === key || to === key) delete this.swaps[from];
         this.recalcSwaps();
       } else {
+        this.editTypes = this.editTypes.filter((t) => t !== key);
         this.types = [...this.types, key];
         this.form[key] = ''; // ชนิดเดียวกันอยู่ได้ส่วนเดียว: ล้างค่าในส่วนลงเพิ่ม
         // เริ่มจากจำนวนที่ลงไว้ (ยังไม่ลงทะเบียน = 1 ชิ้น) แล้วแก้ได้ภายในลิมิต
@@ -310,7 +339,8 @@ function outfitsPage() {
       if (normal) lines.push({ label: `ลงชุดเพิ่ม ${normal} ชิ้น${suffix}`, amount: free ? 0 : Number(f.outfit_add || 0) * normal });
       if (special) lines.push({ label: `ลงชุด MOD / Accessories เพิ่ม ${special} ชิ้น${suffix}`, amount: free ? 0 : Number(f.outfit_add_special || 0) * special });
       const units = this.types.length - new Set(Object.values(this.swaps)).size;
-      if (units > 0) lines.push({ label: `แก้ไขชุด ${units} ชนิด`, amount: Number(f.outfit_edit || 0) * units });
+      if (units > 0) lines.push({ label: `ลงชุดแทน ${units} ชนิด`, amount: Number(f.outfit_edit || 0) * units });
+      if (this.editTypes.length) lines.push({ label: `แก้ไขชุด ${this.editTypes.length} ชนิด`, amount: Number(f.outfit_edit || 0) * this.editTypes.length });
       return lines;
     },
 
@@ -353,7 +383,7 @@ function outfitsPage() {
       }
 
       if (!this.zip) er.outfit_zip = 'กรุณาแนบไฟล์ชุด (.ZIP)';
-      if (!this.addTotal && !this.types.length) er.add = 'กรุณากรอกจำนวนชุดที่จะลงเพิ่ม หรือเลือกชุดที่จะเปลี่ยน/แทนอย่างน้อย 1 อย่าง';
+      if (!this.addTotal && !this.types.length && !this.editTypes.length) er.add = 'กรุณากรอกจำนวนชุดที่จะลงเพิ่ม เลือกชุดที่จะลงแทน หรือเลือกชุดที่จะแก้ไขอย่างน้อย 1 อย่าง';
       for (const o of this.outfitTypes) {
         if (this.types.includes(o.key)) continue;
         const v = this.parsed(o.key);
@@ -382,7 +412,7 @@ function outfitsPage() {
       } else {
         fd.append('payload[outfit_zip]', this.zip);
         for (const o of this.outfitTypes) {
-          const v = this.types.includes(o.key) ? undefined : this.parsed(o.key);
+          const v = this.types.includes(o.key) || this.editTypes.includes(o.key) ? undefined : this.parsed(o.key);
           if (v) fd.append(`payload[add][${o.key}]`, v);
         }
         for (const t of this.types) {
@@ -390,6 +420,7 @@ function outfitsPage() {
           fd.append(`payload[replace][counts][${t}]`, this.parsedR(t));
           if (this.swaps[t]) fd.append(`payload[replace][swaps][${t}]`, this.swaps[t]);
         }
+        this.editTypes.forEach((t) => fd.append('payload[edit][types][]', t));
         if (this.note.trim()) fd.append('payload[note]', this.note.trim());
       }
 
