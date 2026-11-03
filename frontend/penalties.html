@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="th" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ประกาศโทษ | WAVEVY COUNCIL</title>
+  <link rel="icon" href="/img/favicon.png">
+  <script src="/js/theme.js"></script>
+  <script src="/js/icons.js"></script>
+  <link rel="stylesheet" href="/css/output.css">
+  <script src="/js/config.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/pages/penalties.js"></script>
+  <script defer src="/js/layout.js"></script>
+  <script defer src="/js/vendor/alpine.min.js"></script>
+</head>
+<body>
+  <div id="site-header"></div>
+
+  <main class="container-app py-8" x-data="penaltiesPage()">
+    <div x-show="!ready" class="py-24 text-center text-muted">กำลังตรวจสอบสิทธิ์...</div>
+
+    <div x-show="ready" x-cloak>
+      <header class="rg-head">
+        <div class="min-w-0">
+          <p class="rg-eyebrow">WAVEVY COUNCIL / PENALTIES</p>
+          <h1 class="rg-title"><i class="ic rg-ic" data-icon="gavel" aria-hidden="true"></i>ประกาศโทษ</h1>
+          <p class="rg-sub">โทษบำเพ็ญที่บันทึกไว้ที่หน้าประกาศปรับ · คัดลอกประกาศเมื่อกลุ่มรับโทษบำเพ็ญเรียบร้อยแล้ว</p>
+        </div>
+        <div class="rg-actions">
+          <a href="/fines.html" class="rg-primary-btn">บันทึกค่าปรับ / โทษ</a>
+        </div>
+      </header>
+
+      <nav class="fn-tabs mt-6" aria-label="ประเภทประกาศ">
+        <a href="/summons.html" class="fn-tab"><i class="ic" data-icon="phone-call" aria-hidden="true"></i>ประกาศเรียก</a>
+        <a href="/fines.html" class="fn-tab"><i class="ic" data-icon="banknote" aria-hidden="true"></i>ประกาศปรับ</a>
+        <span class="fn-tab" aria-current="page" role="tab" aria-selected="true"><i class="ic" data-icon="gavel" aria-hidden="true"></i>ประกาศโทษ</span>
+        <a href="/announcements.html" class="fn-tab"><i class="ic" data-icon="megaphone" aria-hidden="true"></i>ประกาศทั่วไป</a>
+      </nav>
+
+      <p x-show="errs._" x-text="errs._" class="penalty-box mt-5" role="alert"></p>
+
+      <section class="panel sm-card mt-5" aria-labelledby="pn-recent">
+        <div class="fn-list-head sm-recent-head">
+          <h2 id="pn-recent" class="fn-h">ประกาศโทษ</h2>
+          <span class="fn-kind" x-text="shownItems.length + ' รายการ'"></span>
+        </div>
+        <div class="flex flex-wrap items-center gap-2 pb-3">
+          <template x-for="m in modes" :key="m.value">
+            <button type="button" class="chip" :aria-pressed="mode === m.value" @click="setMode(m.value)" x-text="m.label"></button>
+          </template>
+          <span class="mx-1 hidden h-5 w-px bg-[var(--line)] md:block"></span>
+          <template x-for="s in statuses" :key="s.value">
+            <button type="button" class="chip" :aria-pressed="status === s.value" @click="status = s.value">
+              <span x-text="s.label"></span><span class="ml-1 text-muted" x-text="countStatus(s.value)"></span>
+            </button>
+          </template>
+        </div>
+        <div class="sm-day" x-show="mode === 'day'">
+          <button type="button" class="btn-outline" @click="shiftDay(-1)" :disabled="loading" aria-label="วันก่อนหน้า">‹</button>
+          <input type="date" class="input" :value="day" :max="today" @change="goDay($event.target.value)" aria-label="เลือกวันที่">
+          <button type="button" class="btn-outline" @click="shiftDay(1)" :disabled="loading || day >= today" aria-label="วันถัดไป">›</button>
+          <button type="button" class="btn-outline" @click="goDay(today)" :disabled="loading || day === today">วันนี้</button>
+          <p class="sm-day-label" x-text="dayLabel"></p>
+        </div>
+        <p class="rg-empty" x-show="!loading && shownItems.length === 0" x-text="mode === 'pending' ? 'ไม่มีโทษบำเพ็ญที่ค้างรับโทษ' : (items.length === 0 ? 'ไม่มีโทษบำเพ็ญที่บันทึกไว้ในวันที่เลือก · บันทึกได้ที่หน้าประกาศปรับ' : 'ไม่มีรายการในสถานะนี้')"></p>
+        <div class="sm-cols" x-show="shownItems.length > 0">
+          <template x-for="col in columns" :key="col.key">
+            <div class="sm-col">
+              <h3 class="sm-cat-h"><span x-text="col.title"></span><i x-text="col.sections.reduce((n, g) => n + g.rows.length, 0)"></i></h3>
+              <p class="rg-empty" x-show="col.sections.length === 0">ไม่มีรายการ</p>
+              <template x-for="grp in col.sections" :key="grp.value">
+                <div class="sm-cat">
+                  <p class="sm-sub" x-show="grp.value === 'lady'">แก๊งหญิง</p>
+                  <div class="sm-stack">
+                    <template x-for="r in grp.rows" :key="r.id">
+                      <article class="sm-item">
+                        <div class="sm-item-top"><span x-text="r.group ? r.group.kind_label : ''"></span><time x-text="stamp(r.created_at)"></time></div>
+                        <h3><a class="sm-link" :href="r.group ? '/manage-groups.html?id=' + r.group.id : null" x-text="r.group ? r.group.name : '—'"></a></h3>
+                        <p class="sm-by" x-text="r.category_label"></p>
+                        <p class="sm-reason" x-text="r.charge"></p>
+                        <p class="sm-meta"><b x-text="'ส่งบำเพ็ญ ' + money(r.penance_units) + ' ไม้'"></b><span x-show="r.amount" x-text="' · ค่าปรับ ' + money(r.amount) + ' WVDL'"></span><span x-show="r.note" x-text="' · ' + r.note"></span></p>
+                        <p class="pn-state" :class="r.served ? 'is-served' : ''">
+                          <i aria-hidden="true"></i>
+                          <span x-text="r.served ? 'รับโทษเรียบร้อย' : 'รอรับโทษ'"></span>
+                          <small x-show="r.served" x-text="(r.served_by ? 'โดย ' + r.served_by + ' · ' : '') + stamp(r.served_at)"></small>
+                        </p>
+                        <div class="sm-invite" x-show="r.served">
+                          <p class="sm-invite-text" x-text="announceText(r)"></p>
+                          <button type="button" class="btn-outline" @click="copyAnnounce(r)" x-text="copiedId === r.id ? 'คัดลอกแล้ว ✓' : 'คัดลอกประกาศโทษ'"></button>
+                        </div>
+                        <div class="pn-actions">
+                          <button type="button" class="rg-primary-btn !py-1.5 !text-sm" x-show="!r.served" :disabled="busyId === r.id" @click="serve(r)">ทำเครื่องหมายรับโทษแล้ว</button>
+                          <button type="button" class="text-sm text-muted hover:underline" x-show="r.served" :disabled="busyId === r.id" @click="unserve(r)">ยกเลิกเครื่องหมาย</button>
+                          <p class="text-xs text-muted" x-show="!r.served">ทำเครื่องหมายก่อน จึงคัดลอกประกาศโทษได้</p>
+                        </div>
+                        <p class="sm-no" x-text="'บันทึกโดย ' + r.by"></p>
+                      </article>
+                    </template>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </template>
+        </div>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

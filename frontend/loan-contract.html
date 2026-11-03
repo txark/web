@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="th" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>หนังสือสัญญาเงินกู้ | WAVEVY COUNCIL</title>
+    <link rel="icon" href="/img/favicon.png" />
+    <link rel="stylesheet" href="/css/output.css" />
+    <script src="/js/config.js"></script>
+    <script src="/js/api.js"></script>
+    <script src="/js/story-fmt.js"></script>
+    <script src="/js/vendor/html-to-image.min.js"></script>
+    <script src="/js/vendor/html2canvas.min.js"></script>
+    <script src="/js/pages/loan-contract.js"></script>
+    <script defer src="/js/vendor/alpine.min.js"></script>
+    <style>
+      html,
+      body {
+        background: #050d14;
+      }
+      .ct-wrap {
+        display: flex;
+        min-height: 100vh;
+        flex-direction: column;
+        align-items: center;
+        padding: 24px 12px 32px;
+      }
+      .ct-fit {
+        width: 560px;
+        transform-origin: top left;
+      }
+      .ct-box {
+        overflow: hidden;
+      }
+      .ct-msg {
+        margin: 20vh auto 0;
+        color: #9db6c4;
+        text-align: center;
+      }
+      .ct-embed {
+        min-height: 0;
+        padding: 12px 8px;
+      }
+      .ct-bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+      .ct-ok {
+        color: #6fe0a8;
+        font-size: 13px;
+      }
+      .ct-err {
+        color: #ff9d8f;
+        font-size: 13px;
+      }
+      .ct-foot {
+        margin-top: 18px;
+        color: #5d7685;
+        font-size: 12px;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <main
+      class="ct-wrap"
+      :class="embed ? 'ct-embed' : ''"
+      x-data="loanContractPage()"
+      @resize.window="fit()"
+    >
+      <p class="ct-msg" x-show="loading">กำลังโหลดหนังสือสัญญาเงินกู้...</p>
+      <p class="ct-msg" x-show="error" x-cloak x-text="error"></p>
+
+      <div x-show="cur && !embed" x-cloak class="ct-bar">
+        <button
+          type="button"
+          class="btn-outline"
+          @click="copyPng()"
+          :disabled="busy"
+          x-text="busy ? 'กำลังสร้างรูป...' : 'คัดลอกรูป'"
+        ></button>
+        <button
+          type="button"
+          class="btn-outline"
+          @click="copyLink()"
+          :disabled="busy"
+        >คัดลอกลิงก์รูป</button>
+        <span class="ct-ok" x-show="copiedLink" x-cloak
+          >คัดลอกลิงก์รูปแล้ว · วางใน Discord ได้เลย</span
+        >
+        <span class="ct-ok" x-show="copied" x-cloak
+          >คัดลอกรูปแล้ว · ไปวางใน Discord ได้เลย</span
+        >
+        <span class="ct-err" x-show="err" x-cloak x-text="err"></span>
+      </div>
+
+      <div
+        x-show="cur"
+        x-cloak
+        class="ct-box"
+        :style="'height:' + boxH + 'px;width:' + boxW + 'px'"
+      >
+        <div class="ct-fit" :style="'transform:scale(' + scale + ')'">
+          <template x-if="cur">
+            <article id="loan-contract" class="st-contract st-paper ln-paper">
+              <div class="st-p-inner">
+                <i class="st-p-corner tl"></i><i class="st-p-corner tr"></i
+                ><i class="st-p-corner bl"></i><i class="st-p-corner br"></i>
+                <header class="st-p-head">
+                  <div class="st-p-refbox">
+                    <p><span>เลขที่เอกสาร</span><b x-text="number()"></b></p>
+                  </div>
+                  <div class="st-p-brand">
+                    <img src="/img/logo.png" alt="" class="st-p-crest" />
+                    <!-- <div><p class="st-p-orgen">WAVEVY COUNCIL</p></div> -->
+                  </div>
+                  <div class="st-p-titlebox">
+                    <p class="st-p-eyebrow">COUNCIL LOAN AGREEMENT</p>
+                    <h2 class="st-p-title">หนังสือสัญญาเงินกู้</h2>
+                    <p class="st-p-sub">
+                      ข้อตกลงการกู้ยืมเงินจากสภา · WAVEVY CITY
+                    </p>
+                  </div>
+                </header>
+
+                <section class="ln-doc">
+                  <p class="ln-place">
+                    เขียนที่ WAVEVY CITY<br />วันที่
+                    <b x-text="day(cur.loaned_at)"></b>
+                  </p>
+
+                  <p class="ln-para">
+                    สัญญาฉบับนี้ทำขึ้นระหว่าง <b>สภา</b> โดย
+                    <b x-text="cur.by || '—'"></b
+                    ><span
+                      x-text="cur.by_rank ? ' ในฐานะ' + cur.by_rank : ' ผู้แทนสภา'"
+                    ></span>
+                    ซึ่งต่อไปนี้ในสัญญานี้เรียกว่า <b>“ผู้ให้กู้”</b> ฝ่ายหนึ่ง
+                    กับ <b x-text="cur.borrower_name || '—'"></b>
+                    <span
+                      x-text="cur.borrower_position ? 'ซึ่งดำรงตำแหน่ง' + cur.borrower_position + 'ของ' : 'ในนามตัวแทนของ'"
+                    ></span
+                    ><span x-text="typeLine"></span>
+                    <b
+                      x-text="cur.group ? '[' + short(cur.group) + '] ' + cur.group.name : '—'"
+                    ></b>
+                    ซึ่งต่อไปนี้ในสัญญานี้เรียกว่า <b>“ผู้กู้”</b> อีกฝ่ายหนึ่ง
+                    คู่สัญญาทั้งสองฝ่ายตกลงกันโดยมีข้อความดังต่อไปนี้
+                  </p>
+
+                  <div class="ln-cards">
+                    <div class="ln-card">
+                      <p>เงินต้น</p>
+                      <b x-text="money(cur.principal)"></b><small>WVDL</small>
+                    </div>
+                    <div class="ln-card">
+                      <p>ดอกเบี้ยรวม</p>
+                      <b x-text="money(cur.interest_total)"></b
+                      ><small
+                        x-text="'WVDL · ' + cur.interest_rate + '% ต่อสัปดาห์'"
+                      ></small>
+                    </div>
+                    <div class="ln-card ln-card-total">
+                      <p>ยอดต้องคืนรวม</p>
+                      <b x-text="money(cur.principal + cur.interest_total)"></b
+                      ><small>WVDL</small>
+                    </div>
+                  </div>
+
+                  <div class="ln-due">
+                    <p
+                      x-text="cur.installments > 1 ? 'กำหนดชำระคืนงวดสุดท้ายภายใน · เวลาไทย UCT +7' : 'กำหนดชำระคืนภายใน · เวลาไทย'"
+                    ></p>
+                    <b
+                      x-text="cur.final_due ? day(cur.final_due) + ' เวลา 23:59 น.' : '—'"
+                    ></b>
+                  </div>
+
+                  <h3 class="ln-sec"><em>01</em>วัตถุประสงค์การใช้เงิน</h3>
+                  <p class="ln-purpose" x-text="cur.reason || '—'"></p>
+
+                  <h3 class="ln-sec"><em>02</em>ข้อตกลงและเงื่อนไข</h3>
+                  <ol class="ln-clauses">
+                    <li>
+                      <b>ข้อ 1. จำนวนเงินกู้</b>
+                      ผู้ให้กู้ตกลงให้ผู้กู้ยืมเงินจากกองกลางของสภา เป็นจำนวน
+                      <b x-text="money(cur.principal) + ' WVDL'"></b>
+                      ตามวัตถุประสงค์การใช้เงินที่ระบุไว้ข้างต้น
+                      และผู้กู้ได้รับเงินดังกล่าวไปครบถ้วนแล้วในวันที่ทำสัญญานี้
+                    </li>
+                    <li>
+                      <b>ข้อ 2. ดอกเบี้ย</b>
+                      ผู้กู้ตกลงชำระดอกเบี้ยสัปดาห์ละ
+                      <b x-text="money(cur.interest_total) + ' WVDL'"></b>
+                    </li>
+                    <li>
+                      <b>ข้อ 3. การชำระคืน</b>
+                      <span
+                        x-text="cur.installments > 1 ? 'ผู้กู้ตกลงชำระคืนเป็นรายสัปดาห์ จำนวน ' + cur.installments + ' งวด ตามตารางผ่อนชำระแนบท้ายสัญญานี้' : 'ผู้กู้ตกลงชำระคืนเต็มจำนวนในงวดเดียว ตามตารางแนบท้ายสัญญานี้'"
+                      ></span>
+                      โดยครบกำหนดชำระ<span
+                        x-text="cur.installments > 1 ? 'งวดสุดท้าย' : ''"
+                      ></span
+                      >ในวันที่
+                      <b x-text="cur.final_due ? day(cur.final_due) : '—'"></b>
+                      การชำระแต่ละครั้งให้ตัดงวดตามลำดับ
+                    </li>
+                    <li>
+                      <b>ข้อ 4. ค่าปรับ</b> หากผู้กู้ผิดนัดชำระเมื่อเลยกำหนด
+                      ผู้กู้ตกลงชำระค่าปรับ
+                      <span x-text="lateRule"></span>
+                      โดยค่าปรับให้ชำระเป็นลำดับสุดท้ายต่อจากต้นเงินและดอกเบี้ย
+                    </li>
+                    <li>
+                      <b>ข้อ 5. เงื่อนไขเพิ่มเติม</b>
+                      หากผู้กู้ไม่ชำระคืนตามกำหนดของสภา
+                      สภาจะยึดคืนสิ่งของที่มีมูลค่าเทียบเท่าหรือมากกว่า
+                      เพื่อขายแก่ผู้ที่สนใจ และนำเงินมาจ่ายปิดหนี้ ตามระบบ
+                    </li>
+                    <li>
+                      <b>ข้อ 6. คำวินิจฉัย</b>
+                      ข้อพิพาทหรือข้อสงสัยเกี่ยวกับสัญญานี้
+                      ให้คำวินิจฉัยของสภาถือเป็นที่สุด
+                    </li>
+                  </ol>
+
+                  <h3 class="ln-annex">ตารางผ่อนชำระแนบท้ายสัญญา</h3>
+                  <table class="ln-table">
+                    <thead>
+                      <tr>
+                        <th>งวด</th>
+                        <th>ครบกำหนด</th>
+                        <th class="r">ต้นเงิน</th>
+                        <th class="r">ดอกเบี้ย</th>
+                        <th class="r">ยอดงวด</th>
+                        <th class="r" x-show="hasFee">ค่าปรับ</th>
+                        <th>สถานะ</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <template x-for="s in cur.schedule" :key="s.no">
+                        <tr>
+                          <td x-text="s.no"></td>
+                          <td
+                            x-text="s.due_at ? day(s.due_at) : 'ไม่ระบุ'"
+                          ></td>
+                          <td class="r" x-text="money(s.principal)"></td>
+                          <td class="r" x-text="money(s.interest)"></td>
+                          <td class="r"><b x-text="money(s.amount)"></b></td>
+                          <td
+                            class="r"
+                            x-show="hasFee"
+                            x-text="s.late_fee ? money(s.late_fee) : '—'"
+                          ></td>
+                          <td x-text="stLabel(s.status)"></td>
+                        </tr>
+                      </template>
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <td colspan="2">รวม</td>
+                        <td class="r" x-text="money(cur.principal)"></td>
+                        <td class="r" x-text="money(cur.interest_total)"></td>
+                        <td class="r">
+                          <b
+                            x-text="money(cur.principal + cur.interest_total)"
+                          ></b>
+                        </td>
+                        <td
+                          class="r"
+                          x-show="hasFee"
+                          x-text="money(cur.late_fee_total)"
+                        ></td>
+                        <td></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+
+                  <p class="ln-close">
+                    สัญญานี้ทำขึ้นสองฉบับ มีข้อความถูกต้องตรงกัน
+                    คู่สัญญาได้อ่านและเข้าใจข้อความทั้งหมดดีแล้ว
+                    จึงลงลายมือชื่อไว้เป็นสำคัญ
+                  </p>
+
+                  <div class="ln-signs">
+                    <div class="st-p-signer">
+                      <div class="st-p-sigrow">
+                        <em>ลงชื่อ</em
+                        ><span
+                          class="st-p-signature"
+                          x-text="cur.by || ''"
+                        ></span>
+                      </div>
+                      <p x-text="'(' + (cur.by || '') + ')'"></p>
+                      <small
+                        x-text="'ผู้ให้กู้ · ' + (cur.by_rank || 'ผู้แทนสภาเมืองคลื่น')"
+                      ></small>
+                    </div>
+                    <div class="st-p-signer">
+                      <div class="st-p-sigrow">
+                        <em>ลงชื่อ</em
+                        ><span
+                          class="st-p-signature"
+                          x-text="cur.borrower_name || ''"
+                        ></span>
+                      </div>
+                      <p x-text="'(' + (cur.borrower_name || '') + ')'"></p>
+                      <small
+                        x-text="'ผู้กู้ · ' + (cur.borrower_position ? cur.borrower_position + ' ' : '') + (cur.group ? cur.group.name : '')"
+                      ></small>
+                    </div>
+                  </div>
+                </section>
+
+                <footer class="st-p-foot ln-foot">
+                  <div>
+                    <b>WAVEVY CITY · COUNCIL FINANCE</b
+                    ><span
+                      >เอกสารข้อตกลงทางการเงินของเมือง · ตรวจสอบเลขที่
+                      <span x-text="number()"></span> ในระบบสภา</span
+                    >
+                  </div>
+                  <div class="r">
+                    <span>วันและเวลาออกเอกสาร · เวลาไทย</span
+                    ><b
+                      x-text="cur.created_at ? dateLong(cur.created_at) + ' เวลา ' + timeHm(cur.created_at) + ' น.' : '—'"
+                    ></b>
+                  </div>
+                </footer>
+              </div>
+            </article>
+          </template>
+        </div>
+      </div>
+      <p class="ct-foot" x-show="cur && !embed" x-cloak>
+        เปิดจากระบบสภา · เห็นเฉพาะประธานและรองประธาน · WAVEVY COUNCIL
+      </p>
+    </main>
+  </body>
+</html>

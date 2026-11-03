@@ -6,6 +6,7 @@
   <title>สตอรี่ | WAVEVY COUNCIL</title>
   <link rel="icon" href="/img/favicon.png">
   <script src="/js/theme.js"></script>
+  <script src="/js/icons.js"></script>
   <link rel="stylesheet" href="/css/output.css">
   <script src="/js/config.js"></script>
   <script src="/js/api.js"></script>
@@ -16,6 +17,7 @@
   <script src="/js/story-fmt.js"></script>
   <script src="/js/pages/stories.js"></script>
   <script defer src="/js/layout.js"></script>
+  <script defer src="/js/select.js"></script>
   <script defer src="/js/txnav.js"></script>
   <script defer src="/js/vendor/alpine.min.js"></script>
 </head>
@@ -32,7 +34,7 @@
         <header class="rg-head">
           <div class="min-w-0">
             <p class="rg-eyebrow">WAVEVY COUNCIL / STORY OPERATIONS</p>
-            <h1 class="rg-title">งานสตอรี่</h1>
+            <h1 class="rg-title"><i class="ic rg-ic" data-icon="scroll" aria-hidden="true"></i>งานสตอรี่</h1>
             <p class="rg-sub">ติดตามคู่สตอรี่ คะแนน รูปแบบการเล่น และผลการดำเนินงาน · ไม่มีค่าบริการ มีเดิมพัน</p>
           </div>
           <div class="flex items-center gap-2">
@@ -166,7 +168,7 @@
               <div class="st-fact st-fact-wide"><p class="st-fact-label">รายละเอียดเพิ่มเติม</p><p class="st-fact-val whitespace-pre-line" style="font-weight:400" x-text="cur.extra_conditions || '—'"></p></div>
             </div>
             <ul x-show="cur.warnings.length" class="note-box mt-4 space-y-1 text-sm">
-              <template x-for="w in cur.warnings" :key="w"><li x-text="'⚠ ' + w"></li></template>
+              <template x-for="w in cur.warnings" :key="w"><li x-text="w"></li></template>
             </ul>
           </div>
           <footer class="st-modal-foot">

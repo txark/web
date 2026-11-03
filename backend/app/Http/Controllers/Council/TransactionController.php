@@ -46,6 +46,15 @@ class TransactionController extends Controller
         return new TransactionResource($transaction->load(['group', 'requester', 'reviewer', 'activitiesAsSubject']));
     }
 
+    /** รูปที่แนบกับคำขอ (เช่น รูปรายงานความเคลื่อนไหว) ให้สภาเปิดดูก่อนอนุมัติ */
+    public function file(Transaction $transaction, string $key)
+    {
+        $path = $transaction->payload['photo_path'] ?? null;
+        abort_unless($path && \Illuminate\Support\Facades\Storage::disk('local')->exists($path), 404);
+
+        return \Illuminate\Support\Facades\Storage::disk('local')->response($path);
+    }
+
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([

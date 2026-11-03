@@ -6,6 +6,7 @@
   <title>จัดการแก๊ง/ครอบครัว | WAVEVY COUNCIL</title>
   <link rel="icon" href="/img/favicon.png">
   <script src="/js/theme.js"></script>
+  <script src="/js/icons.js"></script>
   <link rel="stylesheet" href="/css/output.css">
   <script src="/js/config.js"></script>
   <script src="/js/api.js"></script>
@@ -13,6 +14,7 @@
   <script src="/js/ui.js"></script>
   <script src="/js/pages/manage-groups.js"></script>
   <script defer src="/js/layout.js"></script>
+  <script defer src="/js/select.js"></script>
   <script defer src="/js/txnav.js"></script>
   <script defer src="/js/vendor/alpine.min.js"></script>
 </head>
@@ -31,12 +33,16 @@
         <header class="rg-head">
           <div class="min-w-0">
             <p class="rg-eyebrow">WAVEVY COUNCIL / REGISTRY</p>
-            <h1 class="rg-title">ทะเบียนแก๊ง / ครอบครัว</h1>
+            <h1 class="rg-title"><i class="ic rg-ic" data-icon="users" aria-hidden="true"></i>ทะเบียนแก๊ง / ครอบครัว</h1>
             <p class="rg-sub">ข้อมูลแก๊งและครอบครัวที่ขึ้นทะเบียนกับสภา · ทุกการแก้ไขถูกบันทึกในบันทึกกิจกรรม</p>
           </div>
           <div class="rg-actions">
             <button type="button" class="rg-icon-btn" @click="reload()" :disabled="loading" aria-label="รีเฟรชรายการ" title="รีเฟรช">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" :class="loading ? 'animate-spin' : ''"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5M3 21v-5h5"/></svg>
+            </button>
+            <button type="button" class="rg-ghost-btn" @click="openTxnPicker()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7h13l-3-3M17 17H4l3 3"/></svg>
+              สร้างธุรกรรม
             </button>
             <button type="button" class="rg-primary-btn" @click="openCreate()">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
@@ -117,6 +123,10 @@
                 </span>
                 <span class="rg-card-foot">
                   <span x-text="r.short_name || ''"></span>
+                  <span x-show="!r.dissolved_at" class="rg-protect">
+                    <span class="gd-onoff" :class="protectOnRow(r) ? 'gd-on' : 'gd-off'" x-text="protectOnRow(r) ? 'Protect ON' : 'Protect OFF'"></span>
+                    <small x-show="protectOnRow(r)" x-text="'เหลือ ' + r.protect_days_left + ' วัน'"></small>
+                  </span>
                   <span x-show="!r.dissolved_at">ดูรายละเอียด +</span>
                 </span>
               </button>
@@ -393,7 +403,7 @@
                 <div class="reg-field mt-4">
                   <label class="reg-label" for="tx-kind">ชนิดธุรกรรม</label>
                   <select id="tx-kind" x-model="txn.kind" class="input" @change="txErrors = {}; txMsg = ''">
-                    <template x-for="k in txnKinds" :key="k.value"><option :value="k.value" x-text="k.label"></option></template>
+                    <template x-for="k in txnKindOptions" :key="k.value"><option :value="k.value" x-text="k.label"></option></template>
                   </select>
                 </div>
 
@@ -472,7 +482,7 @@
                     <input id="tx-ldid" x-model="txn.leader_discord" inputmode="numeric" autocomplete="off" class="input" :aria-invalid="!!txErr('discord_id')">
                     <p class="reg-err" x-show="txErr('discord_id')" x-text="txErr('discord_id')"></p>
                   </div>
-                  <p class="gd-muted reg-wide">Leader คนเดิมจะอยู่ต่อเป็นสมาชิก ถ้าต้องการให้ออก ให้ทำธุรกรรม ออกสล็อต/ออกลอย แยกต่างหาก</p>
+                  <p class="gd-muted reg-wide">Leader คนเดิมจะอยู่ต่อเป็นสมาชิก ถ้าต้องการให้ออก ให้ทำธุรกรรม ออกลอย แยกต่างหาก</p>
                 </div>
 
                 <!-- ออกสล็อต / ออกลอย -->
@@ -495,6 +505,17 @@
                   <p class="penalty-box reg-wide text-sm">ยุบแล้วกลุ่มจะออกจากทะเบียนที่ใช้งาน และสมาชิกทุกคนถูกนำออก (ประวัติยังอยู่)</p>
                 </div>
 
+                <!-- ปลด Protect -->
+                <div x-show="txn.kind === 'remove_protect'" class="reg-grid mt-4">
+                  <div class="reg-field reg-wide">
+                    <label class="reg-label" for="tx-preason">เหตุผล <span class="reg-hint">(ไม่บังคับ)</span></label>
+                    <textarea id="tx-preason" x-model="txn.reason" rows="2" class="input" :aria-invalid="!!txErr('reason')"></textarea>
+                    <p class="reg-err" x-show="txErr('reason')" x-text="txErr('reason')"></p>
+                  </div>
+                  <p class="gd-muted reg-wide">ปลด Protect ของกลุ่มนี้ทันที (CC-004.10) · ทำได้เฉพาะกลุ่มที่ยังมี Protect ใช้งานอยู่ · มีค่าบริการตามอัตราด้านล่าง</p>
+                  <p class="penalty-box reg-wide text-sm" x-show="!protectOn">กลุ่มนี้ไม่มี Protect ที่ใช้งานอยู่ จึงปลด Protect ไม่ได้</p>
+                </div>
+
                 <!-- ค่าบริการของธุรกรรมที่เลือก (ทุกชนิด) -->
                 <div class="gd-cost mt-4" aria-live="polite">
                   <template x-for="l in feeLines" :key="l.label">
@@ -507,7 +528,7 @@
                 <p class="reg-err mt-3" x-show="txErr('_')" x-text="txErr('_')"></p>
                 <p class="note-box mt-3" x-show="txMsg" x-text="txMsg"></p>
                 <div class="mt-4 flex justify-end">
-                  <button type="submit" class="btn-solid" :disabled="txBusy" x-text="txBusy ? 'กำลังบันทึก...' : 'บันทึกธุรกรรม'"></button>
+                  <button type="submit" class="btn-solid" :disabled="txBusy || (txn.kind === 'remove_protect' && !protectOn)" x-text="txBusy ? 'กำลังบันทึก...' : 'บันทึกธุรกรรม'"></button>
                 </div>
               </section>
             </form>
@@ -756,6 +777,39 @@
           <button type="submit" class="btn-solid" :disabled="dlgBusy" x-text="dlgBusy ? 'กำลังบันทึก...' : 'บันทึก'"></button>
         </footer>
       </form>
+    </div>
+  </div>
+
+  <!-- ═════════ ป๊อปอัปเลือกทะเบียนเพื่อสร้างธุรกรรม ═════════ -->
+  <div x-show="txnPick.show" x-cloak class="reg-backdrop" role="dialog" aria-modal="true" aria-labelledby="tp-title" @keydown.escape.window="closeTxnPicker()" @mousedown.self="closeTxnPicker()">
+    <div class="reg-modal tp-modal">
+      <header class="reg-head">
+        <h2 id="tp-title" class="reg-title">สร้างธุรกรรม · เลือกแก๊ง / ครอบครัว</h2>
+        <button type="button" class="reg-close" aria-label="ปิด" @click="closeTxnPicker()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </header>
+      <div class="reg-body">
+        <div class="tp-modes" role="group" aria-label="ชนิดธุรกรรม">
+          <button type="button" class="chip" :aria-pressed="txnPick.mode === 'registry'" @click="txnPick.mode = 'registry'">ธุรกรรมทะเบียน <small>เปลี่ยนชื่อ · สี · Leader · ออกลอย · ปลด Protect · ยุบ</small></button>
+          <button type="button" class="chip" :aria-pressed="txnPick.mode === 'outfit'" @click="txnPick.mode = 'outfit'">ลงชุดเพิ่ม / แก้ไขชุด</button>
+        </div>
+        <input type="text" class="input mt-3" x-model="txnPick.q" placeholder="ค้นหาชื่อแก๊ง ชื่อย่อ หรือ Leader" autocomplete="off" x-ref="tpSearch">
+        <p class="gd-muted mt-3" x-show="txnPick.loading">กำลังโหลดรายชื่อ...</p>
+        <p class="gd-muted mt-3" x-show="txnPick.error" x-text="txnPick.error"></p>
+        <p class="gd-muted mt-3" x-show="!txnPick.loading && !txnPick.error && txnPickRows.length === 0">ไม่พบรายการ</p>
+        <ul class="tp-list">
+          <template x-for="r in txnPickRows" :key="r.id">
+            <li>
+              <button type="button" class="tp-item" @click="pickForTxn(r)">
+                <span class="rg-kind" :class="'rg-kind-' + kindOf(r).toLowerCase()" x-text="kindOf(r)"></span>
+                <b x-text="r.name + (r.short_name ? ' [' + r.short_name + ']' : '')"></b>
+                <span class="gd-muted" x-text="r.leader || ''"></span>
+              </button>
+            </li>
+          </template>
+        </ul>
+      </div>
     </div>
   </div>
 

@@ -6,6 +6,7 @@
   <title>WAVEVY COUNCIL</title>
   <link rel="icon" href="/img/favicon.png">
   <script src="/js/theme.js"></script>
+  <script src="/js/icons.js"></script>
   <link rel="stylesheet" href="/css/output.css">
   <script src="/js/config.js"></script>
   <script src="/js/api.js"></script>
@@ -13,6 +14,7 @@
   <script src="/js/ui.js"></script>
   <script src="/js/pages/home.js"></script>
   <script defer src="/js/layout.js"></script>
+  <script defer src="/js/select.js"></script>
   <script defer src="/js/vendor/alpine.min.js"></script>
 </head>
 <body>
@@ -106,21 +108,25 @@
 
         <section class="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <a href="/rules.html" class="card card-link p-6">
+            <span class="card-ic" aria-hidden="true"><i class="ic" data-icon="book-open"></i></span>
             <p class="eyebrow">Rulebook</p>
             <h3 class="mt-2 text-lg font-semibold">กฎ</h3>
             <p class="mt-1 text-sm text-muted">กฎสภา บทลงโทษ มาตรการสูงสุด Blacklist และการคว่ำบาตร</p>
           </a>
           <a href="/users.html" class="card card-link p-6">
+            <span class="card-ic" aria-hidden="true"><i class="ic" data-icon="users"></i></span>
             <p class="eyebrow">Administration</p>
             <h3 class="mt-2 text-lg font-semibold">จัดการผู้ใช้</h3>
             <p class="mt-1 text-sm text-muted">ดูรายชื่อ ระงับสิทธิ์ และแก้ชื่อตัวละคร (แต่งตั้งยศเป็นหน้าที่ประธาน/รองประธาน)</p>
           </a>
           <a href="/logs.html" class="card card-link p-6">
+            <span class="card-ic" aria-hidden="true"><i class="ic" data-icon="file-text"></i></span>
             <p class="eyebrow">Audit</p>
             <h3 class="mt-2 text-lg font-semibold">บันทึกกิจกรรม</h3>
             <p class="mt-1 text-sm text-muted">ตรวจสอบการใช้งานและการแก้ไขข้อมูลในระบบ</p>
           </a>
           <a href="/system-settings.html" class="card card-link p-6">
+            <span class="card-ic" aria-hidden="true"><i class="ic" data-icon="sliders"></i></span>
             <p class="eyebrow">System</p>
             <h3 class="mt-2 text-lg font-semibold">ตั้งค่าระบบ</h3>
             <p class="mt-1 text-sm text-muted">ค่ากลางของเว็บ</p>
@@ -137,6 +143,7 @@
 
         <section class="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <a href="/rules.html" class="card card-link p-6">
+            <span class="card-ic" aria-hidden="true"><i class="ic" data-icon="book-open"></i></span>
             <p class="eyebrow">Rulebook</p>
             <h3 class="mt-2 text-lg font-semibold">กฎ</h3>
             <p class="mt-1 text-sm text-muted">กฎสภา บทลงโทษ มาตรการสูงสุด Blacklist และการคว่ำบาตร</p>
@@ -144,20 +151,23 @@
 
           <template x-if="open">
             <a href="/transactions.html" class="card card-link p-6">
+              <span class="card-ic" aria-hidden="true"><i class="ic" data-icon="arrow-left-right"></i></span>
               <p class="eyebrow">Transactions</p>
               <h3 class="mt-2 text-lg font-semibold">ธุรกรรม</h3>
               <p class="mt-1 text-sm text-muted">จัดการแก๊ง/ครอบครัว · ลงชุดเพิ่ม/แก้ไขชุด · สตอรี่</p>
             </a>
           </template>
           <template x-if="open">
-            <a href="/announcements.html" class="card card-link p-6">
+            <a href="/summons.html" class="card card-link p-6">
+              <span class="card-ic" aria-hidden="true"><i class="ic" data-icon="megaphone"></i></span>
               <p class="eyebrow">Announcements</p>
-              <h3 class="mt-2 text-lg font-semibold">ประกาศเรียก</h3>
+              <h3 class="mt-2 text-lg font-semibold">ประกาศ</h3>
               <p class="mt-1 text-sm text-muted">สร้างและเผยแพร่ประกาศของสภา</p>
             </a>
           </template>
           <template x-if="open">
             <a href="/tasks.html" class="card card-link p-6">
+              <span class="card-ic" aria-hidden="true"><i class="ic" data-icon="bell"></i></span>
               <p class="eyebrow">Pending</p>
               <h3 class="mt-2 flex items-center gap-2 text-lg font-semibold">
                 แจ้งเตือนงานค้าง
@@ -168,6 +178,7 @@
           </template>
           <template x-if="open && admin()">
             <a href="/users.html" class="card card-link p-6">
+              <span class="card-ic" aria-hidden="true"><i class="ic" data-icon="users"></i></span>
               <p class="eyebrow">Administration</p>
               <h3 class="mt-2 text-lg font-semibold">จัดการผู้ใช้</h3>
               <p class="mt-1 text-sm text-muted">เพิ่ม Discord ID และกำหนดบทบาท</p>
@@ -175,6 +186,7 @@
           </template>
           <template x-if="open && admin()">
             <a href="/duty-report.html" class="card card-link p-6">
+              <span class="card-ic" aria-hidden="true"><i class="ic" data-icon="clock"></i></span>
               <p class="eyebrow">Duty</p>
               <h3 class="mt-2 text-lg font-semibold">สรุปชั่วโมงเวร</h3>
               <p class="mt-1 text-sm text-muted">ชั่วโมงเวรของสภาแต่ละคน ออกก่อนเวลา และถูกบังคับออกเวร</p>
@@ -182,6 +194,7 @@
           </template>
           <template x-if="open && admin()">
             <a href="/logs.html" class="card card-link p-6">
+              <span class="card-ic" aria-hidden="true"><i class="ic" data-icon="file-text"></i></span>
               <p class="eyebrow">Audit</p>
               <h3 class="mt-2 text-lg font-semibold">บันทึกกิจกรรม</h3>
               <p class="mt-1 text-sm text-muted">ตรวจสอบการใช้งานและการแก้ไขข้อมูลในระบบ</p>
@@ -189,7 +202,7 @@
           </template>
 
           <!-- ยังไม่เข้าเวร: เมนูอื่นถูกล็อก -->
-          <template x-for="item in (open ? [] : ['ธุรกรรม', 'ประกาศเรียก', 'แจ้งเตือนงานค้าง'])" :key="item">
+          <template x-for="item in (open ? [] : ['ธุรกรรม', 'ประกาศ', 'แจ้งเตือนงานค้าง'])" :key="item">
             <div class="card nav-locked p-6" aria-disabled="true">
               <p class="eyebrow">lock</p>
               <h3 class="mt-2 text-lg font-semibold" x-text="item"></h3>
@@ -232,11 +245,13 @@
 
         <section class="mt-5 grid gap-4 sm:grid-cols-2">
           <a href="/rules.html" class="card card-link p-6">
+            <span class="card-ic" aria-hidden="true"><i class="ic" data-icon="book-open"></i></span>
             <p class="eyebrow">Rulebook</p>
             <h3 class="mt-2 text-lg font-semibold">กฎและข้อปฏิบัติ</h3>
             <p class="mt-1 text-sm text-muted">กฎสภา บทลงโทษ มาตรการสูงสุด Blacklist และการคว่ำบาตร</p>
           </a>
           <a href="/groups.html" class="card card-link p-6">
+            <span class="card-ic" aria-hidden="true"><i class="ic" data-icon="users"></i></span>
             <p class="eyebrow">Registry</p>
             <h3 class="mt-2 text-lg font-semibold">ทำเนียบแก๊งและครอบครัว</h3>
             <p class="mt-1 text-sm text-muted">รายชื่อแก๊งและครอบครัวที่อยู่ภายใต้สภา พร้อมสถานะปัจจุบัน</p>

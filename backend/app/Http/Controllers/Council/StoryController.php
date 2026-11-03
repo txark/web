@@ -112,7 +112,7 @@ class StoryController extends Controller
     /** สร้าง (หรือใช้ซ้ำ) โทเคนลิงก์แชร์หนังสือสัญญา: ใครมีลิงก์เปิดอ่านได้โดยไม่ต้องล็อกอิน */
     public function share(Request $request, Story $story): JsonResponse
     {
-        abort_unless($request->user()->atLeast(\App\Enums\Role::Trainee) && ! $request->user()->role->isAdmin(), 403, 'เฉพาะสภาเท่านั้นที่แชร์หนังสือสัญญาได้');
+        abort_unless($request->user()->atLeast(\App\Enums\Role::Trainee), 403, 'เฉพาะสภาเท่านั้นที่แชร์หนังสือสัญญาได้');
 
         if (! $story->share_token) {
             $story->update(['share_token' => Str::random(40)]);
@@ -126,7 +126,7 @@ class StoryController extends Controller
     /** ยกเลิกลิงก์แชร์ (ลิงก์เดิมใช้ไม่ได้อีก) */
     public function unshare(Request $request, Story $story): JsonResponse
     {
-        abort_unless($request->user()->atLeast(\App\Enums\Role::Trainee) && ! $request->user()->role->isAdmin(), 403, 'เฉพาะสภาเท่านั้น');
+        abort_unless($request->user()->atLeast(\App\Enums\Role::Trainee), 403, 'เฉพาะสภาเท่านั้น');
 
         if ($story->share_token) {
             $story->update(['share_token' => null]);

@@ -538,7 +538,7 @@ class StoryService
 
     private function assertCouncil(User $actor): void
     {
-        abort_unless($actor->atLeast(Role::Trainee) && ! $actor->role->isAdmin(), 403, 'เฉพาะสภาเท่านั้นที่จัดการสตอรี่ได้');
+        abort_unless($actor->atLeast(Role::Trainee), 403, 'เฉพาะสภาเท่านั้นที่จัดการสตอรี่ได้');
     }
 
     /** ล็อกสล็อตกลุ่ม (DEAL-005/007): true = สตอรี่เป็นฝ่ายล็อกเอง จะปลดให้ตอนจบ; ถ้าสภาล็อกไว้ก่อนแล้วไม่แตะ */

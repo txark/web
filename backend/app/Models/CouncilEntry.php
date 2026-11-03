@@ -9,9 +9,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
-/** รายจ่ายของสภาที่กรอกเอง (ลบแบบซ่อน เก็บประวัติไว้ใน activity log) */
-#[Fillable(['spent_at', 'amount', 'category', 'title', 'note', 'created_by'])]
-class CouncilExpense extends Model
+/** รายการรับ/จ่ายของสภาที่กรอกเอง เช่น กองทุน เงินกู้ โบนัส (type = income|expense; ลบแบบซ่อน เก็บประวัติไว้ใน activity log) */
+#[Fillable(['type', 'spent_at', 'amount', 'category', 'title', 'note', 'created_by'])]
+class CouncilEntry extends Model
 {
     use LogsActivity, SoftDeletes;
 
@@ -33,6 +33,6 @@ class CouncilExpense extends Model
 
     public function getActivitylogOptions(): LogOptions
     {
-        return LogOptions::defaults()->logOnly(['spent_at', 'amount', 'category', 'title', 'note'])->logOnlyDirty();
+        return LogOptions::defaults()->logOnly(['type', 'spent_at', 'amount', 'category', 'title', 'note'])->logOnlyDirty();
     }
 }

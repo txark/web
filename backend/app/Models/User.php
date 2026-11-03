@@ -14,7 +14,7 @@ use Laravel\Sanctum\HasApiTokens;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
-#[Fillable(['name', 'discord_id', 'avatar', 'character_name', 'role', 'disabled_at', 'last_login_at', 'added_by'])]
+#[Fillable(['name', 'discord_id', 'avatar', 'character_name', 'role', 'group_id', 'group_position', 'disabled_at', 'removed_at', 'last_login_at', 'added_by'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -31,6 +31,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'role' => Role::class,
             'disabled_at' => 'datetime',
+            'removed_at' => 'datetime',
             'last_login_at' => 'datetime',
         ];
     }
@@ -45,6 +46,12 @@ class User extends Authenticatable
         return $this->disabled_at !== null;
     }
 
+    /** แก๊ง/ครอบครัวที่สังกัด (เฉพาะบทบาท gang/family) */
+    public function group(): BelongsTo
+    {
+        return $this->belongsTo(Group::class)->withTrashed();
+    }
+
     public function addedBy(): BelongsTo
     {
         return $this->belongsTo(self::class, 'added_by');
@@ -53,7 +60,7 @@ class User extends Authenticatable
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['name', 'character_name', 'role', 'disabled_at'])
+            ->logOnly(['name', 'character_name', 'role', 'group_id', 'group_position', 'disabled_at'])
             ->logOnlyDirty();
     }
 }

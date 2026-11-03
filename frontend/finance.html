@@ -3,15 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>รายรับ-รายจ่าย / ค่าบริการ | WAVEVY COUNCIL</title>
+  <title>ธุรกรรมการเงิน | WAVEVY COUNCIL</title>
   <link rel="icon" href="/img/favicon.png">
   <script src="/js/theme.js"></script>
+  <script src="/js/icons.js"></script>
   <link rel="stylesheet" href="/css/output.css">
   <script src="/js/config.js"></script>
   <script src="/js/api.js"></script>
   <script src="/js/auth.js"></script>
   <script src="/js/pages/finance.js"></script>
   <script defer src="/js/layout.js"></script>
+  <script defer src="/js/select.js"></script>
   <script defer src="/js/txnav.js"></script>
   <script defer src="/js/vendor/alpine.min.js"></script>
 </head>
@@ -28,20 +30,38 @@
         <header class="rg-head">
           <div class="min-w-0">
             <p class="rg-eyebrow">WAVEVY COUNCIL / FINANCE</p>
-            <h1 class="rg-title">รายรับ-รายจ่าย / ค่าบริการ</h1>
-            <p class="rg-sub">รายรับดึงจากค่าบริการของธุรกรรมที่อนุมัติแล้วโดยอัตโนมัติ · รายจ่ายของสภากรอกเองตามหมวด · เห็นเฉพาะรองประธานขึ้นไป</p>
+            <h1 class="rg-title"><i class="ic rg-ic" data-icon="wallet" aria-hidden="true"></i>ธุรกรรมการเงิน</h1>
+            <p class="rg-sub">สรุปรายรับ-รายจ่าย เงินกู้ ซื้อ-ขายกับแก๊ง/ครอบครัว และโบนัสเวรของสภา · เห็นเฉพาะประธานและรองประธาน</p>
           </div>
           <div class="rg-actions">
-            <button type="button" class="btn-outline" @click="exportCsv()" :disabled="loading">ส่งออก CSV</button>
-            <button type="button" class="rg-primary-btn" @click="openCreate()">+ บันทึกรายจ่าย</button>
+            <template x-if="tab === 'summary'">
+              <span class="contents">
+                <button type="button" class="btn-outline" @click="exportCsv()" :disabled="loading">ส่งออก CSV</button>
+                <button type="button" class="rg-primary-btn" @click="openCreate()">+ บันทึกรายการ</button>
+              </span>
+            </template>
+            
+            <button type="button" class="rg-primary-btn" x-show="tab === 'trade'" @click="openTradeCreate()">+ บันทึกซื้อ-ขาย</button>
           </div>
         </header>
 
         <p x-show="msg" x-text="msg" class="note-box mt-5"></p>
         <p x-show="error" x-text="error" class="penalty-box mt-5"></p>
 
+        <!-- แท็บ -->
+        <nav class="fn-tabs mt-6" role="tablist" aria-label="หมวดธุรกรรมการเงิน">
+          <template x-for="t in tabs" :key="t.key">
+            <button type="button" role="tab" class="fn-tab" :aria-selected="tab === t.key" :disabled="!!t.soon" @click="setTab(t.key)" :title="t.soon ? 'กำลังพัฒนา' : ''">
+              <span x-text="t.label"></span><i class="fn-soon" x-show="t.soon">เร็วๆ นี้</i>
+            </button>
+          </template>
+          <span class="fn-live" x-show="updatedLabel" x-cloak title="รายรับดึงจากค่าบริการของธุรกรรมที่อนุมัติแล้วและค่าปรับที่สภาบันทึกไว้ในทะเบียนโดยอัตโนมัติ · หน้านี้รีเฟรชเองทุก 30 วินาที"><i></i>อัปเดตอัตโนมัติ · <span x-text="updatedLabel"></span></span>
+        </nav>
+
+        <div x-show="tab === 'summary'">
+
         <!-- ช่วงวันที่ -->
-        <section class="panel mt-6 space-y-3 p-4">
+        <section class="panel mt-4 space-y-3 p-4">
           <div class="flex flex-wrap items-center gap-2" role="group" aria-label="ช่วงเวลา">
             <template x-for="p in presets" :key="p.key">
               <button type="button" class="chip" :aria-pressed="preset === p.key" @click="setPreset(p.key)" x-text="p.label"></button>
@@ -56,7 +76,7 @@
         <!-- สรุปยอด -->
         <section class="fn-cards mt-4" x-show="summary" aria-label="สรุปยอด">
           <div class="fn-card fn-in">
-            <p class="fn-label">รายรับ (ค่าบริการ)</p>
+            <p class="fn-label">รายรับ</p>
             <p class="fn-num" x-text="'+ ' + money(summary && summary.income)"></p>
             <p class="fn-sub" x-text="(summary ? summary.income_count : 0) + ' รายการ · ' + (summary ? summary.currency : 'WVDL')"></p>
           </div>
@@ -75,13 +95,13 @@
         <!-- สรุปตามชนิดค่าบริการ / หมวดรายจ่าย -->
         <section class="fn-split mt-4" x-show="summary">
           <div class="panel p-4">
-            <h2 class="fn-h">รายรับตามชนิดค่าบริการ</h2>
+            <h2 class="fn-h">รายรับตามชนิด / หมวด</h2>
             <p class="fn-empty" x-show="summary && summary.by_kind.length === 0">ยังไม่มีรายรับในช่วงนี้</p>
             <ul class="fn-bars">
               <template x-for="k in (summary ? summary.by_kind : [])" :key="k.key">
                 <li>
                   <button type="button" class="fn-bar" :class="category === k.key ? 'is-on' : ''" @click="pickCategory(k.key, k.label)" :title="'กรองเฉพาะ ' + k.label">
-                    <span class="fn-bar-top"><b x-text="k.label"></b><span x-text="money(k.amount) + ' · ' + k.count + ' ครั้ง'"></span></span>
+                    <span class="fn-bar-top"><b x-text="k.label"></b><span x-text="money(k.amount) + ' · ' + k.count + ' รายการ'"></span></span>
                     <span class="fn-track"><i class="fn-fill fn-fill-in" :style="'width:' + pct(summary.by_kind, k) + '%'"></i></span>
                   </button>
                 </li>
@@ -142,7 +162,7 @@
                     <td class="fn-nowrap" x-text="r.by || '—'"></td>
                     <td class="fn-r fn-nowrap" :class="r.type === 'income' ? 'fn-pos' : 'fn-negt'" x-text="(r.type === 'income' ? '+ ' : '− ') + money(r.amount)"></td>
                     <td class="fn-act">
-                      <span x-show="r.type === 'expense'" class="fn-acts">
+                      <span x-show="r.entry_id" class="fn-acts">
                         <button type="button" class="gd-ghost" @click="openEdit(r)">แก้ไข</button>
                         <button type="button" class="gd-ghost" @click="openDelete(r)">ลบ</button>
                       </span>
@@ -159,6 +179,436 @@
             <button type="button" class="gd-ghost" :disabled="page >= meta.last_page || loading" @click="go(page + 1)">ถัดไป ›</button>
           </div>
         </section>
+        </div><!-- /แท็บสรุป -->
+
+        <!-- ═════════ แท็บเงินกู้ (สัญญากู้เงินสภา) ═════════ -->
+        <div x-show="tab === 'loans'" x-cloak>
+          <p class="gd-muted mt-4 text-sm">แก๊งหรือครอบครัวขอกู้ ประธานหรือรองประธานเป็นผู้บันทึกสัญญา · เบิกจากกองทุนของสภา · บันทึกแล้วแก้หรือลบไม่ได้ ถ้าผิดให้บันทึกรายการยกเลิกต่อท้าย</p>
+
+          <section class="fn-cards mt-4" aria-label="สรุปเงินกู้">
+            <div class="fn-card" :class="loanMeta.central && loanMeta.central.balance < 0 ? 'fn-neg' : 'fn-in'">
+              <p class="fn-label">ยอดกองทุนคงเหลือ</p>
+              <p class="fn-num" x-text="(loanMeta.central && loanMeta.central.balance < 0 ? '− ' : '') + money(Math.abs(loanMeta.central ? loanMeta.central.balance : 0))"></p>
+              <p class="fn-sub">รายรับ − รายจ่ายสะสมทั้งหมด · WVDL</p>
+            </div>
+            <div class="fn-card fn-bal">
+              <p class="fn-label">ยอดค้างคืนรวม (รวมค่าปรับ)</p>
+              <p class="fn-num" x-text="money(loanMeta.summary && loanMeta.summary.outstanding)"></p>
+              <p class="fn-sub" x-text="'ดอกเบี้ยรวม ' + money(loanMeta.summary && loanMeta.summary.interest) + ' · ค่าปรับ ' + money(loanMeta.summary && loanMeta.summary.late_fees)"></p>
+            </div>
+            <div class="fn-card" :class="loanMeta.summary && loanMeta.summary.overdue_count ? 'fn-neg' : 'fn-bal'">
+              <p class="fn-label">สัญญาเกินกำหนด</p>
+              <p class="fn-num" x-text="(loanMeta.summary ? loanMeta.summary.overdue_count : 0) + ' สัญญา'"></p>
+              <p class="fn-sub" x-text="'ค้าง ' + money(loanMeta.summary && loanMeta.summary.overdue_amount)"></p>
+            </div>
+          </section>
+
+          <div class="fn-loan-layout mt-4">
+            <!-- ตั้งค่ากลาง: อยู่เหนือสร้างสัญญากู้ใหม่ เปิดเป็น popup -->
+            <button type="button" class="panel fn-settings-bar" @click="openSettings()" aria-haspopup="dialog">
+              <span class="fn-h">ตั้งค่ากลางการกู้เงิน</span>
+              <span class="fn-fold-hint" x-text="loanMeta.settings ? 'ดอกเบี้ย ' + loanMeta.settings.default_interest + '% · ค่าปรับ ' + money(loanMeta.settings.late_fee_amount) + ' ' + feeTypeLabel(loanMeta.settings.late_fee_type) + ' · ผ่อนสูงสุด ' + loanMeta.settings.max_installments + ' งวด · แก้ไข ›' : 'เปิด ›'"></span>
+            </button>
+
+            <!-- สร้างสัญญากู้ใหม่ -->
+            <section class="panel fn-form-card" aria-labelledby="ln-form-title">
+              <button type="button" class="fn-fold" :aria-expanded="loanFormOpen" aria-controls="ln-form" @click="loanFormOpen = !loanFormOpen">
+                <h2 id="ln-form-title" class="fn-h">สร้างสัญญากู้ใหม่</h2>
+                <span class="fn-fold-hint" x-text="loanFormOpen ? 'ย่อ ▲' : 'ขยาย ▼'"></span>
+              </button>
+              <form id="ln-form" @submit.prevent="saveLoan()" novalidate class="fn-form" x-show="loanFormOpen" x-cloak>
+                <p class="penalty-box" x-show="errs._" x-text="errs._"></p>
+
+                <div class="reg-field">
+                  <span class="reg-label">ประเภท</span>
+                  <div class="flex flex-wrap gap-2" role="group" aria-label="ประเภทผู้กู้">
+                    <template x-for="k in loanKinds" :key="k.key">
+                      <button type="button" class="chip" :aria-pressed="lf.kind === k.key" @click="setLoanKind(k.key)" x-text="k.label"></button>
+                    </template>
+                  </div>
+                </div>
+                <div class="fn-form-row">
+                  <div class="reg-field" x-show="lf.kind">
+                    <label class="reg-label" for="ln-group" x-text="'ชื่อ' + (lf.kind === 'family' ? 'ครอบครัว' : 'แก๊ง') + ' (ดึงจากทะเบียน)'"></label>
+                    <input type="search" x-model="groupFilter" x-show="groupOptions.length > 8" class="input mb-2" placeholder="พิมพ์เพื่อกรองรายชื่อ" aria-label="กรองรายชื่อ" autocomplete="off">
+                    <select id="ln-group" class="input" :disabled="groupsLoading" @change="pickGroupId($event.target.value)" :aria-invalid="!!e('group_id')">
+                      <option value="" :selected="!lf.group" x-text="groupsLoading ? 'กำลังโหลดรายชื่อ...' : (groupOptions.length ? 'เลือกชื่อ' : 'ไม่มีกลุ่มประเภทนี้ในทะเบียน')"></option>
+                      <template x-for="g in shownGroups" :key="g.id">
+                        <option :value="g.id" :selected="lf.group && lf.group.id === g.id" x-text="g.name + (g.short_name ? ' [' + g.short_name + ']' : '')"></option>
+                      </template>
+                    </select>
+                    <p class="reg-err" x-show="e('group_id')" x-text="e('group_id')"></p>
+                  </div>
+
+                  <div class="reg-field" :class="lf.kind ? '' : 'col-span-2'">
+                    <label class="reg-label" for="ln-name">ชื่อผู้กู้</label>
+                    <input id="ln-name" type="text" x-model="lf.borrower_name" maxlength="120" class="input" autocomplete="off" :aria-invalid="!!e('borrower_name')">
+                  <div class="fn-names" x-show="groupLeaders.length" role="group" aria-label="เลือกจากหัวหน้าและรอง">
+                    <template x-for="m in groupLeaders" :key="m.name + m.position">
+                      <button type="button" class="chip" :aria-pressed="lf.borrower_name === m.name" @click="pickBorrower(m.name)"><span x-text="m.position_label"></span> · <b x-text="m.name"></b></button>
+                    </template>
+                  </div>
+                    <p class="reg-err" x-show="e('borrower_name')" x-text="e('borrower_name')"></p>
+                  </div>
+                </div>
+
+                <div class="fn-form-row fn-form-row-3">
+                  <div class="reg-field">
+                    <label class="reg-label" for="ln-principal">จำนวนเงินที่ต้องการกู้ <span class="reg-hint">(WVDL)</span></label>
+                    <input id="ln-principal" type="text" inputmode="numeric" x-model="lf.principal" class="input fn-right" placeholder="เช่น 500000" autocomplete="off" :aria-invalid="!!e('principal')">
+                    <p class="reg-err" x-show="e('principal')" x-text="e('principal')"></p>
+                  </div>
+                  <div class="reg-field">
+                    <label class="reg-label" for="ln-date">วันที่กู้</label>
+                    <input id="ln-date" type="date" x-model="lf.loaned_at" :max="todayMax" class="input" :aria-invalid="!!e('loaned_at')">
+                    <p class="reg-err" x-show="e('loaned_at')" x-text="e('loaned_at')"></p>
+                  </div>
+                  <div class="reg-field">
+                    <label class="reg-label" for="ln-due">กำหนดคืน <span class="reg-hint" x-text="lf.installment ? '(งวดสุดท้าย · คำนวณให้)' : ''"></span></label>
+                    <input id="ln-due" type="date" :value="lf.installment ? autoDue : lf.due_at" @input="lf.due_at = $event.target.value" :min="lf.loaned_at || undefined" :disabled="lf.installment" class="input" :aria-invalid="!!e('due_at')">
+                    <p class="reg-err" x-show="e('due_at')" x-text="e('due_at')"></p>
+                  </div>
+                </div>
+
+                <div class="reg-field">
+                  <label class="reg-label" for="ln-reason">เหตุผล</label>
+                  <textarea id="ln-reason" x-model="lf.reason" rows="2" maxlength="1000" class="input" :aria-invalid="!!e('reason')"></textarea>
+                  <p class="reg-err" x-show="e('reason')" x-text="e('reason')"></p>
+                </div>
+
+                <label class="fn-check">
+                  <input type="checkbox" x-model="lf.installment">
+                  <span>ผ่อนจ่าย</span>
+                </label>
+
+                <div class="fn-terms">
+                  <div class="reg-field fn-installments" x-show="lf.installment">
+                    <label class="reg-label" for="ln-n">จำนวนงวด <span class="reg-hint" x-text="'(1 งวด = 1 สัปดาห์ · สูงสุด ' + maxInstallments + ')'"></span></label>
+                    <input id="ln-n" type="text" inputmode="numeric" x-model="lf.installments" class="input fn-right" autocomplete="off" :aria-invalid="!!e('installments')">
+                    <p class="reg-err" x-show="e('installments')" x-text="e('installments')"></p>
+                  </div>
+                  <p class="fn-hint" x-show="loanMeta.settings">ดอกเบี้ยและค่าปรับใช้ตามค่ากลาง: ดอกเบี้ย <b x-text="loanMeta.settings && loanMeta.settings.default_interest"></b>% ต่อสัปดาห์ · ค่าปรับ <b x-text="money(loanMeta.settings && loanMeta.settings.late_fee_amount)"></b> WVDL <span x-text="feeTypeLabel(loanMeta.settings && loanMeta.settings.late_fee_type)"></span> · <button type="button" class="fn-link" @click="openSettings()">ตั้งค่ากลาง</button></p>
+                  <p class="fn-calc" x-show="loanPreview">
+                    <template x-if="loanPreview && loanPreview.n > 1"><span>งวดที่ 1–<span x-text="loanPreview.n"></span> ครบกำหนด <span x-text="loanPreview.dues.join(', ')"></span> · </span></template>
+                    ดอกเบี้ยรวม <span x-text="money(loanPreview && loanPreview.interest)"></span> · ยอดรวม <span x-text="money(loanPreview && loanPreview.total)"></span>
+                    <template x-if="loanPreview && loanPreview.n > 1"><span> · งวดละประมาณ <b x-text="money(loanPreview.each)"></b></span></template>
+                  </p>
+                </div>
+
+                <p class="fn-fund" :class="loanCentral && loanCentral.after < 0 ? 'is-neg' : ''" x-show="loanCentral && num(lf.principal)">
+                  กองทุน <b x-text="money(loanCentral && loanCentral.balance)"></b> → <b x-text="(loanCentral && loanCentral.after < 0 ? '− ' : '') + money(Math.abs(loanCentral ? loanCentral.after : 0))"></b>
+                  <span x-show="loanCentral && loanCentral.after < 0"> · กองทุนไม่พอ (บันทึกได้ แต่กองทุนจะติดลบ)</span>
+                </p>
+
+                <div class="fn-submit">
+                  <button type="submit" class="rg-primary-btn fn-save" :disabled="busy" x-text="busy ? 'กำลังบันทึก...' : 'บันทึกสัญญา'"></button>
+                  <p class="fn-hint" x-text="'บันทึกแล้วแก้หรือลบไม่ได้ ยอดกองทุนลดลง ' + (num(lf.principal) ? money(num(lf.principal)) : '—') + ' ทันที ถ้าผิดให้บันทึกรายการแก้ไขต่อท้าย'"></p>
+                </div>
+              </form>
+            </section>
+
+            <!-- สัญญาทั้งหมด -->
+            <section class="panel fn-list-card" aria-labelledby="ln-list-title">
+              <div class="fn-list-head">
+                <h2 id="ln-list-title" class="fn-h">สัญญาทั้งหมด</h2>
+                <span class="fn-hint">เรียงตามกำหนดคืนใกล้สุด</span>
+              </div>
+              <div class="flex flex-wrap items-center gap-2 px-4 pb-3" role="group" aria-label="สถานะสัญญา">
+                <template x-for="s in loanStatuses" :key="s.key">
+                  <button type="button" class="chip" :aria-pressed="loanStatus === s.key" @click="loanStatus = s.key" x-text="s.label"></button>
+                </template>
+                <input type="search" x-model.debounce.300ms="loanQ" class="input ml-auto w-full sm:w-64" placeholder="ค้นหากลุ่ม / ชื่อผู้กู้ / เหตุผล" aria-label="ค้นหา" autocomplete="off">
+              </div>
+
+              <p x-show="loanLoading && loans.length === 0" class="rg-empty">กำลังโหลด...</p>
+              <p x-show="!loanLoading && loans.length === 0 && !error" class="rg-empty">ยังไม่มีสัญญากู้ตามเงื่อนไขที่เลือก</p>
+
+              <div class="fn-table-wrap" x-show="loans.length > 0">
+                <table class="fn-table fn-loan-table">
+                  <thead>
+                    <tr><th scope="col">แก๊ง / ครอบครัว</th><th scope="col" class="fn-r">ยอดกู้</th><th scope="col">กำหนดคืน</th><th scope="col">สถานะ</th><th scope="col" class="fn-r">คงค้าง</th><th scope="col"><span class="sr-only">การทำงาน</span></th></tr>
+                  </thead>
+                  <template x-for="l in loans" :key="l.id">
+                    <tbody>
+                      <tr :class="l.status === 'cancelled' ? 'fn-row-off' : (l.status === 'overdue' ? 'fn-row-late' : '')">
+                        <th scope="row" class="fn-who">
+                          <a class="fn-grp-link" :href="l.group ? '/manage-groups.html?id=' + l.group.id : null"><b x-text="l.group ? l.group.name : '—'"></b></a> <span class="fn-kind-inline" x-text="'(' + kindLabel(l.group) + ')'"></span>
+                          <small x-text="(l.borrower_name || '—') + (l.installments > 1 ? ' · ผ่อน ' + l.installments + ' งวด' : '')"></small>
+                        </th>
+                        <td class="fn-r fn-nowrap" x-text="money(l.principal)"></td>
+                        <td class="fn-nowrap" x-text="dayLabel(l.final_due || l.due_at)"></td>
+                        <td><span class="fn-pill" :class="statusClass(l)" x-text="statusText(l)"></span></td>
+                        <td class="fn-r fn-nowrap"><b x-text="money(l.outstanding)"></b><small class="fn-subline" :class="l.late_fee_total > 0 && l.outstanding > 0 ? 'fn-negt' : ''" x-text="leftNote(l)"></small>
+                          <span class="fn-prog" x-show="l.status !== 'cancelled' && repaidPct(l) > 0" :title="'คืนแล้ว ' + repaidPct(l) + '%'"><i :style="'width:' + repaidPct(l) + '%'"></i></span>
+                        </td>
+                        <td class="fn-nowrap">
+                          <span class="fn-acts">
+                            <button type="button" class="fn-btn" x-show="l.outstanding > 0" @click="openRepay(l)">บันทึกการคืน</button>
+                            <button type="button" class="gd-ghost" @click="contractLoan = l">สัญญา</button>
+                            <button type="button" class="gd-ghost" @click="toggleLoan(l.id)" x-text="openLoan === l.id ? 'ซ่อน' : 'ประวัติ'"></button>
+                          </span>
+                        </td>
+                      </tr>
+                      <tr x-show="openLoan === l.id" x-cloak class="fn-detail-row">
+                        <td colspan="6">
+                          <div class="fn-detail">
+                            <p><span class="fn-mute">เหตุผล:</span> <span x-text="l.reason || '—'"></span></p>
+                            <p class="fn-mute" x-text="'ทำสัญญาโดย ' + (l.by || '—') + ' · ดอกเบี้ย ' + l.interest_rate + '%/สัปดาห์ · ค่าปรับ ' + money(l.late_fee_value) + ' ' + feeTypeLabel(l.late_fee_type)"></p>
+                            <p class="fn-negt" x-show="l.status === 'cancelled'" x-text="'ยกเลิกสัญญาโดย ' + l.cancelled_by + ' · เหตุผล: ' + l.cancel_reason"></p>
+                            <ul class="fn-pay-list" x-show="l.payments.length > 0">
+                              <template x-for="p in l.payments" :key="p.id">
+                                <li :class="p.reversed ? 'is-reversed' : ''">
+                                  <span x-text="dayLabel(p.paid_at)"></span>
+                                  <b :class="p.is_reversal ? 'fn-negt' : 'fn-pos'" x-text="(p.is_reversal ? '− ยกเลิกรับคืน ' : '+ ') + money(p.amount)"></b>
+                                  <span class="fn-mute" x-text="(p.by ? 'โดย ' + p.by : '') + (p.note ? ' · ' + p.note : '')"></span>
+                                  <span class="fn-pill fn-pill-mute" x-show="p.reversed">ถูกยกเลิกแล้ว</span>
+                                  <button type="button" class="gd-ghost fn-pay-act" x-show="!p.reversed && !p.is_reversal && l.status !== 'cancelled'" @click="openPayReverse(l, p)">ยกเลิกรายการ</button>
+                                </li>
+                              </template>
+                            </ul>
+                            <p class="fn-mute" x-show="l.payments.length === 0">ยังไม่มีการรับคืน</p>
+                            <p x-show="l.status !== 'cancelled'"><button type="button" class="gd-ghost" @click="openLoanCancel(l)">ยกเลิกสัญญานี้ (รายการต่อท้าย)</button></p>
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </template>
+                </table>
+              </div>
+
+              <div class="fn-pager" x-show="loanMeta.last_page > 1">
+                <button type="button" class="gd-ghost" :disabled="loanPage <= 1 || loanLoading" @click="goLoans(loanPage - 1)">‹ ก่อนหน้า</button>
+                <span class="text-sm text-muted" x-text="'หน้า ' + loanPage + ' / ' + loanMeta.last_page + ' · ทั้งหมด ' + loanMeta.total + ' สัญญา'"></span>
+                <button type="button" class="gd-ghost" :disabled="loanPage >= loanMeta.last_page || loanLoading" @click="goLoans(loanPage + 1)">ถัดไป ›</button>
+              </div>
+              <p class="fn-note-box">ใกล้ครบกำหนดหรือเกินกำหนดจะขึ้นในหน้า <a href="/tasks.html" class="fn-link">แจ้งเตือนงานค้าง</a> พร้อมปุ่ม "คัดลอกข้อความทวง" (ไม่ใช้ Discord bot)</p>
+            </section>
+          </div>
+        </div>
+
+        <!-- ═════════ แท็บซื้อ-ขาย ═════════ -->
+        <div x-show="tab === 'trade'" x-cloak>
+          <section class="fn-cards mt-4" x-show="tradeMeta.summary" aria-label="สรุปซื้อ-ขาย">
+            <div class="fn-card fn-in">
+              <p class="fn-label">สภาขายให้กลุ่ม (รายรับ)</p>
+              <p class="fn-num" x-text="'+ ' + money(tradeMeta.summary && tradeMeta.summary.sold)"></p>
+              <p class="fn-sub" x-text="(tradeMeta.summary ? tradeMeta.summary.sell_count : 0) + ' รายการ · WVDL'"></p>
+            </div>
+            <div class="fn-card fn-out">
+              <p class="fn-label">สภาซื้อจากกลุ่ม (รายจ่าย)</p>
+              <p class="fn-num" x-text="'− ' + money(tradeMeta.summary && tradeMeta.summary.bought)"></p>
+              <p class="fn-sub" x-text="(tradeMeta.summary ? tradeMeta.summary.buy_count : 0) + ' รายการ · WVDL'"></p>
+            </div>
+            <div class="fn-card" :class="tradeMeta.summary && tradeMeta.summary.net < 0 ? 'fn-neg' : 'fn-bal'">
+              <p class="fn-label">สุทธิ</p>
+              <p class="fn-num" x-text="(tradeMeta.summary && tradeMeta.summary.net < 0 ? '− ' : '') + money(Math.abs(tradeMeta.summary ? tradeMeta.summary.net : 0))"></p>
+              <p class="fn-sub">ขาย − ซื้อ ทั้งหมดที่บันทึก</p>
+            </div>
+          </section>
+
+          <section class="panel mt-4">
+            <div class="space-y-3 p-4">
+              <div class="flex flex-wrap items-center gap-2" role="group" aria-label="ประเภทซื้อ-ขาย">
+                <template x-for="d in tradeDirs" :key="d.key">
+                  <button type="button" class="chip" :aria-pressed="tradeDir === d.key" @click="tradeDir = d.key" x-text="d.label"></button>
+                </template>
+                <input type="search" x-model.debounce.300ms="tradeQ" class="input ml-auto w-full sm:w-80" placeholder="ค้นหาสินค้า / แก๊ง/ครอบครัว / หมายเหตุ" aria-label="ค้นหา" autocomplete="off">
+              </div>
+            </div>
+
+            <p x-show="tradeLoading && trades.length === 0" class="rg-empty">กำลังโหลด...</p>
+            <p x-show="!tradeLoading && trades.length === 0 && !error" class="rg-empty">ไม่พบรายการซื้อ-ขาย — กด "+ บันทึกซื้อ-ขาย" เพื่อบันทึกรายการแรก</p>
+
+            <ul class="fn-loans" x-show="trades.length > 0">
+              <template x-for="t in trades" :key="t.id">
+                <li class="fn-loan" :class="t.direction === 'sell' ? 'is-paid' : 'is-overdue'">
+                  <div class="fn-loan-main">
+                    <div class="fn-loan-who">
+                      <span class="fn-pill" :class="t.direction === 'sell' ? 'fn-pill-paid' : 'fn-pill-overdue'" x-text="t.direction_label"></span>
+                      <b x-text="t.item"></b>
+                      <span class="fn-mute" x-text="'× ' + t.quantity.toLocaleString('th-TH') + ' @ ' + money(t.unit_price)"></span>
+                    </div>
+                    <p class="fn-loan-meta">
+                      <span x-text="t.group ? t.group.name : '—'"></span>
+                      <span class="fn-kind-inline" x-text="kindOf(t.group)"></span>
+                      <span class="fn-kind fn-kind-gone" x-show="t.group && t.group.deleted">ยุบแล้ว</span>
+                      <span x-text="dayLabel(t.traded_at)"></span>
+                      <span x-show="t.by" x-text="'โดย ' + t.by"></span>
+                      <span x-show="t.note" x-text="t.note"></span>
+                    </p>
+                  </div>
+                  <div class="fn-loan-side">
+                    <p class="fn-loan-left"><small x-text="t.direction === 'sell' ? 'รายรับ' : 'รายจ่าย'"></small><b :class="t.direction === 'sell' ? 'fn-pos' : 'fn-negt'" x-text="(t.direction === 'sell' ? '+ ' : '− ') + money(t.amount)"></b></p>
+                    <span class="fn-acts">
+                      <button type="button" class="gd-ghost" @click="openTradeEdit(t)">แก้ไข</button>
+                      <button type="button" class="gd-ghost" @click="openTradeDelete(t)">ลบ</button>
+                    </span>
+                  </div>
+                </li>
+              </template>
+            </ul>
+
+            <div class="fn-pager" x-show="tradeMeta.last_page > 1">
+              <button type="button" class="gd-ghost" :disabled="tradePage <= 1 || tradeLoading" @click="goTrades(tradePage - 1)">‹ ก่อนหน้า</button>
+              <span class="text-sm text-muted" x-text="'หน้า ' + tradePage + ' / ' + tradeMeta.last_page + ' · ทั้งหมด ' + tradeMeta.total + ' รายการ'"></span>
+              <button type="button" class="gd-ghost" :disabled="tradePage >= tradeMeta.last_page || tradeLoading" @click="goTrades(tradePage + 1)">ถัดไป ›</button>
+            </div>
+          </section>
+          <p class="gd-muted mt-3 text-sm">สภาขายให้กลุ่มนับเป็นรายรับ และสภาซื้อจากกลุ่มนับเป็นรายจ่ายของหมวด "ซื้อ-ขาย" ในแท็บสรุปโดยอัตโนมัติ — ไม่ต้องบันทึกซ้ำที่แท็บสรุป</p>
+        </div>
+
+        <!-- ═════════ แท็บโบนัสเวร ═════════ -->
+        <div x-show="tab === 'bonus'" x-cloak>
+          <p class="gd-muted mt-4 text-sm">ตัดรอบเวลาเข้าเวรเพื่อล็อกนาทีเวรให้คงที่ แล้วคิดโบนัสสภาด้วยสูตรเดียวกันทุกคน · ตัดรอบแล้วถือว่าจ่ายแล้ว นับเป็นรายจ่ายหมวดโบนัส · ย้อนได้เฉพาะรอบล่าสุด</p>
+
+          <section class="fn-cards mt-4" aria-label="สรุปโบนัสเวร">
+            <div class="fn-card fn-neg">
+              <p class="fn-label">จ่ายโบนัสเวรสะสม</p>
+              <p class="fn-num" x-text="money(bonusMeta.total_paid)"></p>
+              <p class="fn-sub" x-text="bonusMeta.total + ' รอบ · WVDL'"></p>
+            </div>
+            <div class="fn-card" :class="bonusCutAt ? 'fn-in' : 'fn-bal'">
+              <p class="fn-label">สถานะรอบปัจจุบัน</p>
+              <p class="fn-num" style="font-size: 1.35rem" x-text="bonusCutAt ? 'ตัดรอบเวรแล้ว' : 'ยังไม่ตัดรอบเวร'"></p>
+              <p class="fn-sub" x-text="bonusPreview ? 'นับตั้งแต่ ' + stamp(bonusPreview.started_at) + (bonusCutAt ? ' ถึง ' + stamp(bonusCutAt) : '') : ''"></p>
+            </div>
+            <div class="fn-card fn-bal">
+              <p class="fn-label">โบนัสรอบนี้</p>
+              <p class="fn-num" x-text="bonusCutAt ? money(bonusPayTotal) : '—'"></p>
+              <p class="fn-sub" x-text="bonusCutAt ? bonusPayRows.length + ' คน · ' + money(bonusPreview && bonusPreview.minutes_total) + ' นาที' : 'ตัดรอบเวลาเข้าเวรก่อนจึงจะคิดโบนัสได้'"></p>
+            </div>
+          </section>
+
+          <div class="fn-loan-layout fn-bonus-layout mt-4">
+            <!-- สูตรของรอบนี้ -->
+            <section class="panel fn-form-card" aria-labelledby="bn-title">
+              <h2 id="bn-title" class="fn-h">สูตรของรอบนี้</h2>
+              <p class="fn-hint">กรอกครั้งเดียว ระบบใช้คำนวณทุกคนด้วยสูตรเดียวกัน</p>
+              <div class="fn-form mt-3">
+                <div class="reg-field" x-show="bonusFirst">
+                  <label class="reg-label" for="bn-start">เริ่มนับตั้งแต่วันที่ <span class="reg-hint">(รอบแรกเท่านั้น · ค่าเริ่มต้น = เวรแรกสุดในระบบ)</span></label>
+                  <input id="bn-start" type="date" x-model="bn.start_from" :max="todayMax" class="input">
+                </div>
+                <div class="reg-field">
+                  <label class="reg-label" for="bn-formula">สูตร</label>
+                  <input id="bn-formula" type="text" x-model="bn.formula" @input="schedulePreview()" maxlength="300" class="input fn-formula" autocomplete="off" spellcheck="false" :aria-invalid="!!be('formula')">
+                  <p class="reg-err" x-show="be('formula')" x-text="be('formula')"></p>
+                  <p class="fn-hint">ใช้ + − × ÷ และวงเล็บได้ ตัวแปร "<span x-text="bonusMeta.minutes_variable"></span>" = นาทีเวรของแต่ละคน ระบบดึงให้เอง (÷ 1440 = จำนวนวัน) · ตัวแปรที่ไม่บังคับเว้นว่างได้ (นับเป็น 0)</p>
+                </div>
+
+                <div class="fn-vars">
+                  <template x-for="(v, i) in bn.variables" :key="i">
+                    <div class="fn-var">
+                      <div class="fn-var-row">
+                        <input type="text" x-model="v.name" @input="schedulePreview()" class="input fn-var-name" placeholder="ชื่อตัวแปร" aria-label="ชื่อตัวแปร" autocomplete="off" :readonly="isCoreVar(i)" :class="isCoreVar(i) ? 'fn-locked' : ''" :aria-invalid="!!be('variables.' + i + '.name')">
+                        <input type="text" inputmode="decimal" :value="v.value" @input="v.value = $event.target.value; schedulePreview()" @blur="v.value = fmtNum(v.value)" class="input fn-right fn-var-value" :placeholder="v.optional ? 'ว่าง = 0' : 'กรอกค่า'" :aria-label="'ค่าของ ' + (v.name || 'ตัวแปร')" autocomplete="off" :aria-invalid="!!be('variables.' + i + '.value')">
+                      </div>
+                      <div class="fn-var-opt">
+                        <label class="fn-check fn-check-sm" x-show="!isCoreVar(i)"><input type="checkbox" x-model="v.optional" @change="schedulePreview()"><span>ไม่บังคับ</span></label>
+                        <button type="button" class="gd-ghost" x-show="!isCoreVar(i)" @click="removeBonusVar(i)" :aria-label="'ลบตัวแปร ' + v.name">ลบ</button>
+                      </div>
+                      <p class="reg-err" x-show="be('variables.' + i + '.name')" x-text="be('variables.' + i + '.name')"></p>
+                      <p class="reg-err" x-show="be('variables.' + i + '.value')" x-text="be('variables.' + i + '.value')"></p>
+                    </div>
+                  </template>
+                  <button type="button" class="fn-add-var" @click="addBonusVar()" :disabled="bn.variables.length >= 20">+ เพิ่มตัวแปร</button>
+                  <p class="reg-err" x-show="be('variables')" x-text="be('variables')"></p>
+                </div>
+
+              </div>
+            </section>
+
+            <!-- ตัวอย่างผลรายคน -->
+            <section class="panel fn-list-card" aria-labelledby="bp-title">
+              <div class="fn-list-head">
+                <h2 id="bp-title" class="fn-h">ตัวอย่างผลรายคน</h2>
+                <span class="fn-hint">เรียงตามนาทีเวรมากไปน้อย</span>
+              </div>
+              <p class="rg-empty" x-show="!bonusPreview && !bonusLoading">แก้สูตรหรือตัวแปรให้ถูกต้องเพื่อดูผลรายคน</p>
+              <p class="rg-empty" x-show="bonusPreview && !bonusCutAt">ต้องตัดรอบเวลาเข้าเวรก่อน จึงจะคิดโบนัสได้ (กดปุ่ม "ตัดรอบเวลาเข้าเวร" ด้านล่าง เพื่อล็อกนาทีเวรของทุกคนให้คงที่)</p>
+              <div class="fn-table-wrap" x-show="bonusPreview && bonusCutAt">
+                <table class="fn-table">
+                  <thead><tr><th scope="col">ชื่อ</th><th scope="col">ยศ</th><th scope="col" class="fn-r">นาทีเวร</th><th scope="col" class="fn-r">โบนัส</th></tr></thead>
+                  <tbody>
+                    <template x-for="r in (bonusPreview ? bonusPreview.rows : [])" :key="r.user.id">
+                      <tr>
+                        <th scope="row" class="fn-who"><b x-text="r.user.display_name"></b></th>
+                        <td class="fn-mute" x-text="r.user.role_label"></td>
+                        <td class="fn-r fn-nowrap" x-text="money(r.minutes)"></td>
+                        <td class="fn-r fn-nowrap"><b :class="r.amount > 0 ? '' : 'fn-mute'" x-text="r.amount > 0 ? money(r.amount) : '—'"></b></td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+              <div class="fn-total-bar" x-show="bonusPreview && bonusCutAt">
+                <span class="fn-mute" x-text="'รวม ' + (bonusPreview ? bonusPreview.rows.length : 0) + ' คน'"></span>
+                <span x-text="money(bonusPreview && bonusPreview.minutes_total) + ' นาที'"></span>
+                <b class="fn-pos ml-auto" x-text="'โบนัสรวม ' + money(bonusPayTotal)"></b>
+              </div>
+            </section>
+          </div>
+
+          <div class="panel fn-action-bar mt-4">
+            <p x-show="!bonusCutAt">ขั้นที่ 1: ตัดรอบเวลาเข้าเวร เพื่อล็อกนาทีเวรให้คงที่ก่อนคิดโบนัส</p>
+            <p x-show="bonusCutAt">ขั้นที่ 2: ตัดรอบโบนัส จะมี popup ให้ตรวจรายชื่อและยอดของทุกคนก่อนยืนยัน</p>
+            <div class="flex flex-wrap gap-3">
+              <button type="button" class="btn-outline" :disabled="!bonusLatest" @click="openRevert()">ย้อนรอบล่าสุด</button>
+              <button type="button" class="btn-outline" x-show="bonusCutAt" :disabled="busy" @click="clearDutyCut()">ยกเลิกการตัดรอบเวร</button>
+              <button type="button" class="rg-primary-btn" x-show="!bonusCutAt" :disabled="!bonusPreview || busy" @click="dutyCut()">ตัดรอบเวลาเข้าเวร</button>
+              <button type="button" class="rg-primary-btn" x-show="bonusCutAt" :disabled="!bonusPreview || bonusPayRows.length === 0" @click="openCutoff()">ตัดรอบโบนัส</button>
+            </div>
+          </div>
+
+          <section class="panel mt-4">
+            <div class="fn-list-head p-4"><h2 class="fn-h">ประวัติการตัดรอบ</h2><span class="fn-hint">ใหม่สุดก่อน</span></div>
+            <p x-show="bonusLoading && bonuses.length === 0" class="rg-empty">กำลังโหลด...</p>
+            <p x-show="!bonusLoading && bonuses.length === 0" class="rg-empty">ยังไม่เคยตัดรอบโบนัสเวร</p>
+            <ul class="fn-loans" x-show="bonuses.length > 0">
+              <template x-for="w in bonuses" :key="w.id">
+                <li class="fn-loan is-paid">
+                  <div class="fn-loan-main">
+                    <div class="fn-loan-who">
+                      <b x-text="'รอบ ' + stamp(w.started_at) + ' – ' + stamp(w.ended_at)"></b>
+                      <span class="fn-pill fn-pill-paid">จ่ายแล้ว</span>
+                      <span class="fn-pill fn-pill-open" x-show="w.is_latest">รอบล่าสุด</span>
+                    </div>
+                    <p class="fn-loan-meta">
+                      <span x-text="w.members + ' คน'"></span>
+                      <span x-show="w.by" x-text="'ตัดรอบโดย ' + w.by"></span>
+                      <span x-show="w.note" x-text="w.note"></span>
+                    </p>
+                    <p class="fn-loan-meta" x-show="w.formula"><span x-text="'สูตร ' + w.formula"></span><span x-show="w.variables.length" x-text="varsText(w.variables)"></span></p>
+                  </div>
+                  <div class="fn-loan-side">
+                    <p class="fn-loan-left"><small>รวมจ่าย</small><b class="fn-negt" x-text="'− ' + money(w.total)"></b></p>
+                    <span class="fn-acts">
+                      <button type="button" class="gd-ghost" @click="openBonus = openBonus === w.id ? null : w.id" x-text="openBonus === w.id ? 'ซ่อนรายชื่อ' : 'รายชื่อ (' + w.members + ')'"></button>
+                      <button type="button" class="gd-ghost" x-show="w.is_latest" @click="openRevert(w)">ย้อนรอบล่าสุด</button>
+                    </span>
+                  </div>
+                  <div class="fn-loan-pays" x-show="openBonus === w.id" x-cloak>
+                    <ul>
+                      <template x-for="i in w.items" :key="i.user ? i.user.id : Math.random()">
+                        <li>
+                          <b x-text="i.user ? i.user.display_name : '—'"></b>
+                          <span class="fn-mute" x-text="i.user ? i.user.role_label : ''"></span>
+                          <span class="fn-mute" x-text="minutesLabel(i.minutes)"></span>
+                          <b class="fn-negt ml-auto" x-text="money(i.amount)"></b>
+                        </li>
+                      </template>
+                    </ul>
+                  </div>
+                </li>
+              </template>
+            </ul>
+            <div class="fn-pager" x-show="bonusMeta.last_page > 1">
+              <button type="button" class="gd-ghost" :disabled="bonusPage <= 1 || bonusLoading" @click="goBonus(bonusPage - 1)">‹ ก่อนหน้า</button>
+              <span class="text-sm text-muted" x-text="'หน้า ' + bonusPage + ' / ' + bonusMeta.last_page"></span>
+              <button type="button" class="gd-ghost" :disabled="bonusPage >= bonusMeta.last_page || bonusLoading" @click="goBonus(bonusPage + 1)">ถัดไป ›</button>
+            </div>
+          </section>
+        </div>
       </div>
     </div>
 
@@ -166,7 +616,7 @@
     <div x-show="dlg === 'form'" x-cloak class="gd-dlg-back" role="dialog" aria-modal="true" aria-labelledby="fn-dlg-title" @keydown.escape.window="closeDlg()" @mousedown.self="closeDlg()">
       <form class="gd-dlg fn-dlg" @submit.prevent="save()" novalidate>
         <header class="gd-dlg-head">
-          <h3 id="fn-dlg-title" class="gd-dlg-title" x-text="f.id ? 'แก้ไขรายจ่าย' : 'บันทึกรายจ่ายของสภา'"></h3>
+          <h3 id="fn-dlg-title" class="gd-dlg-title" x-text="f.id ? 'แก้ไขรายการ' : 'บันทึกรายการของสภา'"></h3>
           <button type="button" class="reg-close" aria-label="ปิด" @click="closeDlg()">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
           </button>
@@ -174,8 +624,16 @@
         <div class="gd-dlg-body">
           <p class="penalty-box mb-3" x-show="errs._" x-text="errs._"></p>
           <div class="reg-grid">
+            <div class="reg-field reg-wide">
+              <span class="reg-label">ประเภท</span>
+              <div class="flex flex-wrap gap-2" role="group" aria-label="ประเภทรายการ">
+                <button type="button" class="chip" :aria-pressed="f.type === 'income'" @click="setFormType('income')">รายรับ</button>
+                <button type="button" class="chip" :aria-pressed="f.type === 'expense'" @click="setFormType('expense')">รายจ่าย</button>
+              </div>
+              <p class="reg-err" x-show="e('type')" x-text="e('type')"></p>
+            </div>
             <div class="reg-field">
-              <label class="reg-label" for="fn-date">วันที่จ่าย</label>
+              <label class="reg-label" for="fn-date">วันที่</label>
               <input id="fn-date" type="date" x-model="f.spent_at" class="input" :aria-invalid="!!e('spent_at')">
               <p class="reg-err" x-show="e('spent_at')" x-text="e('spent_at')"></p>
             </div>
@@ -186,8 +644,8 @@
             </div>
             <div class="reg-field reg-wide">
               <span class="reg-label">หมวด</span>
-              <div class="flex flex-wrap gap-2" role="group" aria-label="หมวดรายจ่าย">
-                <template x-for="c in (summary ? summary.expense_categories : [])" :key="c.key">
+              <div class="flex flex-wrap gap-2" role="group" aria-label="หมวด">
+                <template x-for="c in formCategories" :key="f.type + c.key">
                   <button type="button" class="chip" :aria-pressed="f.category === c.key" @click="f.category = c.key" x-text="c.label"></button>
                 </template>
               </div>
@@ -195,7 +653,7 @@
             </div>
             <div class="reg-field reg-wide">
               <label class="reg-label" for="fn-title">รายการ</label>
-              <input id="fn-title" type="text" x-model="f.title" maxlength="120" class="input" placeholder="เช่น รางวัลชนะสตอรี่" autocomplete="off" :aria-invalid="!!e('title')">
+              <input id="fn-title" type="text" x-model="f.title" maxlength="120" class="input" placeholder="เช่น เงินเข้ากองทุน / ปล่อยกู้ให้ … / โบนัสสภาประจำเดือน" autocomplete="off" :aria-invalid="!!e('title')">
               <p class="reg-err" x-show="e('title')" x-text="e('title')"></p>
             </div>
             <div class="reg-field reg-wide">
@@ -215,7 +673,7 @@
     <!-- ยืนยันลบรายจ่าย -->
     <div x-show="dlg === 'delete'" x-cloak class="gd-dlg-back" role="dialog" aria-modal="true" aria-labelledby="fn-del-title" @keydown.escape.window="closeDlg()" @mousedown.self="closeDlg()">
       <div class="gd-dlg fn-dlg">
-        <header class="gd-dlg-head"><h3 id="fn-del-title" class="gd-dlg-title">ลบรายจ่ายนี้?</h3></header>
+        <header class="gd-dlg-head"><h3 id="fn-del-title" class="gd-dlg-title">ลบรายการนี้?</h3></header>
         <div class="gd-dlg-body">
           <p class="penalty-box mb-3" x-show="errs._" x-text="errs._"></p>
           <p x-show="target"><b x-text="target ? target.title : ''"></b> · <span x-text="target ? money(target.amount) + ' WVDL' : ''"></span></p>
@@ -226,6 +684,347 @@
           <button type="button" class="btn-solid" :disabled="busy" @click="remove()" x-text="busy ? 'กำลังลบ...' : 'ลบรายการ'"></button>
         </footer>
       </div>
+    </div>
+
+    <!-- บันทึก/แก้ไขซื้อ-ขาย -->
+    <div x-show="dlg === 'trade'" x-cloak class="gd-dlg-back" role="dialog" aria-modal="true" aria-labelledby="fn-trade-title" @keydown.escape.window="closeDlg()" @mousedown.self="closeDlg()">
+      <form class="gd-dlg fn-dlg" @submit.prevent="saveTrade()" novalidate>
+        <header class="gd-dlg-head">
+          <h3 id="fn-trade-title" class="gd-dlg-title" x-text="tf.id ? 'แก้ไขรายการซื้อ-ขาย' : 'บันทึกซื้อ-ขายกับแก๊ง/ครอบครัว'"></h3>
+          <button type="button" class="reg-close" aria-label="ปิด" @click="closeDlg()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+        </header>
+        <div class="gd-dlg-body">
+          <p class="penalty-box mb-3" x-show="errs._" x-text="errs._"></p>
+          <div class="reg-grid">
+            <div class="reg-field reg-wide">
+              <span class="reg-label">ประเภท</span>
+              <div class="flex flex-wrap gap-2" role="group" aria-label="ประเภทรายการ">
+                <button type="button" class="chip" :aria-pressed="tf.direction === 'sell'" @click="tf.direction = 'sell'">สภาขายให้กลุ่ม (รายรับ)</button>
+                <button type="button" class="chip" :aria-pressed="tf.direction === 'buy'" @click="tf.direction = 'buy'">สภาซื้อจากกลุ่ม (รายจ่าย)</button>
+              </div>
+              <p class="reg-err" x-show="e('direction')" x-text="e('direction')"></p>
+            </div>
+            <div class="reg-field reg-wide">
+              <span class="reg-label">แก๊ง/ครอบครัว <span class="reg-hint">(ที่ขึ้นทะเบียน)</span></span>
+              <div class="fn-picked" x-show="tf.group">
+                <b x-text="tf.group ? tf.group.name : ''"></b>
+                <span class="fn-kind" x-text="kindOf(tf.group)"></span>
+                <button type="button" class="gd-ghost" x-show="!tf.id" @click="tf.group = null">เปลี่ยน</button>
+              </div>
+              <div x-show="!tf.group">
+                <input type="search" x-model="gq" @input.debounce.250ms="searchGroups()" class="input" placeholder="พิมพ์ชื่อแก๊ง/ครอบครัว หรือชื่อย่อ" autocomplete="off" aria-label="ค้นหาแก๊ง/ครอบครัว">
+                <ul class="fn-gres" x-show="gresults.length > 0">
+                  <template x-for="g in gresults" :key="g.id">
+                    <li><button type="button" @click="pickGroup(g)"><b x-text="g.name"></b><span class="fn-kind" x-text="g.type === 'family' ? 'FAMILY' : g.is_lady ? 'LADY' : 'GANG'"></span></button></li>
+                  </template>
+                </ul>
+                <p class="fn-empty" x-show="gq.trim() && !gsearching && gresults.length === 0">ไม่พบแก๊ง/ครอบครัวที่ตรงกับคำค้น</p>
+              </div>
+              <p class="reg-err" x-show="e('group_id')" x-text="e('group_id')"></p>
+            </div>
+            <div class="reg-field reg-wide">
+              <label class="reg-label" for="tr-item">สินค้า / บริการ</label>
+              <input id="tr-item" type="text" x-model="tf.item" maxlength="120" class="input" placeholder="เช่น ชุดสูท / กระสุน / ค่าบริการ" autocomplete="off" :aria-invalid="!!e('item')">
+              <p class="reg-err" x-show="e('item')" x-text="e('item')"></p>
+            </div>
+            <div class="reg-field">
+              <label class="reg-label" for="tr-qty">จำนวน</label>
+              <input id="tr-qty" type="text" inputmode="numeric" x-model="tf.quantity" class="input" autocomplete="off" :aria-invalid="!!e('quantity')">
+              <p class="reg-err" x-show="e('quantity')" x-text="e('quantity')"></p>
+            </div>
+            <div class="reg-field">
+              <label class="reg-label" for="tr-price">ราคาต่อหน่วย <span class="reg-hint">(WVDL)</span></label>
+              <input id="tr-price" type="text" inputmode="numeric" x-model="tf.unit_price" class="input" autocomplete="off" :aria-invalid="!!e('unit_price')">
+              <p class="reg-err" x-show="e('unit_price')" x-text="e('unit_price')"></p>
+            </div>
+            <p class="reg-wide fn-total" x-show="tradeTotal !== null">ยอดรวม <b x-text="money(tradeTotal)"></b> WVDL <span class="fn-mute" x-text="tf.direction === 'sell' ? '(รายรับของสภา)' : '(รายจ่ายของสภา)'"></span></p>
+            <div class="reg-field">
+              <label class="reg-label" for="tr-date">วันที่</label>
+              <input id="tr-date" type="date" x-model="tf.traded_at" :max="todayMax" class="input" :aria-invalid="!!e('traded_at')">
+              <p class="reg-err" x-show="e('traded_at')" x-text="e('traded_at')"></p>
+            </div>
+            <div class="reg-field reg-wide">
+              <label class="reg-label" for="tr-note">หมายเหตุ <span class="reg-hint">(ไม่บังคับ)</span></label>
+              <textarea id="tr-note" x-model="tf.note" rows="2" maxlength="1000" class="input"></textarea>
+            </div>
+          </div>
+        </div>
+        <footer class="gd-dlg-foot">
+          <button type="button" class="btn-outline" @click="closeDlg()">ยกเลิก</button>
+          <button type="submit" class="btn-solid" :disabled="busy" x-text="busy ? 'กำลังบันทึก...' : 'บันทึก'"></button>
+        </footer>
+      </form>
+    </div>
+
+    <!-- ยืนยันลบซื้อ-ขาย -->
+    <div x-show="dlg === 'delTrade'" x-cloak class="gd-dlg-back" role="dialog" aria-modal="true" aria-labelledby="fn-dt-title" @keydown.escape.window="closeDlg()" @mousedown.self="closeDlg()">
+      <div class="gd-dlg fn-dlg">
+        <header class="gd-dlg-head"><h3 id="fn-dt-title" class="gd-dlg-title">ลบรายการซื้อ-ขายนี้?</h3></header>
+        <div class="gd-dlg-body">
+          <p class="penalty-box mb-3" x-show="errs._" x-text="errs._"></p>
+          <p x-show="tradeTarget"><b x-text="tradeTarget ? tradeTarget.direction_label + ' · ' + tradeTarget.item : ''"></b> · <span x-text="tradeTarget ? money(tradeTarget.amount) : ''"></span> WVDL · <span x-text="tradeTarget && tradeTarget.group ? tradeTarget.group.name : ''"></span></p>
+          <p class="gd-muted mt-2">รายการจะถูกหักออกจากยอดสรุปการเงิน (มีบันทึกการลบในบันทึกกิจกรรม)</p>
+        </div>
+        <footer class="gd-dlg-foot">
+          <button type="button" class="btn-outline" @click="closeDlg()">ยกเลิก</button>
+          <button type="button" class="btn-solid" :disabled="busy" @click="removeTrade()" x-text="busy ? 'กำลังลบ...' : 'ลบ'"></button>
+        </footer>
+      </div>
+    </div>
+
+    <!-- ยืนยันตัดรอบโบนัส (popup) -->
+    <div x-show="dlg === 'cutoff'" x-cloak class="gd-dlg-back" role="dialog" aria-modal="true" aria-labelledby="fn-co-title" @keydown.escape.window="closeDlg()" @mousedown.self="closeDlg()">
+      <div class="gd-dlg fn-dlg fn-dlg-rp">
+        <header class="gd-dlg-head">
+          <div>
+            <h3 id="fn-co-title" class="gd-dlg-title">ยืนยันตัดรอบโบนัส</h3>
+            <p class="fn-mute text-sm" x-text="bonusPreview ? stamp(bonusPreview.started_at) + ' ถึง ' + stamp(bonusPreview.ended_at) + ' · สูตร ' + bonusPreview.formula : ''"></p>
+          </div>
+        </header>
+        <div class="gd-dlg-body">
+          <p class="penalty-box mb-3" x-show="errs._ || errs.ended_at || errs.formula" x-text="errs._ || errs.ended_at || errs.formula"></p>
+          <p class="fn-mute text-sm mb-2" x-show="bonusPreview && bonusPreview.variables.length" x-text="varsText(bonusPreview && bonusPreview.variables)"></p>
+          <div class="fn-cut">
+            <div class="fn-cut-head"><span>ชื่อ</span><span>นาทีเวร</span><span>โบนัส</span></div>
+            <div class="fn-cut-body">
+              <template x-for="r in bonusPayRows" :key="r.user.id">
+                <div class="fn-cut-row"><span x-text="r.user.display_name"></span><span class="fn-mute" x-text="money(r.minutes)"></span><b x-text="money(r.amount)"></b></div>
+              </template>
+            </div>
+            <div class="fn-sum-total"><span x-text="'รวม ' + bonusPayRows.length + ' คน · ' + money(bonusPreview && bonusPreview.minutes_total) + ' นาที'"></span><span class="fn-pos" x-text="'โบนัสรวม ' + money(bonusPayTotal)"></span></div>
+          </div>
+          <p class="fn-warn">เมื่อยืนยันแล้วรอบนี้จะถูกล็อก ย้อนได้เฉพาะรอบล่าสุดโดยประธานหรือรองประธาน และทุกการกระทำบันทึกใน Audit Log</p>
+          <label class="fn-check">
+            <input type="checkbox" x-model="bn.checked">
+            <span>ฉันตรวจรายชื่อและสูตรแล้ว</span>
+          </label>
+          <p class="reg-err" x-show="e('checked')" x-text="e('checked')"></p>
+        </div>
+        <footer class="gd-dlg-foot">
+          <button type="button" class="btn-outline" @click="closeDlg()">ยกเลิก</button>
+          <button type="button" class="rg-primary-btn" :disabled="busy" @click="cutoff()" x-text="busy ? 'กำลังบันทึก...' : 'ยืนยันตัดรอบ'"></button>
+        </footer>
+      </div>
+    </div>
+
+    <!-- ยืนยันย้อนรอบล่าสุด -->
+    <div x-show="dlg === 'revertBonus'" x-cloak class="gd-dlg-back" role="dialog" aria-modal="true" aria-labelledby="fn-rv-title" @keydown.escape.window="closeDlg()" @mousedown.self="closeDlg()">
+      <div class="gd-dlg fn-dlg">
+        <header class="gd-dlg-head"><h3 id="fn-rv-title" class="gd-dlg-title">ย้อนรอบล่าสุด?</h3></header>
+        <div class="gd-dlg-body">
+          <p class="penalty-box mb-3" x-show="errs._ || errs.round" x-text="errs._ || errs.round"></p>
+          <p x-show="bonusTarget">รอบ <b x-text="bonusTarget ? stamp(bonusTarget.started_at) + ' – ' + stamp(bonusTarget.ended_at) : ''"></b> · <span x-text="bonusTarget ? money(bonusTarget.total) : ''"></span> WVDL · <span x-text="bonusTarget ? bonusTarget.members + ' คน' : ''"></span></p>
+          <p class="gd-muted mt-2">จะยกเลิกการจ่ายโบนัสของรอบนี้ หักออกจากรายจ่ายในยอดสรุป และรอบที่เปิดอยู่จะกลับไปเริ่มนับจากรอบก่อนหน้า (ชั่วโมงเวรของรอบนี้นับรวมกลับมา) · มีบันทึกในบันทึกกิจกรรม</p>
+        </div>
+        <footer class="gd-dlg-foot">
+          <button type="button" class="btn-outline" @click="closeDlg()">ยกเลิก</button>
+          <button type="button" class="btn-solid" :disabled="busy" @click="revertBonus()" x-text="busy ? 'กำลังย้อน...' : 'ย้อนรอบล่าสุด'"></button>
+        </footer>
+      </div>
+    </div>
+
+    <!-- ตัวอย่างหนังสือสัญญากู้ก่อนบันทึก (แสดงทุกครั้งที่กดบันทึกสัญญา) -->
+    <template x-if="loanDraftOpen">
+      <div class="st-modal-back" style="z-index: 90" @keydown.escape.window="loanDraftOpen = false">
+        <div class="st-modal st-modal-full" role="dialog" aria-modal="true" aria-label="ตัวอย่างหนังสือสัญญากู้" style="height: calc(100vh - 2rem)">
+          <header class="st-modal-head">
+            <div>
+              <h2 class="st-modal-title">ตรวจสอบหนังสือสัญญากู้ก่อนบันทึก</h2>
+              <p class="text-xs text-muted">บันทึกแล้วแก้หรือลบไม่ได้ ยอดกองทุนจะลดลงทันที ตรวจชื่อผู้กู้ จำนวนเงิน และเงื่อนไขให้ถูกต้อง</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="text-xs fn-negt" x-show="errs._" x-text="errs._"></span>
+              <button type="button" class="btn-outline" :disabled="busy" @click="loanDraftOpen = false">กลับไปแก้ไข</button>
+              <button type="button" class="rg-primary-btn" :disabled="busy" @click="confirmLoan()" x-text="busy ? 'กำลังบันทึก...' : 'ยืนยันและบันทึกสัญญา'"></button>
+            </div>
+          </header>
+          <iframe class="st-contract-frame" :src="'/loan-contract.html?draft=1&embed=1&k=' + loanDraftKey" title="ตัวอย่างหนังสือสัญญากู้"></iframe>
+        </div>
+      </div>
+    </template>
+
+    <!-- หนังสือสัญญาเงินกู้ (ป๊อปอัป) -->
+    <template x-if="contractLoan">
+      <div class="st-modal-back" style="z-index: 90" @mousedown.self="contractLoan = null" @keydown.escape.window="contractLoan = null">
+        <div class="st-modal st-modal-full" role="dialog" aria-modal="true" aria-label="หนังสือสัญญาเงินกู้" style="height: calc(100vh - 2rem)">
+          <header class="st-modal-head">
+            <div>
+              <h2 class="st-modal-title">หนังสือสัญญาเงินกู้</h2>
+              <p class="text-xs text-muted" x-text="'WV-LN-' + String(contractLoan.id).padStart(6, '0') + ' · ' + (contractLoan.group ? contractLoan.group.name : '')"></p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="text-xs" :class="contractImgErr ? 'fn-negt' : 'fn-pos'" x-show="contractImgMsg || contractImgErr" x-text="contractImgErr || contractImgMsg"></span>
+              <button type="button" class="btn-outline" :disabled="contractImgBusy" @click="contractImage()" x-text="contractImgBusy ? 'กำลังสร้างรูป...' : 'คัดลอกรูป'"></button>
+              <button type="button" class="btn-outline" :disabled="contractImgBusy" @click="contractImageLink()">คัดลอกลิงก์รูป</button>
+              <a :href="'/loan-contract.html?id=' + contractLoan.id" target="_blank" rel="noopener" class="btn-outline">เปิดในแท็บใหม่</a>
+              <button type="button" class="st-x" @click="contractLoan = null" aria-label="ปิด">✕</button>
+            </div>
+          </header>
+          <iframe class="st-contract-frame" allow="clipboard-write" :src="'/loan-contract.html?id=' + contractLoan.id + '&embed=1'" title="หนังสือสัญญาเงินกู้"></iframe>
+        </div>
+      </div>
+    </template>
+
+    <!-- ตั้งค่ากลางการกู้เงิน (popup) -->
+    <div x-show="dlg === 'loanSettings'" x-cloak class="gd-dlg-back" role="dialog" aria-modal="true" aria-labelledby="ls-title" @keydown.escape.window="closeDlg()" @mousedown.self="closeDlg()">
+      <form class="gd-dlg fn-dlg fn-dlg-rp" @submit.prevent="saveSettings()" novalidate>
+        <header class="gd-dlg-head">
+          <div>
+            <h3 id="ls-title" class="gd-dlg-title">ตั้งค่ากลางการกู้เงิน</h3>
+            <p class="fn-mute text-sm">ค่าเริ่มต้นที่ใส่ให้อัตโนมัติเมื่อสร้างสัญญาใหม่ แก้ได้เฉพาะประธานและรองประธาน</p>
+          </div>
+          <button type="button" class="reg-close" aria-label="ปิด" @click="closeDlg()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+        </header>
+        <div class="gd-dlg-body">
+          <p class="penalty-box mb-3" x-show="errs._" x-text="errs._"></p>
+          <p class="fn-empty" x-show="ssLoading && !ssSaved">กำลังโหลด...</p>
+          <div x-show="ssSaved" class="fn-form" style="max-width: none">
+            <div class="reg-field">
+              <label class="reg-label" for="ss-int">ดอกเบี้ยเริ่มต้น <span class="reg-hint">(% ต่อสัปดาห์ · แบบง่าย ไม่ทบต้น)</span></label>
+              <input id="ss-int" type="text" inputmode="decimal" x-model="ss.default_interest" class="input fn-right" autocomplete="off" :aria-invalid="!!e('default_interest')">
+              <p class="reg-err" x-show="e('default_interest')" x-text="e('default_interest')"></p>
+            </div>
+
+            <fieldset class="fn-modes" style="margin-top: 0">
+              <legend>วิธีคิดค่าปรับเมื่อคืนเลยกำหนด</legend>
+              <label :class="ss.late_fee_type === 'day' ? 'is-on' : ''"><input type="radio" name="ss-fee-type" :checked="ss.late_fee_type === 'day'" @change="ss.late_fee_type = 'day'"><span>จำนวนเงินคงที่ต่อวัน</span></label>
+              <label :class="ss.late_fee_type === 'week' ? 'is-on' : ''"><input type="radio" name="ss-fee-type" :checked="ss.late_fee_type === 'week'" @change="ss.late_fee_type = 'week'"><span>จำนวนเงินคงที่ต่อสัปดาห์</span></label>
+              <label :class="ss.late_fee_type === 'once' ? 'is-on' : ''"><input type="radio" name="ss-fee-type" :checked="ss.late_fee_type === 'once'" @change="ss.late_fee_type = 'once'"><span>จำนวนเงินคงที่ครั้งเดียว</span></label>
+            </fieldset>
+
+            <div class="fn-form-row">
+              <div class="reg-field">
+                <label class="reg-label" for="ss-fee">จำนวนเงินค่าปรับ <span class="reg-hint" x-text="'(WVDL · ' + ssTypeText() + ')'"></span></label>
+                <input id="ss-fee" type="text" inputmode="numeric" x-model="ss.late_fee_amount" class="input fn-right" autocomplete="off" :aria-invalid="!!e('late_fee_amount')">
+                <p class="reg-err" x-show="e('late_fee_amount')" x-text="e('late_fee_amount')"></p>
+              </div>
+              <div class="reg-field">
+                <label class="reg-label" for="ss-n">จำนวนงวดผ่อนสูงสุด <span class="reg-hint">(1 งวด = 1 สัปดาห์)</span></label>
+                <input id="ss-n" type="text" inputmode="numeric" x-model="ss.max_installments" class="input fn-right" autocomplete="off" :aria-invalid="!!e('max_installments')">
+                <p class="reg-err" x-show="e('max_installments')" x-text="e('max_installments')"></p>
+              </div>
+            </div>
+
+            <p class="fn-hint">สัญญาที่ทำไปแล้วจะใช้ค่าตอนที่ทำสัญญา ไม่เปลี่ยนตามค่ากลางที่แก้ทีหลัง ส่วนสัญญาใหม่ปรับค่าในฟอร์มเองได้</p>
+          </div>
+
+          <h4 class="fn-h mt-5">ประวัติการแก้ค่ากลาง</h4>
+          <p class="fn-hint">ทุกครั้งที่แก้ลง Audit Log ย้อนดูได้ แก้ไขประวัติไม่ได้</p>
+          <p class="fn-empty" x-show="ssSaved && ssLogs.length === 0">ยังไม่เคยแก้ค่ากลาง</p>
+          <ul class="fn-hist" x-show="ssLogs.length > 0">
+            <template x-for="l in ssLogs" :key="l.id">
+              <li>
+                <span x-text="l.label + ' ' + (l.old ?? '—') + ' → ' + l.new"></span>
+                <small x-text="(l.role_label || '') + (l.by ? ' ' + l.by : '') + ' · ' + stamp(l.at)"></small>
+              </li>
+            </template>
+          </ul>
+        </div>
+        <footer class="gd-dlg-foot">
+          <button type="button" class="btn-outline" @click="closeDlg()">ปิด</button>
+          <button type="submit" class="rg-primary-btn" :disabled="busy || !ssDirty" x-text="busy ? 'กำลังบันทึก...' : 'บันทึกค่ากลาง'"></button>
+        </footer>
+      </form>
+    </div>
+
+    <!-- บันทึกการคืนเงิน (popup) -->
+    <div x-show="dlg === 'repay'" x-cloak class="gd-dlg-back" role="dialog" aria-modal="true" aria-labelledby="rp-title" @keydown.escape.window="closeDlg()" @mousedown.self="closeDlg()">
+      <form class="gd-dlg fn-dlg fn-dlg-rp" @submit.prevent="savePay()" novalidate>
+        <header class="gd-dlg-head">
+          <div>
+            <h3 id="rp-title" class="gd-dlg-title">บันทึกการคืนเงิน</h3>
+            <p class="fn-mute text-sm" x-text="loanTarget ? ((loanTarget.group ? loanTarget.group.name : '') + ' (' + kindLabel(loanTarget.group) + ') · ' + loanTarget.borrower_name + ' · กำหนดคืน ' + dayLabel(loanTarget.next_due && loanTarget.next_due.due_at ? loanTarget.next_due.due_at : loanTarget.final_due)) : ''"></p>
+          </div>
+          <button type="button" class="reg-close" aria-label="ปิด" @click="closeDlg()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+        </header>
+        <div class="gd-dlg-body" x-show="loanTarget">
+          <p class="penalty-box mb-3" x-show="errs._" x-text="errs._"></p>
+
+          <div class="fn-sum">
+            <div><span x-text="loanTarget && loanTarget.interest_total > 0 ? 'ต้นเงินและดอกเบี้ยคงค้าง' : 'เงินต้นคงค้าง'"></span><span x-text="money(loanTarget && loanTarget.outstanding_pi)"></span></div>
+            <template x-for="f in (loanTarget ? overdueFeeLines(loanTarget) : [])" :key="f.no">
+              <div><span x-text="f.text + (loanTarget.installments > 1 ? ' (งวดที่ ' + f.no + ')' : '')"></span><span class="fn-negt" x-text="money(f.fee)"></span></div>
+            </template>
+            <div x-show="loanTarget && loanTarget.outstanding_fee === 0 && loanTarget.late_fee_total > 0"><span>ค่าปรับที่ชำระแล้ว</span><span class="fn-mute" x-text="money(loanTarget && loanTarget.late_fee_total)"></span></div>
+            <div class="fn-sum-total"><span>รวมที่ต้องคืน</span><span x-text="money(loanTarget && loanTarget.outstanding)"></span></div>
+          </div>
+
+          <fieldset class="fn-modes">
+            <legend>รูปแบบการคืน</legend>
+            <label :class="rp.mode === 'full' ? 'is-on' : ''">
+              <input type="radio" name="rp-mode" value="full" :checked="rp.mode === 'full'" @change="setRepayMode('full')">
+              <span>คืนครบ</span><span class="fn-mute" x-text="money(loanTarget && loanTarget.outstanding)"></span>
+            </label>
+            <label :class="rp.mode === 'partial' ? 'is-on' : ''">
+              <input type="radio" name="rp-mode" value="partial" :checked="rp.mode === 'partial'" @change="setRepayMode('partial')">
+              <span>คืนบางส่วน</span>
+            </label>
+          </fieldset>
+
+          <div class="fn-form-row mt-3">
+            <div class="reg-field">
+              <label class="reg-label" for="rp-amount">จำนวนที่คืนครั้งนี้</label>
+              <input id="rp-amount" type="text" inputmode="numeric" :value="rp.mode === 'full' ? (loanTarget ? loanTarget.outstanding : '') : rp.amount" @input="rp.amount = $event.target.value" :disabled="rp.mode === 'full'" class="input fn-right" autocomplete="off" :aria-invalid="!!e('amount')">
+              <p class="reg-err" x-show="e('amount')" x-text="e('amount')"></p>
+            </div>
+            <div class="reg-field">
+              <label class="reg-label" for="rp-date">วันที่รับคืน</label>
+              <input id="rp-date" type="date" x-model="rp.paid_at" :min="loanTarget ? loanTarget.loaned_at : undefined" :max="todayMax" class="input" :aria-invalid="!!e('paid_at')">
+              <p class="reg-err" x-show="e('paid_at')" x-text="e('paid_at')"></p>
+            </div>
+          </div>
+
+          <div class="fn-fund-line" x-show="repayAfter">
+            <span x-show="repayAfter && repayAfter.fundBefore !== null">ยอดกองทุน <span x-text="money(repayAfter && repayAfter.fundBefore)"></span> → <b class="fn-pos" x-text="money(repayAfter && repayAfter.fundAfter)"></b></span>
+            <span class="ml-auto">คงค้างหลังคืน <b x-text="money(repayAfter && repayAfter.left)"></b></span>
+          </div>
+
+          <div class="reg-field mt-3">
+            <label class="reg-label" for="rp-note">หมายเหตุ <span class="reg-hint">(ไม่บังคับ)</span></label>
+            <input id="rp-note" type="text" x-model="rp.note" maxlength="1000" class="input" autocomplete="off">
+          </div>
+
+          <p class="fn-warn">เมื่อยืนยันแล้วรายการนี้แก้หรือลบไม่ได้ ถ้าผิดให้บันทึกรายการยกเลิกต่อท้าย ทุกการกระทำลง Audit Log</p>
+
+          <label class="fn-check">
+            <input type="checkbox" x-model="rp.checked">
+            <span>ฉันตรวจจำนวนเงินและผู้คืนแล้ว</span>
+          </label>
+          <p class="reg-err" x-show="e('checked')" x-text="e('checked')"></p>
+        </div>
+        <footer class="gd-dlg-foot">
+          <button type="button" class="btn-outline" @click="closeDlg()">ยกเลิก</button>
+          <button type="submit" class="rg-primary-btn" :disabled="busy" x-text="busy ? 'กำลังบันทึก...' : 'ยืนยันการคืน'"></button>
+        </footer>
+      </form>
+    </div>
+
+    <!-- ยกเลิกสัญญา / ยกเลิกรายการรับคืน (รายการต่อท้าย) -->
+    <div x-show="dlg === 'cancelLoan' || dlg === 'reversePay'" x-cloak class="gd-dlg-back" role="dialog" aria-modal="true" aria-labelledby="rv-title" @keydown.escape.window="closeDlg()" @mousedown.self="closeDlg()">
+      <form class="gd-dlg fn-dlg" @submit.prevent="submitReason()" novalidate>
+        <header class="gd-dlg-head"><h3 id="rv-title" class="gd-dlg-title" x-text="dlg === 'reversePay' ? 'ยกเลิกรายการรับคืน' : 'ยกเลิกสัญญากู้'"></h3></header>
+        <div class="gd-dlg-body">
+          <p class="penalty-box mb-3" x-show="errs._" x-text="errs._"></p>
+          <p x-show="loanTarget && dlg === 'cancelLoan'"><b x-text="loanTarget && loanTarget.group ? loanTarget.group.name : ''"></b> · ยอดกู้ <span x-text="loanTarget ? money(loanTarget.principal) : ''"></span> WVDL</p>
+          <p x-show="payTarget && dlg === 'reversePay'"><b x-text="payTarget ? money(payTarget.amount) : ''"></b> WVDL · <span x-text="payTarget ? dayLabel(payTarget.paid_at) : ''"></span></p>
+          <p class="fn-warn" x-text="dlg === 'reversePay' ? 'รายการเดิมจะไม่ถูกลบ ระบบบันทึกรายการยกเลิกต่อท้าย ยอดคงค้างเพิ่มกลับ และลงสรุปการเงินเป็นรายจ่ายหมวดเงินกู้ (หักล้างรายรับเดิม)' : 'สัญญาเดิมจะไม่ถูกลบ ระบบบันทึกรายการยกเลิกต่อท้าย ยอดกู้คืนเข้ากองทุน (ลงสรุปการเงินเป็นรายรับ) ยกเลิกได้เมื่อไม่มีรายการรับคืนที่ยังมีผล'"></p>
+          <div class="reg-field mt-3">
+            <label class="reg-label" for="rv-reason">เหตุผล</label>
+            <textarea id="rv-reason" x-model="reasonText" rows="3" maxlength="1000" class="input" :aria-invalid="!!e('reason')"></textarea>
+            <p class="reg-err" x-show="e('reason')" x-text="e('reason')"></p>
+          </div>
+        </div>
+        <footer class="gd-dlg-foot">
+          <button type="button" class="btn-outline" @click="closeDlg()">ไม่ยกเลิก</button>
+          <button type="submit" class="btn-solid" :disabled="busy" x-text="busy ? 'กำลังบันทึก...' : 'บันทึกรายการยกเลิก'"></button>
+        </footer>
+      </form>
     </div>
   </main>
 </body>

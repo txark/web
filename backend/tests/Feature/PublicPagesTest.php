@@ -27,10 +27,10 @@ class PublicPagesTest extends TestCase
 
         $this->assertSame(['cc', 'visit', 'evid', 'fees', 'summon', 'reg', 'gang', 'buy', 'deal', 'match', 'prot', 'max', 'duty'], collect($response->json('data'))->pluck('key')->all());
 
-        // กฎหมวดสภา CC ฉบับ 1.2: 138 ข้อหลักจาก PDF (ถอด VISIT-011 และย้ายตารางราคา CC-004 ไปหมวดค่าบริการ = 137 การ์ด)
+        // กฎหมวดสภา CC ฉบับ 1.2: 139 ข้อหลักจาก PDF (ย้ายตารางราคา CC-004 ไปหมวดค่าบริการ = 138 การ์ด)
         // ทุกหมวดแสดงแบบเดียวกัน: การ์ดข้อกฎมีชื่อเรื่องเด่น ไม่มีรหัสข้อ และไม่มีหมวดย่อย
         $all = collect($response->json('data'))->flatMap(fn ($s) => $s['rules']);
-        $this->assertSame(137, $all->where('kind', 'rule')->count());
+        $this->assertSame(138, $all->where('kind', 'rule')->count());
         // ไม่แสดงหัวข้อ (ชื่อเรื่อง) ของแต่ละข้อ ยกเว้น MATCH ข้อ 16 และ MAX ข้อ 4-5
         $this->assertSame(['เงื่อนไขเพิ่มเติม', 'ผลของ Blacklist', 'ผลของการคว่ำบาตร'], $all->where('kind', 'rule')->whereNotNull('title')->pluck('title')->values()->all());
         // หมวดย่อยมีเฉพาะอัตราค่าบริการ (จัดกลุ่มรายการ) และ REG (แยกแก๊ง / ครอบครัว)
@@ -40,7 +40,7 @@ class PublicPagesTest extends TestCase
         $rulesOf = fn (string $key) => collect(collect($response->json('data'))->firstWhere('key', $key)['rules']);
         $this->assertCount(3, $rulesOf('cc')->where('kind', 'rule'));
         $this->assertCount(23, $rulesOf('duty')->where('kind', 'rule'));
-        $this->assertCount(13, $rulesOf('visit')->where('kind', 'rule'));
+        $this->assertCount(14, $rulesOf('visit')->where('kind', 'rule'));
         $this->assertStringStartsWith('เมื่อคำให้การสองฝ่าย', $rulesOf('evid')->first()['body']);
 
         // หลายข้อใต้หัวข้อเดียวรวมเป็นการ์ดเดียว: ย่อหน้านำ + หัวข้อย่อย (•)
@@ -219,7 +219,20 @@ class PublicPagesTest extends TestCase
             ->assertJsonPath('meta.total', 3);
     }
 
-    public function test_group_detail_lists_active_members_ordered_and_hides_internal_reasons(): void
+    public function test_directory_can_filter_gang_lady_gang_and_family(): void
+    {
+        Group::factory()->create(['name' => 'Plain Gang', 'type' => 'gang', 'is_lady' => false]);
+        Group::factory()->create(['name' => 'Lady Crew', 'type' => 'gang', 'is_lady' => true]);
+        Group::factory()->create(['name' => 'Some Family', 'type' => 'family', 'is_lady' => false]);
+
+        $names = fn (string $kind) => collect($this->getJson('/api/public/groups?kind='.$kind)->assertOk()->json('data'))->pluck('name')->all();
+        $this->assertSame(['Plain Gang'], $names('gang'));
+        $this->assertSame(['Lady Crew'], $names('lady'));
+        $this->assertSame(['Some Family'], $names('family'));
+        $this->getJson('/api/public/groups?kind=zzz')->assertUnprocessable();
+    }
+
+    public function test_group_detail_hides_member_list_and_internal_reasons(): void
     {
         $group = Group::factory()->status(GroupStatus::Sanction, 'เหตุผลภายใน')->create([
             'slots_locked' => true,
@@ -232,7 +245,7 @@ class PublicPagesTest extends TestCase
 
         $response = $this->getJson("/api/public/groups/{$group->id}")->assertOk();
 
-        $this->assertSame(['Boss', 'Deputy', 'Zed'], collect($response->json('data.members'))->pluck('character_name')->all());
+        $response->assertJsonMissingPath('data.members'); // หน้าสาธารณะไม่แสดงรายชื่อสมาชิก
         $response->assertJsonPath('data.status', 'sanction')
             ->assertJsonPath('data.status_label', 'คว่ำบาตร')
             ->assertJsonPath('data.slots_locked', true);

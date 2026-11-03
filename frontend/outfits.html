@@ -6,12 +6,14 @@
   <title>ลงชุดเพิ่ม/แก้ไขชุด | WAVEVY COUNCIL</title>
   <link rel="icon" href="/img/favicon.png">
   <script src="/js/theme.js"></script>
+  <script src="/js/icons.js"></script>
   <link rel="stylesheet" href="/css/output.css">
   <script src="/js/config.js"></script>
   <script src="/js/api.js"></script>
   <script src="/js/auth.js"></script>
   <script src="/js/pages/outfits.js"></script>
   <script defer src="/js/layout.js"></script>
+  <script defer src="/js/select.js"></script>
   <script defer src="/js/txnav.js"></script>
   <script defer src="/js/vendor/alpine.min.js"></script>
 </head>
@@ -28,7 +30,7 @@
         <header class="rg-head">
           <div class="min-w-0">
             <p class="rg-eyebrow">WAVEVY COUNCIL / OUTFITS</p>
-            <h1 class="rg-title">ลงชุดเพิ่ม / แก้ไขชุด</h1>
+            <h1 class="rg-title"><i class="ic rg-ic" data-icon="shirt" aria-hidden="true"></i>ลงชุดเพิ่ม / แก้ไขชุด</h1>
             <p class="rg-sub">ธุรกรรมชุดของแก๊งและครอบครัว · ทุกรายการมีเลขธุรกรรมและถูกบันทึกในบันทึกกิจกรรม</p>
           </div>
         </header>
@@ -140,10 +142,10 @@
                             <b x-text="current(o.key) === null ? '—' : current(o.key).toLocaleString('th-TH')"></b>
                             <small x-text="current(o.key) === null ? 'ยังไม่ลงทะเบียน' : 'ชิ้นที่ลงไว้'"></small>
                           </span>
-                          <span class="of-tile-limit" x-text="types.includes(o.key) ? 'อยู่ในส่วนเปลี่ยน/แทนชุดแล้ว' : 'ลงได้สูงสุด ' + limit(o.key) + ' ชิ้น · เพิ่มได้อีก ' + room(o.key)"></span>
+                          <span class="of-tile-limit" x-text="types.includes(o.key) || editTypes.includes(o.key) ? 'อยู่ในส่วนลงชุดแทน/แก้ไขชุดแล้ว' : 'ลงได้สูงสุด ' + limit(o.key) + ' ชิ้น · เพิ่มได้อีก ' + room(o.key)"></span>
                           <input type="text" inputmode="numeric" x-model="form[o.key]" @input="clamp(o.key)" autocomplete="off" class="input"
-                                 :disabled="types.includes(o.key) || room(o.key) === 0"
-                                 :placeholder="types.includes(o.key) ? 'ใช้ส่วนเปลี่ยน/แทน' : (room(o.key) ? '+ เพิ่มกี่ชิ้น' : 'ลงครบแล้ว')" :aria-label="'ลงเพิ่ม ' + o.label" :aria-invalid="!!errors['add.' + o.key]">
+                                 :disabled="types.includes(o.key) || editTypes.includes(o.key) || room(o.key) === 0"
+                                 :placeholder="types.includes(o.key) || editTypes.includes(o.key) ? 'ใช้ส่วนอื่น' : (room(o.key) ? '+ เพิ่มกี่ชิ้น' : 'ลงครบแล้ว')" :aria-label="'ลงเพิ่ม ' + o.label" :aria-invalid="!!errors['add.' + o.key]">
                           <span class="of-tile-after" x-show="!types.includes(o.key) && after(o.key) !== current(o.key)">
                             หลังบันทึก <b x-text="numLabel(after(o.key))"></b>
                           </span>
@@ -153,10 +155,10 @@
                     </div>
 
                     <!-- 2) เปลี่ยน/แทน -->
-                    <h3 class="reg-sec">2 · เปลี่ยน / แทนชุดเดิม <span class="reg-hint">(ไม่บังคับ · ไฟล์ .ZIP ใหม่จะเป็นไฟล์ชุดล่าสุด ไฟล์เดิมไม่ถูกทับ)</span></h3>
-                    <span class="reg-label" id="o-types-label">ชุดที่ถูกแทน <span class="reg-hint">(เลือกได้หลายชนิด · แก้ได้เฉพาะชนิดที่ลงทะเบียนไว้แล้ว · ครั้งละ <span x-text="money(fees.outfit_edit)"></span> ต่อชนิด)</span></span>
+                    <h3 class="reg-sec">2 · ลงชุดแทน <span class="reg-hint">(ไม่บังคับ · เฉพาะ MOD 1 / MOD 2 / Accessories · ไฟล์ .ZIP ใหม่จะเป็นไฟล์ชุดล่าสุด ไฟล์เดิมไม่ถูกทับ)</span></h3>
+                    <span class="reg-label" id="o-types-label">ชุดที่ถูกแทน <span class="reg-hint">(เลือกได้หลายชนิด · แทนได้เฉพาะชนิดที่ลงทะเบียนไว้แล้ว · ครั้งละ <span x-text="money(fees.outfit_edit)"></span> ต่อชนิด)</span></span>
                     <div class="of-types" role="group" aria-labelledby="o-types-label">
-                      <template x-for="o in outfitTypes" :key="'t' + o.key">
+                      <template x-for="o in replaceTypes" :key="'t' + o.key">
                         <button type="button" class="chip disabled:cursor-not-allowed disabled:opacity-40" :aria-pressed="types.includes(o.key)" :disabled="!canEdit(o.key)" :title="canEdit(o.key) ? '' : 'ยังไม่มีชุดชนิดนี้ที่ลงทะเบียน — ใช้ 'ลงชุดเพิ่ม' แทน'" @click="toggleType(o.key)" x-text="o.label"></button>
                       </template>
                     </div>
@@ -171,7 +173,7 @@
                           <span class="of-tile-limit" x-text="'ลงไว้แล้ว ' + (current(o.key) === null ? 'ยังไม่ลงทะเบียน' : current(o.key) + ' ชิ้น') + ' · ลงได้สูงสุด ' + limit(o.key)"></span>
                           <span class="of-swap" x-show="!isSwapTarget(o.key)" role="group" :aria-label="'ย้าย ' + o.label + ' ไปชนิดอื่น'">
                             <span class="of-swap-label" x-text="'เปลี่ยน ' + o.label + ' เป็นชนิดอื่น (ไม่บังคับ)'"></span>
-                            <template x-for="t in outfitTypes.filter((x) => x.key !== o.key && !swaps[x.key])" :key="t.key">
+                            <template x-for="t in replaceTypes.filter((x) => x.key !== o.key && !swaps[x.key])" :key="t.key">
                               <button type="button" class="chip" :aria-pressed="swaps[o.key] === t.key" @click="setSwap(o.key, t.key)" x-text="t.label"></button>
                             </template>
                           </span>
@@ -182,10 +184,19 @@
                       </template>
                     </div>
 
-                    <!-- 3) ไฟล์ชุด (ไฟล์เดียวต่อธุรกรรม) -->
-                    <h3 class="reg-sec">3 · ไฟล์ชุด <span class="reg-hint">(บังคับ · ไฟล์เดียวต่อธุรกรรม)</span></h3>
+                    <!-- 3) แก้ไขชุด -->
+                    <h3 class="reg-sec">3 · แก้ไขชุด <span class="reg-hint">(ไม่บังคับ · ชุดที่ลงทะเบียนไว้แล้ว จำนวนไม่เปลี่ยน · ไฟล์ .ZIP ใหม่จะเป็นไฟล์ชุดล่าสุด · ครั้งละ <span x-text="money(fees.outfit_edit)"></span> ต่อชนิด)</span></h3>
+                    <div class="of-types" role="group" aria-label="ชุดที่แก้ไข">
+                      <template x-for="o in outfitTypes" :key="'e' + o.key">
+                        <button type="button" class="chip disabled:cursor-not-allowed disabled:opacity-40" :aria-pressed="editTypes.includes(o.key)" :disabled="(current(o.key) || 0) <= 0 || types.includes(o.key)" :title="(current(o.key) || 0) > 0 ? '' : 'ยังไม่มีชุดชนิดนี้ที่ลงทะเบียน'" @click="toggleEdit(o.key)" x-text="o.label"></button>
+                      </template>
+                    </div>
+                    <p class="reg-err" x-show="errors['edit.types']" x-text="errors['edit.types']"></p>
+
+                    <!-- 4) ไฟล์ชุด (ไฟล์เดียวต่อธุรกรรม) -->
+                    <h3 class="reg-sec">4 · ไฟล์ชุด <span class="reg-hint">(บังคับ · ไฟล์เดียวต่อธุรกรรม)</span></h3>
                     <div class="reg-rule">
-                      <p class="reg-rule-foot of-first" x-text="types.length ? (g.has_outfit_zip ? 'มีส่วนเปลี่ยน/แทนชุด: ไฟล์นี้จะเป็นไฟล์ชุดล่าสุดของกลุ่มเมื่อบันทึก (ไฟล์เดิมยังเก็บไว้ ไม่ถูกทับ)' : 'มีส่วนเปลี่ยน/แทนชุด: ไฟล์นี้จะเป็นไฟล์ชุดของกลุ่ม (ยังไม่เคยมีไฟล์ชุด)') : 'ไม่มีส่วนเปลี่ยน/แทนชุด: ไฟล์จะเก็บไว้กับธุรกรรม ไม่เปลี่ยนไฟล์ชุดของกลุ่ม'"></p>
+                      <p class="reg-rule-foot of-first" x-text="types.length || editTypes.length ? (g.has_outfit_zip ? 'มีส่วนลงชุดแทน/แก้ไขชุด: ไฟล์นี้จะเป็นไฟล์ชุดล่าสุดของกลุ่มเมื่อบันทึก (ไฟล์เดิมยังเก็บไว้ ไม่ถูกทับ)' : 'มีส่วนลงชุดแทน/แก้ไขชุด: ไฟล์นี้จะเป็นไฟล์ชุดของกลุ่ม (ยังไม่เคยมีไฟล์ชุด)') : 'ไม่มีส่วนลงชุดแทน/แก้ไขชุด: ไฟล์จะเก็บไว้กับธุรกรรม ไม่เปลี่ยนไฟล์ชุดของกลุ่ม'"></p>
                       <p class="reg-rule-foot">ขนาด 1024×1024 · โพลิกอนไม่เกิน 20,000 · ไฟล์ .ZIP ไม่เกิน 50 MB</p>
                     </div>
                     <div class="reg-field mt-3">

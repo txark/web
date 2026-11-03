@@ -27,6 +27,27 @@ class AlertTest extends TestCase
         return collect($this->getJson('/api/council/alerts')->assertOk()->json('data'))->pluck('id')->all();
     }
 
+    public function test_pending_transactions_from_gangs_show_up_until_decided(): void
+    {
+        $gangUser = User::factory()->role(Role::Gang)->loggedIn()->create();
+        $g = Group::factory()->state(['type' => 'gang'])->create();
+        $g->members()->create(['character_name' => 'Boss', 'position' => MemberPosition::Leader, 'joined_at' => now()->subDays(40)]);
+        $tx = \App\Models\Transaction::create(['number' => 'WC-T-1', 'group_id' => $g->id, 'kind' => 'rename', 'payload' => ['name' => 'X'], 'status' => 'pending', 'requested_by' => $gangUser->id, 'requested_role' => 'gang', 'approval_required' => true]);
+
+        $this->actAs(Role::Member);
+        $alerts = collect($this->getJson('/api/council/alerts')->assertOk()->json('data'))->where('type', 'txn_pending');
+        $this->assertCount(1, $alerts);
+        $this->assertSame("txn:{$tx->id}", $alerts->first()['id']);
+        $this->assertSame('medium', $alerts->first()['severity']);
+        $this->assertStringContainsString('แก๊ง/ครอบครัวยื่นเข้ามา', $alerts->first()['title']);
+
+        $tx->forceFill(['created_at' => now()->subDays(2)])->save();
+        $this->assertSame('high', collect($this->getJson('/api/council/alerts')->json('data'))->firstWhere('type', 'txn_pending')['severity']);
+
+        $tx->update(['status' => 'approved']); // อนุมัติแล้วหายไป
+        $this->assertNotContains("txn:{$tx->id}", $this->ids());
+    }
+
     public function test_only_council_can_read_alerts(): void
     {
         $this->getJson('/api/council/alerts')->assertUnauthorized();

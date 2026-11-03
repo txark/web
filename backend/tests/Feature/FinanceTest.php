@@ -7,6 +7,7 @@ use App\Enums\TransactionKind;
 use App\Enums\TransactionStatus;
 use App\Models\DutyShift;
 use App\Models\Group;
+use App\Models\GroupRecord;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -14,7 +15,7 @@ use Illuminate\Support\Carbon;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
-/** รายรับ-รายจ่าย / ค่าบริการของสภา: รายรับมาจากค่าบริการของธุรกรรมที่อนุมัติแล้ว รายจ่ายกรอกเอง (รองประธานขึ้นไป) */
+/** การเงินของสภา: รายรับอัตโนมัติจากค่าบริการของธุรกรรมที่อนุมัติแล้ว + รายการที่กรอกเอง (กองทุน/เงินกู้/โบนัส) · ประธานและรองประธานเท่านั้น */
 class FinanceTest extends TestCase
 {
     use RefreshDatabase;
@@ -49,27 +50,104 @@ class FinanceTest extends TestCase
         $t = Transaction::create([
             'number' => 'WC-'.fake()->unique()->numerify('########-######'), 'group_id' => Group::factory()->create()->id, 'kind' => $kind,
             'payload' => ['fee' => ['total' => $fee, 'items' => []]], 'status' => $status,
-            'requested_by' => $user->id, 'requested_role' => 'member', 'reviewed_at' => $status === TransactionStatus::Approved ? Carbon::parse($at, 'Asia/Bangkok') : null,
+            'requested_by' => $user->id, 'requested_role' => 'member', 'reviewed_at' => $status === TransactionStatus::Approved ? Carbon::parse($at, 'Asia/Bangkok')->utc() : null,
         ]);
-        $t->forceFill(['created_at' => Carbon::parse($at, 'Asia/Bangkok')])->save();
+        $t->forceFill(['created_at' => Carbon::parse($at, 'Asia/Bangkok')->utc()])->save();
 
         return $t;
     }
 
+    private function income(array $over = [])
+    {
+        return $this->expense($over + ['type' => 'income', 'category' => 'fund', 'title' => 'เงินเข้ากองทุน', 'amount' => 100000]);
+    }
+
     private function expense(array $over = [])
     {
-        return $this->postJson(self::URL.'/expenses', $over + ['spent_at' => '2026-11-10', 'amount' => 250000, 'category' => 'prize', 'title' => 'รางวัลสตอรี่']);
+        return $this->postJson(self::URL.'/records', $over + ['type' => 'expense', 'spent_at' => '2026-11-10', 'amount' => 250000, 'category' => 'prize', 'title' => 'รางวัลสตอรี่']);
+    }
+
+    private function record(string $kind, array $data, string $at, ?Group $g = null): GroupRecord
+    {
+        $rec = GroupRecord::create(['group_id' => ($g ?? Group::factory()->create())->id, 'kind' => $kind, 'data' => $data, 'recorded_by' => User::factory()->role(Role::Member)->create()->id]);
+        $rec->forceFill(['created_at' => Carbon::parse($at, 'Asia/Bangkok')->utc()])->save();
+
+        return $rec;
+    }
+
+    public function test_fines_recorded_on_group_records_are_pulled_in_as_income(): void
+    {
+        $this->council();
+        $g = Group::factory()->create(['name' => 'AAA Gang']);
+        $this->record('fine', ['penalty_type' => 'fine', 'amount' => 500000, 'category_label' => 'ความสงบ', 'charge' => 'ทะเลาะวิวาท'], '2026-11-12 10:00', $g);
+        $this->record('fine', ['penalty_type' => 'penance', 'amount' => null, 'penance_units' => 2000], '2026-11-12 11:00');   // บำเพ็ญเป็นไม้ ไม่ใช่เงิน
+        $this->record('fine', ['penalty_type' => 'fine', 'amount' => 300000], '2026-10-20 10:00');                             // นอกช่วง
+        $this->record('report', ['status' => 'normal'], '2026-11-12 12:00');                                                   // ไม่ใช่ค่าปรับ
+
+        $d = $this->getJson(self::URL.'/summary?from=2026-11-01&to=2026-11-15')->assertOk()->json('data');
+        $this->assertSame(500000, $d['income']);
+        $this->assertSame(1, $d['income_count']);
+        $this->assertSame(['fine'], array_column($d['by_kind'], 'key'));
+
+        $row = $this->getJson(self::URL.'/entries?category=fine&from=2026-11-01&to=2026-11-15')->assertJsonCount(1, 'data')->json('data.0');
+        $this->assertSame('ค่าปรับ · AAA Gang', $row['title']);
+        $this->assertSame('income', $row['type']);
+        $this->assertNull($row['entry_id']);
+        $this->assertStringContainsString('ทะเลาะวิวาท', $row['note']);
+
+        // ขอบวันตามเวลาไทย: 00:30 น. ของวันที่ 2 ต้องนับเป็นวันที่ 2
+        $this->record('fine', ['penalty_type' => 'fine', 'amount' => 100000], '2026-11-02 00:30');
+        $this->assertSame(0, $this->getJson(self::URL.'/summary?from=2026-11-01&to=2026-11-01')->json('data.income'));
+        $this->assertSame(100000, $this->getJson(self::URL.'/summary?from=2026-11-02&to=2026-11-02')->json('data.income'));
     }
 
     public function test_only_vice_president_up_can_use_it(): void
     {
         $this->getJson(self::URL.'/summary')->assertUnauthorized();
-        $this->council(Role::Member);
-        $this->getJson(self::URL.'/summary')->assertForbidden();
-        $this->postJson(self::URL.'/expenses', [])->assertForbidden();
+        foreach ([Role::Member, Role::Operations, Role::Senior, Role::Secretary, Role::Gang, Role::Admin] as $role) {
+            $this->council($role);
+            $this->getJson(self::URL.'/summary')->assertForbidden();
+            $this->postJson(self::URL.'/records', [])->assertForbidden();
+        }
 
-        $this->council(Role::VicePresident);
-        $this->getJson(self::URL.'/summary')->assertOk();
+        foreach ([Role::VicePresident, Role::President] as $role) {
+            $this->council($role);
+            $this->getJson(self::URL.'/summary')->assertOk();
+            $this->getJson(self::URL.'/entries')->assertOk();
+            $this->get(self::URL.'/export')->assertOk();
+        }
+    }
+
+    public function test_fund_loan_and_bonus_can_be_recorded_as_income_or_expense(): void
+    {
+        $this->council(Role::President);
+        $this->income()->assertCreated()->assertJsonPath('data.type', 'income')->assertJsonPath('data.category_label', 'กองทุน');
+        $this->income(['category' => 'loan', 'title' => 'รับคืนเงินกู้', 'amount' => 40000])->assertCreated();
+        $this->expense(['category' => 'loan', 'title' => 'ปล่อยกู้', 'amount' => 90000])->assertCreated();
+        $this->expense(['category' => 'bonus', 'title' => 'โบนัสสภา', 'amount' => 60000])->assertCreated();
+        $this->expense(['category' => 'fund', 'title' => 'ถอนกองทุน', 'amount' => 10000])->assertCreated();
+
+        $d = $this->getJson(self::URL.'/summary')->assertOk()->json('data');
+        $this->assertSame(140000, $d['income']);
+        $this->assertSame(160000, $d['expense']);
+        $this->assertSame(-20000, $d['balance']);
+        $this->assertSame(['fund', 'loan'], array_column($d['by_kind'], 'key'));
+        $this->assertSame(['loan', 'bonus', 'fund'], array_column($d['by_category'], 'key'));
+        $this->assertContains('bonus', array_column($d['expense_categories'], 'key'));
+        $this->assertNotContains('bonus', array_column($d['income_categories'], 'key'));
+
+        // กรองตามหมวดเดียวกันได้ทั้งรายรับและรายจ่าย
+        $this->getJson(self::URL.'/entries?category=loan')->assertJsonCount(2, 'data');
+        $this->getJson(self::URL.'/entries?type=income&category=loan')->assertJsonCount(1, 'data');
+    }
+
+    public function test_category_must_match_the_entry_type(): void
+    {
+        $this->council();
+        $this->income(['category' => 'bonus'])->assertUnprocessable()->assertJsonValidationErrors('category'); // โบนัสเป็นรายจ่ายเท่านั้น
+        $this->income(['category' => 'prize'])->assertUnprocessable()->assertJsonValidationErrors('category');
+        $this->expense(['type' => 'bonus'])->assertUnprocessable()->assertJsonValidationErrors('type');
+        $this->expense(['type' => null])->assertUnprocessable()->assertJsonValidationErrors('type');
     }
 
     public function test_income_is_the_fee_of_approved_transactions_only_by_approval_date(): void
@@ -114,16 +192,16 @@ class FinanceTest extends TestCase
     public function test_expense_can_be_updated_and_deleted(): void
     {
         $this->council();
-        $id = $this->expense()->json('data.expense_id');
+        $id = $this->expense()->json('data.entry_id');
 
-        $this->putJson(self::URL."/expenses/{$id}", ['spent_at' => '2026-11-11', 'amount' => 400000, 'category' => 'other', 'title' => 'แก้แล้ว', 'note' => 'หมายเหตุ'])
+        $this->putJson(self::URL."/records/{$id}", ['type' => 'expense', 'spent_at' => '2026-11-11', 'amount' => 400000, 'category' => 'other', 'title' => 'แก้แล้ว', 'note' => 'หมายเหตุ'])
             ->assertOk()->assertJsonPath('data.amount', 400000)->assertJsonPath('data.note', 'หมายเหตุ');
         $this->assertSame(400000, $this->getJson(self::URL.'/summary')->json('data.expense'));
 
-        $this->deleteJson(self::URL."/expenses/{$id}")->assertOk();
+        $this->deleteJson(self::URL."/records/{$id}")->assertOk();
         $this->assertSame(0, $this->getJson(self::URL.'/summary')->json('data.expense'));
-        $this->deleteJson(self::URL."/expenses/{$id}")->assertNotFound();
-        $this->assertSoftDeleted('council_expenses', ['id' => $id]);
+        $this->deleteJson(self::URL."/records/{$id}")->assertNotFound();
+        $this->assertSoftDeleted('council_entries', ['id' => $id]);
     }
 
     public function test_entries_merge_income_and_expense_with_filters_and_paging(): void

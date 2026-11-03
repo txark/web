@@ -6,26 +6,30 @@
   <title>กฎและข้อปฏิบัติ | WAVEVY COUNCIL</title>
   <link rel="icon" href="/img/favicon.png">
   <script src="/js/theme.js"></script>
+  <script src="/js/icons.js"></script>
   <link rel="stylesheet" href="/css/output.css">
   <script src="/js/config.js"></script>
   <script src="/js/api.js"></script>
   <script src="/js/auth.js"></script>
   <script src="/js/pages/rules.js"></script>
   <script defer src="/js/layout.js"></script>
+  <script defer src="/js/select.js"></script>
   <script defer src="/js/vendor/alpine.min.js"></script>
 </head>
 <body>
   <div id="site-header"></div>
 
   <main class="container-app py-8" x-data="rulesPage()">
-    <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-      <div>
-        <h1 class="section-title">กฎและข้อปฏิบัติ</h1>
-        <p class="mt-1 text-sm text-muted">ระเบียบการติดต่อสภาและการดำเนินการของแก๊ง / ครอบครัว</p>
-      </div>
-      <input type="search" x-model.debounce.200ms="q" placeholder="ค้นหาในกฎ เช่น หน้ากาก, อาวุธ, Blacklist"
-             class="input hidden lg:block lg:w-96" aria-label="ค้นหาในกฎ">
-    </div>
+    <header class="rg-head">
+          <div class="min-w-0">
+            <p class="rg-eyebrow">WAVEVY COUNCIL / RULES</p>
+            <h1 class="rg-title"><i class="ic rg-ic" data-icon="book-open" aria-hidden="true"></i>กฎและข้อปฏิบัติ</h1>
+            <p class="rg-sub">ระเบียบการติดต่อสภาและการดำเนินการของแก๊ง / ครอบครัว</p>
+          </div>
+          <div class="rg-actions">
+            <input type="search" x-model.debounce.200ms="q" placeholder="ค้นหาในกฎ เช่น หน้ากาก, อาวุธ, Blacklist" class="input hidden lg:block lg:w-96" aria-label="ค้นหาในกฎ">
+          </div>
+        </header>
 
     <p x-show="loading" class="mt-12 text-center text-muted">กำลังโหลด...</p>
     <p x-show="error" x-text="error" class="penalty-box mt-12 text-center"></p>
@@ -168,9 +172,16 @@
                               </div>
                             </template>
                             <template x-if="r.penalty">
-                              <div class="penalty-box type-meta rule-extra">
-                                <span class="rule-chip">โทษ</span>
-                                <span class="min-w-0 whitespace-pre-line" x-html="fmt(r.penalty)"></span>
+                              <div class="space-y-2">
+                                <template x-for="(p, i) in penaltyRows(r.penalty)" :key="i">
+                                  <div>
+                                    <p class="pen-join" x-show="p.join" x-text="p.join" aria-hidden="true"></p>
+                                    <div class="penalty-box type-meta rule-extra">
+                                      <span class="rule-chip" x-text="p.label"></span>
+                                      <span class="min-w-0 whitespace-pre-line" x-html="fmt(p.t)"></span>
+                                    </div>
+                                  </div>
+                                </template>
                               </div>
                             </template>
                           </div>

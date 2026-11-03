@@ -30,6 +30,7 @@ class AnnouncementController extends Controller
     {
         $f = $request->validate([
             'type' => ['nullable', Rule::enum(AnnouncementType::class)],
+            'scope' => ['nullable', Rule::in(['general'])],   // general = ประกาศธรรมดา + ประกาศสำคัญ
             'status' => ['nullable', Rule::in(['published', 'draft'])],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
@@ -37,6 +38,7 @@ class AnnouncementController extends Controller
         $items = Announcement::query()
             ->with(['group', 'author'])
             ->when($f['type'] ?? null, fn ($q, $v) => $q->where('type', $v))
+            ->when(($f['scope'] ?? null) === 'general', fn ($q) => $q->whereIn('type', [AnnouncementType::General, AnnouncementType::Important]))
             ->when($f['status'] ?? null, fn ($q, $v) => $q->where('is_published', $v === 'published'))
             ->orderByDesc('id')
             ->paginate($f['per_page'] ?? 30)

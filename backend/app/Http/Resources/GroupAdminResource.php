@@ -31,7 +31,7 @@ class GroupAdminResource extends JsonResource
             'registered_at' => $this->registered_at,
             'dissolved_at' => $this->deleted_at,
             // รายงานตัวล่าสุด: ครั้งล่าสุดที่บันทึก ถ้ายังไม่เคยใช้วันขึ้นทะเบียน (มีเมื่อเปิดดูรายละเอียดกลุ่ม)
-            'last_report_at' => $this->when(array_key_exists('last_report_at', $this->getAttributes()), fn () => $this->getAttribute('last_report_at') ?? $this->registered_at),
+            'last_report_at' => $this->when(array_key_exists('last_report_at', $this->getAttributes()), fn () => ($v = $this->getAttribute('last_report_at')) ? \Illuminate\Support\Carbon::parse($v)->toIso8601String() : $this->registered_at), // ค่า MAX จาก DB เป็นข้อความไม่มีเขตเวลา → ส่งเป็น ISO ให้หน้าเว็บแปลงเวลาถูก
             'short_name' => $this->short_name,
             'color_hex' => $this->color_hex,
             'color_name' => $this->color_name,
@@ -53,6 +53,10 @@ class GroupAdminResource extends JsonResource
                 ? (int) ceil(now()->diffInSeconds($this->protect_until) / 86400) : 0,
             'renamed_at' => $this->renamed_at,
             'leader' => $this->whenLoaded('leader', fn () => $this->leader?->character_name),
+            'leadership' => $this->whenLoaded('leadership', fn () => $this->leadership
+                ->sortBy(fn ($m) => [$m->position->order(), $m->character_name])
+                ->values()
+                ->map(fn ($m) => ['name' => $m->character_name, 'position' => $m->position->value, 'position_label' => $m->position->label()])),
             'members_count' => $this->whenCounted('activeMembers'),
             'slots' => $this->whenLoaded('members', function () {
                 $active = $this->members->whereNull('left_at');

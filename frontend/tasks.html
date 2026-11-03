@@ -6,12 +6,15 @@
   <title>แจ้งเตือนงานค้าง | WAVEVY COUNCIL</title>
   <link rel="icon" href="/img/favicon.png">
   <script src="/js/theme.js"></script>
+  <script src="/js/icons.js"></script>
   <link rel="stylesheet" href="/css/output.css">
   <script src="/js/config.js"></script>
   <script src="/js/api.js"></script>
   <script src="/js/auth.js"></script>
+  <script src="/js/ui.js"></script>
   <script src="/js/pages/tasks.js"></script>
   <script defer src="/js/layout.js"></script>
+  <script defer src="/js/select.js"></script>
   <script defer src="/js/vendor/alpine.min.js"></script>
 </head>
 <body>
@@ -21,23 +24,70 @@
     <div x-show="!ready" class="py-24 text-center text-muted">กำลังตรวจสอบสิทธิ์...</div>
 
     <div x-show="ready" x-cloak>
-      <div class="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 class="section-title">แจ้งเตือนงานค้าง</h1>
-          <p class="mt-1 text-sm text-muted">คำนวณจากข้อมูลจริงทุกครั้งที่เปิดหน้า — แก้ปัญหาแล้วรายการจะหายไปเอง</p>
-        </div>
-        <button type="button" class="btn-outline" @click="load()" :disabled="loading" x-text="loading ? 'กำลังโหลด...' : 'รีเฟรช'"></button>
-      </div>
+      <header class="rg-head">
+          <div class="min-w-0">
+            <p class="rg-eyebrow">WAVEVY COUNCIL / TASKS</p>
+            <h1 class="rg-title"><i class="ic rg-ic" data-icon="bell" aria-hidden="true"></i>แจ้งเตือนงานค้าง</h1>
+            <p class="rg-sub">แก๊ง/ครอบครัวที่ยังไม่ครบเงื่อนไข และสัญญาเงินกู้ที่ยังไม่มีการคืนเงินหรือคืนไม่ครบ · คำนวณจากข้อมูลจริงทุกครั้งที่เปิดหน้า แก้ปัญหาแล้วรายการจะหายไปเอง</p>
+          </div>
+          <div class="rg-actions">
+            <button type="button" class="rg-primary-btn" @click="openReminderForm()"><i class="ic" data-icon="plus" aria-hidden="true"></i>เพิ่มเตือนความจำ</button>
+            <button type="button" class="btn-outline" @click="load()" :disabled="loading" x-text="loading ? 'กำลังโหลด...' : 'รีเฟรช'"></button>
+          </div>
+        </header>
 
       <p x-show="error" x-text="error" class="penalty-box mt-5"></p>
 
-      <div x-show="!error && !loading && items.length === 0" class="panel mt-6 p-8 text-center">
-        <p class="type-sub">ไม่มีงานค้าง 🎉</p>
-        <p class="mt-1 text-sm text-muted">แก๊งและครอบครัวทุกกลุ่มมีหัวหน้าและครบขั้นต่ำแล้ว</p>
-      </div>
+      <div class="ts-layout" x-show="!error">
+        <!-- sidebar: หมวดของคำขอ/ธุรกรรมและงานตรวจสอบ -->
+        <aside class="ts-side" aria-label="หมวดงานค้าง">
+          <template x-for="sec in sections" :key="sec.title">
+            <div class="ts-sec">
+              <p class="ts-sec-title" x-show="sec.title" x-text="sec.title"></p>
+              <template x-for="k in sec.items" :key="k.value">
+                <button type="button" class="ts-item" :aria-pressed="kind === k.value" @click="kind = k.value">
+                  <i x-text="countKind(k.value)" :class="countKind(k.value) ? '' : 'is-zero'"></i>
+                  <span class="ts-item-l"><i class="ic" :data-icon="k.icon" aria-hidden="true"></i><span x-text="k.label"></span></span>
+                </button>
+              </template>
+            </div>
+          </template>
+        </aside>
+
+        <div class="min-w-0">
+          <!-- เพิ่มบันทึกเตือนความจำ -->
+          <form x-show="showReminder" x-cloak class="panel mb-4 p-4 sm:p-5" @submit.prevent="addReminder()" novalidate>
+            <h2 class="type-sub"><i class="ic mr-2 text-accent" data-icon="sticky-note" aria-hidden="true"></i>เพิ่มเตือนความจำ</h2>
+            <div class="reg-grid mt-3">
+              <div class="reg-field reg-wide">
+                <label class="reg-label" for="rm-title">หัวข้อ</label>
+                <input id="rm-title" class="input" x-model="rem.title" maxlength="150" autocomplete="off" placeholder="เช่น โทรตามแก๊ง Wolves เรื่องชุด">
+                <p class="reg-err" x-show="remErr.title" x-text="remErr.title"></p>
+              </div>
+              <div class="reg-field reg-wide">
+                <label class="reg-label" for="rm-body">รายละเอียด <span class="reg-hint">(ไม่บังคับ)</span></label>
+                <textarea id="rm-body" rows="2" class="input" maxlength="2000" x-model="rem.body"></textarea>
+              </div>
+              <div class="reg-field">
+                <label class="reg-label" for="rm-due">กำหนดวันที่ <span class="reg-hint">(ไม่บังคับ · เลยกำหนดจะขึ้นเป็นเร่งด่วน)</span></label>
+                <input id="rm-due" type="date" class="input" x-model="rem.due_on">
+                <p class="reg-err" x-show="remErr.due_on" x-text="remErr.due_on"></p>
+              </div>
+            </div>
+            <div class="mt-4 flex gap-2">
+              <button type="submit" class="rg-primary-btn" :disabled="remBusy || !rem.title.trim()" x-text="remBusy ? 'กำลังบันทึก...' : 'บันทึก'"></button>
+              <button type="button" class="btn-outline" @click="showReminder = false">ยกเลิก</button>
+            </div>
+          </form>
+
+          <div class="panel p-8 text-center" x-show="!loading && items.length === 0">
+            <span class="empty-ic" aria-hidden="true"><i class="ic" data-icon="check-circle"></i></span>
+            <p class="type-sub">ไม่มีงานค้าง</p>
+            <p class="mt-1 text-sm text-muted">ไม่มีคำขอ/ธุรกรรมรออนุมัติ แก๊งและครอบครัวทุกกลุ่มมีหัวหน้าครบ และไม่มีสัญญาเงินกู้ที่ค้างคืน</p>
+          </div>
 
       <!-- ตัวกรองตามความเร่งด่วน -->
-      <div class="mt-6 flex flex-wrap gap-2" x-show="items.length > 0">
+      <div class="flex flex-wrap gap-2" x-show="items.length > 0">
         <template x-for="f in filters" :key="f.value">
           <button type="button" class="chip" :aria-pressed="filter === f.value" @click="filter = f.value">
             <span x-text="f.label"></span>
@@ -46,21 +96,36 @@
         </template>
       </div>
 
-      <ul class="mt-4 space-y-2" x-show="items.length > 0">
+
+          <p class="panel mt-4 p-6 text-center text-sm text-muted" x-show="shown.length === 0">ไม่มีงานค้างในหมวดนี้</p>
+      <ul class="mt-4 space-y-2" x-show="shown.length > 0">
         <template x-for="a in shown" :key="a.id">
-          <li>
-            <a :href="a.link" class="card card-link flex items-start gap-3 px-4 py-3">
-              <span :class="sev(a.severity).cls" class="mt-0.5 shrink-0" x-text="sev(a.severity).label"></span>
-              <span class="min-w-0 flex-1">
-                <span class="block font-medium" x-text="a.title"></span>
-                <span class="block text-sm text-muted" x-text="a.detail"></span>
-                <span class="mt-1 block text-xs text-muted" x-text="'ค้างตั้งแต่ ' + when(a.since)"></span>
-              </span>
-              <span class="shrink-0 text-sm text-accent">จัดการ →</span>
+          <li class="card flex flex-wrap items-start gap-3 px-4 py-3">
+            <span :class="sev(a.severity).cls" class="mt-0.5 shrink-0" x-text="sev(a.severity).label"></span>
+            <span class="badge badge-muted mt-0.5 shrink-0" x-show="isLoan(a)">เงินกู้</span>
+            <span class="badge badge-info mt-0.5 shrink-0" x-show="a.type === 'reminder'">เตือนความจำ</span>
+            <a :href="a.link" class="card-link min-w-0 flex-1" x-show="a.type !== 'reminder'">
+              <span class="block font-medium" x-text="a.title"></span>
+              <span class="block text-sm text-muted" x-text="a.detail"></span>
+              <span class="mt-1 block text-xs text-muted" x-text="a.type.startsWith('loan_') ? 'ครบกำหนด ' + when(a.since) : 'ค้างตั้งแต่ ' + when(a.since)"></span>
             </a>
+            <!-- เตือนความจำ: ข้อความ + ปุ่มเสร็จ/ลบ -->
+            <div class="min-w-0 flex-1" x-show="a.type === 'reminder'">
+              <span class="block font-medium" x-text="a.title"></span>
+              <span class="block text-sm text-muted" x-text="a.detail"></span>
+              <span class="mt-1 block text-xs text-muted" x-text="'เพิ่มโดย ' + (a.author || '—') + ' · ' + when(a.since)"></span>
+            </div>
+            <div class="flex shrink-0 items-center gap-2 self-center" x-show="a.type === 'reminder'">
+              <button type="button" class="btn-outline !py-1.5 !text-sm" :disabled="busyId === a.id" @click="doneReminder(a)"><i class="ic" data-icon="check" aria-hidden="true"></i>เสร็จแล้ว</button>
+              <button type="button" class="text-sm text-danger hover:underline" x-show="canDeleteReminder(a)" :disabled="busyId === a.id" @click="deleteReminder(a)">ลบ</button>
+            </div>
+            <button type="button" class="btn-outline shrink-0" x-show="a.copy_text" @click="copyText(a)" x-text="copiedId === a.id ? 'คัดลอกแล้ว' : 'คัดลอกข้อความทวง'"></button>
+            <a :href="a.link" class="shrink-0 self-center text-sm text-accent" x-show="a.type !== 'reminder'">จัดการ →</a>
           </li>
         </template>
       </ul>
+        </div>
+      </div>
     </div>
   </main>
 </body>

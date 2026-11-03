@@ -119,49 +119,77 @@ class OutfitTransactionTest extends TestCase
     public function test_replace_only_swaps_the_main_zip_and_sets_counts(): void
     {
         Storage::disk('local')->put('groups/outfits/old.zip', 'old');
-        $g = $this->group('gang', ['outfit_zip_path' => 'groups/outfits/old.zip', 'outfit_counts' => ['suit' => 2, 'polo' => 1, 'hoodie' => 1]]);
+        $g = $this->group('gang', ['outfit_zip_path' => 'groups/outfits/old.zip', 'outfit_counts' => ['suit' => 2, 'accessories' => 1, 'mod1' => 1]]);
 
-        $res = $this->outfit($g, ['replace' => ['types' => ['polo', 'hoodie'], 'counts' => ['polo' => 0, 'hoodie' => 1]], 'note' => 'แก้สี'])->assertCreated();
+        $res = $this->outfit($g, ['replace' => ['types' => ['accessories', 'mod1'], 'counts' => ['accessories' => 0, 'mod1' => 1]], 'note' => 'แก้สี'])->assertCreated();
 
         $path = $g->fresh()->outfit_zip_path;
         $this->assertNotSame('groups/outfits/old.zip', $path);
         Storage::disk('local')->assertExists($path);
         Storage::disk('local')->assertExists('groups/outfits/old.zip'); // ไฟล์เดิมไม่ถูกทับ/ลบ
         $this->assertSame('groups/outfits/old.zip', $g->fresh()->outfit_zip_original_path);
-        $this->assertSame(['suit' => 2, 'polo' => 0, 'hoodie' => 1], $g->fresh()->outfit_counts);
-        $this->assertSame(['hoodie', 'polo'], $res->json('data.payload.replace.types'));
-        $this->assertStringContainsString('เปลี่ยน/แทน Hoodie (1 ชิ้น), Polo (0 ชิ้น)', $res->json('data.summary'));
+        $this->assertSame(['suit' => 2, 'accessories' => 0, 'mod1' => 1], $g->fresh()->outfit_counts);
+        $this->assertSame(['mod1', 'accessories'], $res->json('data.payload.replace.types'));
+        $this->assertStringContainsString('ลงแทน MOD 1 (1 ชิ้น), Accessories (0 ชิ้น)', $res->json('data.summary'));
     }
 
     public function test_swap_one_type_for_another(): void
     {
-        $g = $this->group('gang', ['outfit_counts' => ['suit' => 2, 'hoodie' => 1]]);
+        $g = $this->group('gang', ['outfit_counts' => ['suit' => 2, 'mod1' => 1]]);
 
-        $res = $this->outfit($g, ['replace' => ['types' => ['hoodie', 'tshirt'], 'counts' => ['hoodie' => 0, 'tshirt' => 1], 'swaps' => ['hoodie' => 'tshirt']]])->assertCreated();
+        $res = $this->outfit($g, ['replace' => ['types' => ['mod1', 'mod2'], 'counts' => ['mod1' => 0, 'mod2' => 1], 'swaps' => ['mod1' => 'mod2']]])->assertCreated();
 
-        $this->assertSame(['suit' => 2, 'hoodie' => 0, 'tshirt' => 1], $g->fresh()->outfit_counts);
-        $this->assertStringContainsString('Hoodie → T-Shirt (0 ชิ้น), T-Shirt (1 ชิ้น)', $res->json('data.summary'));
+        $this->assertSame(['suit' => 2, 'mod1' => 0, 'mod2' => 1], $g->fresh()->outfit_counts);
+        $this->assertStringContainsString('MOD 1 → MOD 2 (0 ชิ้น), MOD 2 (1 ชิ้น)', $res->json('data.summary'));
     }
 
     public function test_replace_validation(): void
     {
-        $g = $this->group('gang', ['outfit_counts' => ['hoodie' => 1]]);
-        $rep = fn (array $o) => $this->outfit($g, ['replace' => array_merge(['types' => ['hoodie', 'tshirt'], 'counts' => ['hoodie' => 0, 'tshirt' => 1]], $o)]);
+        $g = $this->group('gang', ['outfit_counts' => ['mod1' => 1]]);
+        $rep = fn (array $o) => $this->outfit($g, ['replace' => array_merge(['types' => ['mod1', 'mod2'], 'counts' => ['mod1' => 0, 'mod2' => 1]], $o)]);
 
-        $rep(['counts' => ['hoodie' => 0]])->assertUnprocessable()->assertJsonValidationErrors('replace.counts.tshirt'); // ขาดจำนวนของชนิดที่ติ๊ก
-        $rep(['counts' => ['hoodie' => 0, 'tshirt' => 1, 'polo' => 1]])->assertUnprocessable()->assertJsonValidationErrors('replace.counts.polo'); // จำนวนของชนิดที่ไม่ได้ติ๊ก
-        $rep(['counts' => ['hoodie' => 0, 'tshirt' => 2]])->assertUnprocessable()->assertJsonValidationErrors('replace.counts.tshirt'); // เกินลิมิต
-        $rep(['swaps' => ['hoodie' => 'hoodie']])->assertUnprocessable()->assertJsonValidationErrors('replace.swaps.hoodie');
-        $rep(['swaps' => ['hoodie' => 'polo']])->assertUnprocessable()->assertJsonValidationErrors('replace.swaps.hoodie'); // ปลายทางไม่อยู่ใน types
-        $rep(['swaps' => ['hoodie' => 'zzz']])->assertUnprocessable()->assertJsonValidationErrors('replace.swaps.hoodie');
+        $rep(['counts' => ['mod1' => 0]])->assertUnprocessable()->assertJsonValidationErrors('replace.counts.mod2'); // ขาดจำนวนของชนิดที่ติ๊ก
+        $rep(['counts' => ['mod1' => 0, 'mod2' => 1, 'accessories' => 1]])->assertUnprocessable()->assertJsonValidationErrors('replace.counts.accessories'); // จำนวนของชนิดที่ไม่ได้ติ๊ก
+        $rep(['counts' => ['mod1' => 0, 'mod2' => 2]])->assertUnprocessable()->assertJsonValidationErrors('replace.counts.mod2'); // เกินลิมิต
+        $rep(['swaps' => ['mod1' => 'mod1']])->assertUnprocessable()->assertJsonValidationErrors('replace.swaps.mod1');
+        $rep(['swaps' => ['mod1' => 'accessories']])->assertUnprocessable()->assertJsonValidationErrors('replace.swaps.mod1'); // ปลายทางไม่อยู่ใน types
+        $rep(['swaps' => ['mod1' => 'zzz']])->assertUnprocessable()->assertJsonValidationErrors('replace.swaps.mod1');
         // ย้ายต่อเป็นทอด/วนกลับไม่ได้
-        $rep(['types' => ['hoodie', 'tshirt', 'polo'], 'counts' => ['hoodie' => 0, 'tshirt' => 0, 'polo' => 1], 'swaps' => ['hoodie' => 'tshirt', 'tshirt' => 'polo']])
-            ->assertUnprocessable()->assertJsonValidationErrors('replace.swaps.hoodie');
-        $rep(['counts' => ['hoodie' => 0, 'tshirt' => 0], 'swaps' => ['hoodie' => 'tshirt', 'tshirt' => 'hoodie']])->assertUnprocessable()->assertJsonValidationErrors('replace.swaps.hoodie');
+        $rep(['types' => ['mod1', 'mod2', 'accessories'], 'counts' => ['mod1' => 0, 'mod2' => 0, 'accessories' => 1], 'swaps' => ['mod1' => 'mod2', 'mod2' => 'accessories']])
+            ->assertUnprocessable()->assertJsonValidationErrors('replace.swaps.mod1');
+        $rep(['counts' => ['mod1' => 0, 'mod2' => 0], 'swaps' => ['mod1' => 'mod2', 'mod2' => 'mod1']])->assertUnprocessable()->assertJsonValidationErrors('replace.swaps.mod1');
+
+        // ชุดอื่นนอกจาก MOD/Accessories ลงแทนไม่ได้ (ใช้ "แก้ไขชุด") ทั้งแก๊งและครอบครัว
+        $this->outfit($g, ['replace' => ['types' => ['suit'], 'counts' => ['suit' => 1]]])->assertUnprocessable()->assertJsonValidationErrors('replace.types.0');
+        $this->outfit($g, ['replace' => ['types' => ['polo'], 'counts' => ['polo' => 1]]])->assertUnprocessable()->assertJsonValidationErrors('replace.types.0');
 
         $family = $this->group('family');
         $this->outfit($family, ['replace' => ['types' => ['suit'], 'counts' => ['suit' => 1]]])->assertUnprocessable()->assertJsonValidationErrors('replace.types.0');
-        $this->assertSame(['hoodie' => 1], $g->fresh()->outfit_counts);
+        $this->assertSame(['mod1' => 1], $g->fresh()->outfit_counts);
+    }
+
+    // ───────── แก้ไขชุด (ชนิดที่ลงทะเบียนไว้แล้ว จำนวนไม่เปลี่ยน) ─────────
+
+    public function test_edit_outfit_keeps_counts_swaps_the_zip_and_charges_per_type(): void
+    {
+        Storage::disk('local')->put('groups/outfits/old.zip', 'old');
+        $g = $this->group('gang', ['outfit_zip_path' => 'groups/outfits/old.zip', 'outfit_counts' => ['suit' => 2, 'accessories' => 1]]);
+
+        $res = $this->outfit($g, ['edit' => ['types' => ['suit', 'accessories']], 'note' => 'ปรับลายชุด'])->assertCreated();
+
+        $this->assertSame(['suit' => 2, 'accessories' => 1], $g->fresh()->outfit_counts); // จำนวนไม่เปลี่ยน
+        $this->assertNotSame('groups/outfits/old.zip', $g->fresh()->outfit_zip_path); // ใช้ไฟล์ใหม่
+        $this->assertSame(2 * 500000, $res->json('data.payload.fee.total'));
+        $this->assertStringContainsString('แก้ไข Suit, Accessories', $res->json('data.summary'));
+    }
+
+    public function test_edit_outfit_needs_registered_type_and_cannot_overlap_other_sections(): void
+    {
+        $g = $this->group('gang', ['outfit_counts' => ['suit' => 2]]);
+
+        $this->outfit($g, ['edit' => ['types' => ['mod1']]])->assertUnprocessable()->assertJsonValidationErrors('edit.types'); // ยังไม่ได้ลง
+        $this->outfit($g, ['edit' => ['types' => ['suit']], 'replace' => ['types' => ['suit'], 'counts' => ['suit' => 2]]])->assertUnprocessable();
+        $this->outfit($g, ['edit' => ['types' => ['suit']], 'add' => ['accessories' => 1]])->assertCreated(); // ลงเพิ่มชนิดอื่นพร้อมแก้ไขได้
     }
 
     // ───────── ลงเพิ่ม + เปลี่ยน/แทน พร้อมกัน ─────────
@@ -169,54 +197,55 @@ class OutfitTransactionTest extends TestCase
     public function test_add_and_replace_in_one_transaction_use_one_zip(): void
     {
         Storage::disk('local')->put('groups/outfits/old.zip', 'old');
-        $g = $this->group('gang', ['outfit_zip_path' => 'groups/outfits/old.zip', 'outfit_counts' => ['suit' => 1, 'hoodie' => 1]]);
+        $g = $this->group('gang', ['outfit_zip_path' => 'groups/outfits/old.zip', 'outfit_counts' => ['suit' => 1, 'mod1' => 1]]);
 
         $res = $this->outfit($g, [
             'add' => ['suit' => 1, 'armor' => 1],
-            'replace' => ['types' => ['hoodie', 'tshirt'], 'counts' => ['hoodie' => 0, 'tshirt' => 1], 'swaps' => ['hoodie' => 'tshirt']],
+            'replace' => ['types' => ['mod1', 'mod2'], 'counts' => ['mod1' => 0, 'mod2' => 1], 'swaps' => ['mod1' => 'mod2']],
         ])->assertCreated();
 
-        $this->assertSame(['suit' => 2, 'hoodie' => 0, 'armor' => 1, 'tshirt' => 1], $g->fresh()->outfit_counts);
+        $this->assertSame(['suit' => 2, 'mod1' => 0, 'armor' => 1, 'mod2' => 1], $g->fresh()->outfit_counts);
         Storage::disk('local')->assertExists('groups/outfits/old.zip'); // ไฟล์เดิมไม่ถูกทับ/ลบ
         $this->assertSame('groups/outfits/old.zip', $g->fresh()->outfit_zip_original_path);
         Storage::disk('local')->assertExists($g->fresh()->outfit_zip_path);
         $this->assertSame(1, Transaction::count());
-        $this->assertStringContainsString('ลงเพิ่ม Suit 1, Armor 1 · เปลี่ยน/แทน Hoodie → T-Shirt', $res->json('data.summary'));
+        $this->assertStringContainsString('ลงเพิ่ม Suit 1, Armor 1 · ลงแทน MOD 1 → MOD 2', $res->json('data.summary'));
     }
 
     public function test_the_same_type_cannot_be_in_both_parts(): void
     {
-        $g = $this->group('gang', ['outfit_counts' => ['suit' => 1, 'hoodie' => 1]]);
+        $g = $this->group('gang', ['outfit_counts' => ['suit' => 1, 'mod1' => 1]]);
 
-        $this->outfit($g, ['add' => ['hoodie' => 1], 'replace' => ['types' => ['hoodie'], 'counts' => ['hoodie' => 1]]])
-            ->assertUnprocessable()->assertJsonValidationErrors('add.hoodie');
-        $this->assertSame(['suit' => 1, 'hoodie' => 1], $g->fresh()->outfit_counts);
+        $this->outfit($g, ['add' => ['mod1' => 1], 'replace' => ['types' => ['mod1'], 'counts' => ['mod1' => 1]]])
+            ->assertUnprocessable()->assertJsonValidationErrors('add.mod1');
+        $this->assertSame(['suit' => 1, 'mod1' => 1], $g->fresh()->outfit_counts);
     }
 
     // ───────── ค่าบริการตามกฎ ─────────
 
     public function test_fees_follow_the_council_rules(): void
     {
-        $g = $this->group('gang', ['outfit_counts' => ['hoodie' => 1, 'polo' => 1]]);
+        $g = $this->group('gang', ['outfit_counts' => ['mod1' => 1, 'accessories' => 1, 'polo' => 1, 'hoodie' => 1]]);
 
-        // ลงเพิ่ม: ชุดทั่วไป 500,000/ชิ้น, MOD/Accessories 1,000,000/ชิ้น; แก้ไขชุด 500,000/ชนิด (สลับข้ามชนิดนับ 1 ต่อคู่)
+        // ลงเพิ่ม: ชุดทั่วไป 500,000/ชิ้น, MOD/Accessories 1,000,000/ชิ้น; ลงชุดแทน/แก้ไขชุด 500,000/ชนิด (สลับข้ามชนิดนับ 1 ต่อคู่)
         $res = $this->outfit($g, [
-            'add' => ['suit' => 2, 'armor' => 1, 'mod1' => 1, 'accessories' => 1],
-            'replace' => ['types' => ['hoodie', 'tshirt', 'polo'], 'counts' => ['hoodie' => 0, 'tshirt' => 1, 'polo' => 0], 'swaps' => ['hoodie' => 'tshirt']],
+            'add' => ['suit' => 2, 'armor' => 1, 'mod2' => 1],
+            'replace' => ['types' => ['mod1', 'accessories'], 'counts' => ['mod1' => 0, 'accessories' => 1], 'swaps' => ['mod1' => 'accessories']],
+            'edit' => ['types' => ['polo', 'hoodie']],
         ])->assertCreated();
 
         $fee = $res->json('data.payload.fee');
-        // (2+1) × 500,000 + (1+1) × 1,000,000 + 2 ชนิด (hoodie→tshirt นับ 1, polo นับ 1) × 500,000
-        $this->assertSame(1500000 + 2000000 + 1000000, $fee['total']);
-        $this->assertCount(3, $fee['items']);
+        // (2+1) × 500,000 + 1 × 1,000,000 + ลงแทน 1 ชนิด (mod1→accessories นับ 1) × 500,000 + แก้ไข 2 ชนิด × 500,000
+        $this->assertSame(1500000 + 1000000 + 500000 + 1000000, $fee['total']);
+        $this->assertCount(4, $fee['items']);
     }
 
     public function test_new_groups_get_free_add_for_24_hours_but_not_free_edits(): void
     {
-        $g = $this->group('gang', ['registered_at' => now()->subHours(3), 'outfit_counts' => ['hoodie' => 1]]);
+        $g = $this->group('gang', ['registered_at' => now()->subHours(3), 'outfit_counts' => ['accessories' => 1]]);
 
-        $res = $this->outfit($g, ['add' => ['suit' => 2, 'mod1' => 1], 'replace' => ['types' => ['hoodie'], 'counts' => ['hoodie' => 0]]])->assertCreated();
-        $this->assertSame(500000, $res->json('data.payload.fee.total')); // เฉพาะค่าแก้ไขชุด 1 ชนิด
+        $res = $this->outfit($g, ['add' => ['suit' => 2, 'mod1' => 1], 'replace' => ['types' => ['accessories'], 'counts' => ['accessories' => 0]]])->assertCreated();
+        $this->assertSame(500000, $res->json('data.payload.fee.total')); // เฉพาะค่าลงชุดแทน 1 ชนิด
 
         $old = $this->group('gang', ['registered_at' => now()->subHours(30)]);
         $res = $this->outfit($old, ['add' => ['suit' => 2]])->assertCreated();
@@ -261,11 +290,11 @@ class OutfitTransactionTest extends TestCase
 
     public function test_the_activity_log_says_what_the_transaction_did(): void
     {
-         $g = $this->group('gang', ['outfit_counts' => ['suit' => 1, 'hoodie' => 1]]);
+         $g = $this->group('gang', ['outfit_counts' => ['suit' => 1, 'mod1' => 1]]);
         $this->outfit($g, [
             'add' => ['suit' => 1],
-            'replace' => ['types' => ['hoodie', 'tshirt'], 'counts' => ['hoodie' => 0, 'tshirt' => 1], 'swaps' => ['hoodie' => 'tshirt']],
-            'note' => 'เปลี่ยนฮูดเป็นเสื้อยืด',
+            'replace' => ['types' => ['mod1', 'mod2'], 'counts' => ['mod1' => 0, 'mod2' => 1], 'swaps' => ['mod1' => 'mod2']],
+            'note' => 'เปลี่ยน MOD 1 เป็น MOD 2',
         ])->assertCreated();
 
         // บันทึกกิจกรรมดูได้เฉพาะรองประธานขึ้นไป
@@ -274,12 +303,12 @@ class OutfitTransactionTest extends TestCase
         Sanctum::actingAs($vp);
 
         $row = collect($this->getJson('/api/logs?log=transactions')->assertOk()->json('data'))->firstWhere('log', 'transactions');
-        $this->assertStringContainsString('Hoodie → T-Shirt', $row['summary']);
+        $this->assertStringContainsString('MOD 1 → MOD 2', $row['summary']);
         $lines = collect($row['details'])->mapWithKeys(fn ($l, $i) => [$i => $l[0].': '.$l[1]])->implode(" | ");
         $this->assertStringContainsString('ลงชุดเพิ่ม: Suit 1', $lines);
-        $this->assertStringContainsString('เปลี่ยน/แทนชุด: Hoodie → T-Shirt (0 ชิ้น), T-Shirt (1 ชิ้น)', $lines);
+        $this->assertStringContainsString('ลงชุดแทน: MOD 1 → MOD 2 (0 ชิ้น), MOD 2 (1 ชิ้น)', $lines);
         $this->assertStringContainsString('ไฟล์ชุด: แทนที่ไฟล์ชุดหลักของกลุ่ม', $lines);
-        $this->assertStringContainsString('หมายเหตุ: เปลี่ยนฮูดเป็นเสื้อยืด', $lines);
+        $this->assertStringContainsString('หมายเหตุ: เปลี่ยน MOD 1 เป็น MOD 2', $lines);
         $this->assertStringContainsString('ค่าบริการรวม: 1,000,000 WVDL', $lines); // ลงเพิ่ม 1 ชิ้น + แก้ไขชุด 1 คู่
     }
 
