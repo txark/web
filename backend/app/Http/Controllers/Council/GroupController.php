@@ -34,7 +34,7 @@ class GroupController extends Controller
         'type.enum' => 'ประเภทไม่ถูกต้อง',
         'status.enum' => 'สถานะไม่ถูกต้อง',
         'reason.required_unless' => 'กรุณาระบุเหตุผล',
-        'logo_url.url' => 'ลิงก์โลโก้ไม่ถูกต้อง',
+        'logo_url.required' => 'กรุณาใส่ลิงก์โลโก้ (จาก images.wavevycity.com)',
     ];
 
     public function __construct(private GroupRules $rules) {}
@@ -139,14 +139,14 @@ class GroupController extends Controller
             'short_name' => ['required', 'string', 'max:4', 'regex:/^[A-Z0-9]+$/'],
             'color_hex' => ['required', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'color_name' => ['required', 'string', 'max:60'],
-            'logo' => ['required', 'file', 'max:2048', $this->signature('png')],
+            'logo_url' => ['required', 'string', 'max:500', new \App\Rules\WavevyImageUrl],   // โลโก้: ลิงก์จาก images.wavevycity.com เท่านั้น
             'leader' => ['required', 'array'],
             ...$person('leader'),
             'co_leaders' => ['nullable', 'array', "max:{$maxCo}"], // รองไม่บังคับ
             'co_leaders.*' => ['array'],
             ...$person('co_leaders.*', false),
             // ชุดชั่วคราวเป็นเบอร์สี 1..N (ไม่แนบรูป) และวันเดียวกันใช้เบอร์ซ้ำกันไม่ได้
-            'temp_outfit_color' => ['required', 'integer', 'min:1', 'max:'.config('council.groups.temp_outfit.colors')],
+            'temp_outfit_color' => ['required', 'integer', 'min:0', 'max:'.config('council.groups.temp_outfit.colors')],
             'outfit_zip' => ['required', 'file', 'max:51200', $this->signature('zip')],
             'protect' => ['sometimes', 'boolean'],
         ], self::MESSAGES + [
@@ -181,8 +181,6 @@ class GroupController extends Controller
                     throw ValidationException::withMessages(['temp_outfit_color' => "เบอร์สีชุดชั่วคราว {$data['temp_outfit_color']} ถูกแก๊ง/ครอบครัวอื่นใช้ไปแล้วในวันนี้ กรุณาเลือกเบอร์อื่น"]);
                 }
 
-                $logo = $request->file('logo')->store('groups/logos', 'public');
-                $stored[] = ['public', $logo];
                 $zip = $request->file('outfit_zip')->store('groups/outfits', 'local');
                 $stored[] = ['local', $zip];
                 $protect = $request->boolean('protect');
@@ -194,8 +192,8 @@ class GroupController extends Controller
                     'short_name' => $data['short_name'],
                     'color_hex' => strtoupper($data['color_hex']),
                     'color_name' => $data['color_name'],
-                    'logo_path' => $logo,
-                    'logo_url' => Storage::disk('public')->url($logo),
+                    'logo_path' => null,
+                    'logo_url' => $data['logo_url'],
                     'temp_outfit_male' => config('council.groups.temp_outfit.male'),
                     'temp_outfit_female' => config('council.groups.temp_outfit.female'),
                     'temp_outfit_color' => (int) $data['temp_outfit_color'],
@@ -314,7 +312,7 @@ class GroupController extends Controller
             'name' => ['sometimes', ...self::NAME_RULE],
             'is_lady' => ['sometimes', 'boolean'],
             'description' => ['sometimes', 'nullable', 'string', 'max:2000'],
-            'logo_url' => ['sometimes', 'nullable', 'url', 'max:500'],
+            'logo_url' => ['sometimes', 'nullable', 'string', 'max:500', new \App\Rules\WavevyImageUrl],
             'skip_cooldown' => ['sometimes', 'boolean'],
         ], self::MESSAGES);
 

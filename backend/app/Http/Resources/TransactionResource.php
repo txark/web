@@ -29,7 +29,7 @@ class TransactionResource extends JsonResource
             'status_label' => $this->status->label(),
             'summary' => $this->summary($p),
             'payload' => $p,
-            'has_logo' => $hasLogo,
+            'has_logo' => $hasLogo || ! empty($p['logo_url']),
             'has_outfit_zip' => $hasZip,
             'has_photo' => $hasPhoto,
             'group' => $this->group ? [

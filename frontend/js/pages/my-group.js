@@ -14,7 +14,7 @@ function myGroupPage() {
     // ลงชุด
     add: {}, replace: { types: [], counts: {}, swaps: {} }, edit: { types: [] }, outfit_zip: null, note: '',
     // ชื่อ/โลโก้
-    logo: null,
+    logo_url: '',
   });
 
   /** ใส่ค่าลง FormData แบบซ้อน: payload[a][b][]… (ข้ามค่าว่าง) */
@@ -229,7 +229,7 @@ function myGroupPage() {
         case 'outfit':
           return { add: f.add, replace: f.replace.types.length ? f.replace : null, edit: f.edit.types.length ? f.edit : null, outfit_zip: f.outfit_zip, note: f.note.trim() };
         case 'rename':
-          return { name: f.name.trim(), short_name: f.short_name.trim(), logo: f.logo };
+          return { name: f.name.trim(), short_name: f.short_name.trim(), logo_url: f.logo_url.trim() };
         case 'recolor':
           return { color_hex: f.color_hex.trim(), color_name: f.color_name.trim(), outfit_zip: f.outfit_zip };
       }

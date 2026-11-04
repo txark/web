@@ -101,7 +101,7 @@ function requestsPage() {
           break;
         case 'rename':
           rows.push(['ชื่อใหม่', `${p.name} [${p.short_name}]`]);
-          rows.push(['โลโก้ใหม่', t.has_logo ? 'แนบไฟล์แล้ว' : '—']);
+          rows.push(['โลโก้ใหม่', p.logo_url || (t.has_logo ? 'แนบไฟล์แล้ว' : '—')]);
           break;
         case 'recolor':
           rows.push(['สีใหม่', `${p.color_name} (${p.color_hex})`]);

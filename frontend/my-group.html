@@ -335,7 +335,7 @@
             <div class="reg-grid mt-4">
               <div class="reg-field"><label class="reg-label" for="r-name">ชื่อใหม่ <span class="reg-hint">(ใส่ชื่อเดิมไม่ได้)</span></label><input id="r-name" class="input" x-model="form.name" maxlength="20" autocomplete="off"><p class="reg-err" x-show="err('name')" x-text="err('name')"></p></div>
               <div class="reg-field"><label class="reg-label" for="r-short">ชื่อย่อใหม่</label><input id="r-short" class="input" x-model="form.short_name" maxlength="4" autocomplete="off" @input="form.short_name = form.short_name.toUpperCase()"><p class="reg-err" x-show="err('short_name')" x-text="err('short_name')"></p></div>
-              <div class="reg-field reg-wide"><label class="reg-label" for="r-logo">โลโก้ใหม่ (.PNG)</label><input id="r-logo" type="file" accept="image/png" class="input" @change="form.logo = $event.target.files[0] || null"><p class="reg-err" x-show="err('logo')" x-text="err('logo')"></p></div>
+              <div class="reg-field reg-wide"><label class="reg-label" for="r-logo">ลิงก์โลโก้ใหม่ <span class="reg-hint">(ต้องเป็นลิงก์จาก images.wavevycity.com เท่านั้น)</span></label><input id="r-logo" type="url" class="input" x-model="form.logo_url" placeholder="https://images.wavevycity.com/..." autocomplete="off" inputmode="url"><p class="reg-err" x-show="err('logo_url')" x-text="err('logo_url')"></p></div>
             </div>
           </div>
 

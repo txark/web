@@ -288,11 +288,11 @@
                   </dl>
                   <div class="gd-sub">
                     <p class="gd-sub-title">ชุดชั่วคราว</p>
-                    <div class="tc-show" x-show="g.temp_outfit_color">
-                      <span class="tc-dot tc-dot-lg" :style="'background:' + (tempColors[(g.temp_outfit_color || 1) - 1] || '#888')"></span>
+                    <div class="tc-show" x-show="g.temp_outfit_color !== null && g.temp_outfit_color !== undefined">
+                      <span class="tc-dot tc-dot-lg" :style="'background:' + (tempColors[g.temp_outfit_color] || '#888')"></span>
                       <span x-text="'สีเบอร์ ' + g.temp_outfit_color + ' · ชุดชายเลข ' + g.temp_outfit_male + ' · ชุดหญิงเลข ' + g.temp_outfit_female"></span>
                     </div>
-                    <p class="gd-muted" x-show="!g.temp_outfit_color && !g.has_temp_outfit">ยังไม่ระบุ</p>
+                    <p class="gd-muted" x-show="(g.temp_outfit_color === null || g.temp_outfit_color === undefined) && !g.has_temp_outfit">ยังไม่ระบุ</p>
                     <div class="gd-temp" x-show="tempPreview">
                       <button type="button" class="gd-temp-img" @click="openTempPreview()" title="เปิดดูรูปเต็ม">
                         <img :src="tempPreview" :alt="'รูปชุดชั่วคราวของ ' + g.name">
@@ -420,10 +420,10 @@
                     <p class="reg-err" x-show="txErr('short_name')" x-text="txErr('short_name')"></p>
                   </div>
                   <div class="reg-field reg-wide">
-                    <label class="reg-label" for="tx-logo">โลโก้ใหม่ <span class="reg-hint">(.PNG เท่านั้น · บังคับแนบ)</span></label>
-                    <input id="tx-logo" type="file" accept=".png,image/png" class="reg-file" @change="pickTxLogo($event)">
-                    <div x-show="txLogoPreview" x-cloak class="reg-preview"><img :src="txLogoPreview" alt="ตัวอย่างโลโก้ใหม่"><span class="reg-preview-name" x-text="txn.logo ? txn.logo.name : ''"></span></div>
-                    <p class="reg-err" x-show="txErr('logo')" x-text="txErr('logo')"></p>
+                    <label class="reg-label" for="tx-logo">ลิงก์โลโก้ใหม่ <span class="reg-hint">(ต้องเป็นลิงก์จาก images.wavevycity.com เท่านั้น · บังคับ)</span></label>
+                    <input id="tx-logo" type="url" class="input" x-model="txn.logo_url" placeholder="https://images.wavevycity.com/..." autocomplete="off" inputmode="url">
+                    <div x-show="logoOk(txn.logo_url)" x-cloak class="reg-preview"><img :src="txn.logo_url" alt="ตัวอย่างโลโก้ใหม่" referrerpolicy="no-referrer"></div>
+                    <p class="reg-err" x-show="txErr('logo_url')" x-text="txErr('logo_url')"></p>
                   </div>
                   <p class="gd-muted reg-wide">เปลี่ยนชื่อได้หลังขึ้นทะเบียนครบ 20 วัน และเว้น 30 วันต่อครั้ง</p>
                 </div>
@@ -613,7 +613,7 @@
                     <input type="checkbox" x-model="edit.skip_cooldown"> ปลดคูลดาวน์เปลี่ยนชื่อ (ชำระค่าบริการแล้ว)
                   </label>
                   <p class="mt-1 text-xs text-muted">เปลี่ยนชื่อได้หลังขึ้นทะเบียนครบ 20 วัน และเว้น 30 วันต่อครั้ง</p>
-                  <label class="mb-1 mt-3 block text-sm text-muted" for="e-logo">ลิงก์โลโก้</label>
+                  <label class="mb-1 mt-3 block text-sm text-muted" for="e-logo">ลิงก์โลโก้ <span class="text-xs">(จาก images.wavevycity.com เท่านั้น)</span></label>
                   <input id="e-logo" x-model="edit.logo_url" type="url" autocomplete="off" class="input">
                   <button type="submit" class="btn-outline mt-4" :disabled="busy || !editDirty">บันทึกข้อมูล</button>
                 </form>
@@ -861,10 +861,10 @@
             <p class="reg-err" x-show="e('color_name')" x-text="e('color_name')"></p>
           </div>
           <div class="reg-field reg-wide">
-            <label class="reg-label" for="r-logo">รูปโลโก้ <span class="reg-hint">(.PNG เท่านั้น)</span></label>
-            <input id="r-logo" type="file" accept=".png,image/png" class="reg-file" @change="pick($event, 'logo', 'png')">
-            <div x-show="previews.logo" x-cloak class="reg-preview"><img :src="previews.logo" alt="ตัวอย่างรูปที่แนบ"><span class="reg-preview-name" x-text="files.logo ? files.logo.name + ' · ' + size(files.logo) : ''"></span></div>
-            <p class="reg-err" x-show="e('logo')" x-text="e('logo')"></p>
+            <label class="reg-label" for="r-logo">ลิงก์โลโก้ <span class="reg-hint">(ต้องเป็นลิงก์จาก images.wavevycity.com เท่านั้น)</span></label>
+            <input id="r-logo" type="url" class="input" x-model="f.logo_url" placeholder="https://images.wavevycity.com/..." autocomplete="off" inputmode="url" @input="delete createErrors.logo_url">
+            <div x-show="logoOk(f.logo_url)" x-cloak class="reg-preview"><img :src="f.logo_url" alt="ตัวอย่างโลโก้" referrerpolicy="no-referrer"></div>
+            <p class="reg-err" x-show="e('logo_url')" x-text="e('logo_url')"></p>
           </div>
         </div>
 
@@ -924,15 +924,15 @@
         <h3 class="reg-sec">ชุดชั่วคราว</h3>
         <div class="reg-grid">
           <div class="reg-field reg-wide">
-            <span class="reg-label">เบอร์สีชุดชั่วคราว <span class="reg-hint">(1–23 · ไม่ต้องแนบรูป)</span></span>
+            <span class="reg-label">เบอร์สีชุดชั่วคราว <span class="reg-hint">(0–23 · ไม่ต้องแนบรูป)</span></span>
             <p class="reg-hint">ชุดชั่วคราวชายเลข <b x-text="tempIds.male"></b> และหญิงเลข <b x-text="tempIds.female"></b> จะเปลี่ยนเป็นสีเบอร์ที่เลือก · ใน 1 วัน แก๊งและครอบครัวใช้เบอร์สีซ้ำกันไม่ได้</p>
             <div class="tc-grid" role="group" aria-label="เบอร์สีชุดชั่วคราว">
               <template x-for="(hex, i) in tempColors" :key="i">
-                <button type="button" class="tc-chip" :disabled="tempTaken.includes(i + 1)" :aria-pressed="f.temp_outfit_color === i + 1"
-                        :title="tempTaken.includes(i + 1) ? 'เบอร์ ' + (i + 1) + ' ถูกใช้ไปแล้ววันนี้' : 'เบอร์ ' + (i + 1)" @click="pickTempColor(i + 1)">
+                <button type="button" class="tc-chip" :disabled="tempTaken.includes(i)" :aria-pressed="f.temp_outfit_color === i"
+                        :title="tempTaken.includes(i) ? 'เบอร์ ' + i + ' ถูกใช้ไปแล้ววันนี้' : 'เบอร์ ' + i" @click="pickTempColor(i)">
                   <span class="tc-dot" :style="'background:' + hex"></span>
-                  <span class="tc-num" x-text="i + 1"></span>
-                  <span class="tc-used" x-show="tempTaken.includes(i + 1)">ใช้แล้ว</span>
+                  <span class="tc-num" x-text="i"></span>
+                  <span class="tc-used" x-show="tempTaken.includes(i)">ใช้แล้ว</span>
                 </button>
               </template>
             </div>
