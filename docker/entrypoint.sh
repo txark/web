@@ -14,6 +14,8 @@ php artisan storage:link --force >/dev/null 2>&1 || true
 
 # ฐานข้อมูล: สร้าง/อัปเดตตารางทุกครั้งที่ deploy (ไม่ลบข้อมูล) แล้วแคชค่าตั้งค่า
 php artisan migrate --force
+# กฎเริ่มต้น (DatabaseSeeder เติมเฉพาะกฎ และไม่ทับของเดิม จึงรันซ้ำทุกครั้งได้) — แผนฟรีเข้า Shell ไม่ได้ จึงเติมให้อัตโนมัติ
+php artisan db:seed --force
 php artisan config:cache
 php artisan view:cache
 

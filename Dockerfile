@@ -39,6 +39,6 @@ RUN composer dump-autoload --optimize --no-dev --no-scripts \
     && chown -R www-data:www-data storage bootstrap/cache
 
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
+RUN sed -i 's/$//' /usr/local/bin/entrypoint.sh && chmod +x /usr/local/bin/entrypoint.sh
 EXPOSE 10000
 ENTRYPOINT ["entrypoint.sh"]
