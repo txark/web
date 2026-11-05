@@ -14,6 +14,10 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->statefulApi();
+        // หลัง proxy ของ Render (HTTPS): ตั้ง TRUSTED_PROXIES=* ใน .env บนเซิร์ฟเวอร์ ให้ Laravel รู้ว่าเป็น https
+        if ($proxies = env('TRUSTED_PROXIES')) {
+            $middleware->trustProxies(at: $proxies === '*' ? '*' : explode(',', $proxies));
+        }
         $middleware->alias([
             'role' => \App\Http\Middleware\EnsureRole::class,
             'log.access' => \App\Http\Middleware\LogAccess::class,

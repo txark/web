@@ -203,7 +203,7 @@ class TransactionService
             TransactionKind::Rename => [
                 'name' => ['required', 'string', 'max:20', 'regex:/^(?=.*[A-Za-z])[A-Za-z0-9][A-Za-z0-9 ._\-]*$/'],
                 'short_name' => ['required', 'string', 'max:4', 'regex:/^[A-Z0-9]+$/'],
-                'logo' => ['required', 'file', 'max:2048', $this->pngRule()],
+                'logo_url' => ['required', 'string', 'max:500', new \App\Rules\WavevyImageUrl],   // โลโก้ใหม่: ลิงก์จาก images.wavevycity.com เท่านั้น
             ],
             TransactionKind::Recolor => [
                 'color_hex' => ['required', 'regex:/^#[0-9A-Fa-f]{6}$/'],
@@ -779,7 +779,7 @@ class TransactionService
             'replace.swaps.*.in' => 'สลับชุดได้เฉพาะระหว่าง MOD 1, MOD 2 และ Accessories',
             'required' => 'กรุณากรอกข้อมูลนี้',
             'required_with' => 'ต้องระบุวันเริ่ม Protect ด้วย',
-            'logo.required' => 'กรุณาแนบรูปโลโก้ใหม่ (.PNG)',
+            'logo_url.required' => 'กรุณาใส่ลิงก์โลโก้ใหม่ (จาก images.wavevycity.com)',
             'max' => 'ข้อมูลยาวเกินกำหนด',
             'name.max' => 'ชื่อต้องยาวไม่เกิน 20 ตัวอักษร',
             'add.*.integer' => 'จำนวนต้องเป็นตัวเลข',
@@ -819,13 +819,6 @@ class TransactionService
             $stored[] = ['local', $path];
             unset($payload['photo']);
             $payload['photo_path'] = $path;
-        }
-
-        if ($kind === TransactionKind::Rename && ($payload['logo'] ?? null) instanceof UploadedFile) {
-            $path = $payload['logo']->store('transactions/logos', 'local');
-            $stored[] = ['local', $path];
-            unset($payload['logo']);
-            $payload['logo_path'] = $path;
         }
 
         if (in_array($kind, [TransactionKind::Outfit, TransactionKind::OutfitAdd, TransactionKind::OutfitFile, TransactionKind::Recolor], true) && ($payload['outfit_zip'] ?? null) instanceof UploadedFile) {
@@ -983,7 +976,12 @@ class TransactionService
         $p = $tx->payload;
         $update = ['name' => $p['name'], 'short_name' => $p['short_name'], 'renamed_at' => now()];
 
-        $path = $p['logo_path'] ?? null;
+        if (! empty($p['logo_url'])) {
+            // โลโก้เป็นลิงก์ภายนอก (images.wavevycity.com) ไม่เก็บไฟล์เอง
+            $update += ['logo_path' => null, 'logo_url' => $p['logo_url']];
+        }
+
+        $path = $p['logo_path'] ?? null;   // ธุรกรรมเก่าที่แนบไฟล์โลโก้ไว้
         if ($path && Storage::disk('local')->exists($path)) {
             $public = 'groups/logos/'.basename($path);
             Storage::disk('public')->put($public, Storage::disk('local')->get($path));

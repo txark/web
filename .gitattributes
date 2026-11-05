@@ -1,0 +1,4 @@
+# สคริปต์ที่รันบน Linux ต้องลงท้ายบรรทัดแบบ LF เสมอ (กัน Windows แปลงเป็น CRLF)
+*.sh text eol=lf
+Dockerfile text eol=lf
+.dockerignore text eol=lf

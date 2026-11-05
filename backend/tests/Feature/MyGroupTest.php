@@ -313,8 +313,7 @@ class MyGroupTest extends TestCase
         $this->gangUser();
         $g = $this->ownGroup();
 
-        $logo = UploadedFile::fake()->createWithContent('logo.png', "\x89PNG\r\n\x1a\n\0\0\0\rIHDR");
-        $res = $this->post('/api/my-group/requests', ['kind' => 'rename', 'payload' => ['name' => 'Brand New', 'short_name' => 'BNW', 'logo' => $logo]], ['Accept' => 'application/json'])->assertCreated();
+        $res = $this->post('/api/my-group/requests', ['kind' => 'rename', 'payload' => ['name' => 'Brand New', 'short_name' => 'BNW', 'logo_url' => 'https://images.wavevycity.com/logos/test.png']], ['Accept' => 'application/json'])->assertCreated();
         $res->assertJsonPath('data.status', 'pending');
         $this->assertSame('ยังไม่เปลี่ยน', $g->fresh()->name === 'Brand New' ? 'เปลี่ยนแล้ว' : 'ยังไม่เปลี่ยน');
 

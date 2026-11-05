@@ -48,7 +48,7 @@ class GroupManagementTest extends TestCase
             'short_name' => 'WLV',
             'color_hex' => '#ff0000',
             'color_name' => 'แดง',
-            'logo' => UploadedFile::fake()->createWithContent('logo.png', self::PNG),
+            'logo_url' => 'https://images.wavevycity.com/logos/test.png',
             'leader' => ['ic_name' => 'Boss One', 'ic_phone' => '555-0100', 'discord_id' => '123456789012345678'],
             'co_leaders' => [['ic_name' => 'Deputy One', 'ic_phone' => '', 'discord_id' => '223456789012345678']],
             'temp_outfit_color' => self::nextColor(), // เบอร์สีชุดชั่วคราว: เปลี่ยนทุกครั้งเพราะวันเดียวกันซ้ำกันไม่ได้
@@ -174,9 +174,10 @@ class GroupManagementTest extends TestCase
         $this->actAs(Role::Member);
 
         // ชื่อ .png แต่เนื้อไม่ใช่ PNG / .zip ปลอม
-        $this->register(['logo' => UploadedFile::fake()->createWithContent('logo.png', 'not a png')])
-            ->assertUnprocessable()->assertJsonValidationErrors('logo');
-        $this->register(['temp_outfit_color' => 0])->assertUnprocessable()->assertJsonValidationErrors('temp_outfit_color');
+        foreach (['https://example.com/logo.png', 'http://images.wavevycity.com/logo.png', 'https://images.wavevycity.com.evil.com/a.png', 'https://evil.com/https://images.wavevycity.com/a.png', 'https://user@images.wavevycity.com/a.png', 'https://images.wavevycity.com', 'not a url', ''] as $bad) {
+            $this->register(['logo_url' => $bad])->assertUnprocessable()->assertJsonValidationErrors('logo_url');
+        }
+        $this->register(['temp_outfit_color' => -1])->assertUnprocessable()->assertJsonValidationErrors('temp_outfit_color');
         $this->register(['temp_outfit_color' => 24])->assertUnprocessable()->assertJsonValidationErrors('temp_outfit_color');
         $this->register(['temp_outfit_color' => null])->assertUnprocessable()->assertJsonValidationErrors('temp_outfit_color');
         $this->register(['outfit_zip' => UploadedFile::fake()->createWithContent('o.zip', 'plain text')])
@@ -374,7 +375,7 @@ class GroupManagementTest extends TestCase
 
         $id = $this->register()->assertCreated()->json('data.id');
         $g = Group::find($id);
-        Storage::disk('public')->assertExists($g->logo_path);
+        $this->assertSame('https://images.wavevycity.com/logos/test.png', $g->logo_url);
         Storage::disk('local')->assertExists($g->outfit_zip_path);
 
         $this->get($this->url($g, '/files/outfit_zip'))->assertOk();
@@ -389,6 +390,16 @@ class GroupManagementTest extends TestCase
             ->assertJsonMissingPath('data.members.0.discord_id');
         $this->getJson($this->url($g, '/files/outfit_zip'))->assertForbidden();
     }
+    public function test_temp_outfit_color_zero_is_black_and_counts_as_taken(): void
+    {
+        $this->actAs(Role::Member);
+        $r = $this->register(['temp_outfit_color' => 0])->assertCreated()->assertJsonPath('data.temp_outfit_color', 0);
+
+        $this->getJson('/api/council/groups/temp-colors')->assertOk()->assertJsonFragment(['taken' => [0]]);
+        $this->register(['name' => 'Home', 'short_name' => 'HM', 'type' => 'family', 'declared_members' => 8, 'temp_outfit_color' => 0])
+            ->assertUnprocessable()->assertJsonValidationErrors('temp_outfit_color');
+    }
+
     public function test_rename_respects_cooldowns_and_can_be_unlocked(): void
     {
         $this->actAs(Role::Member);

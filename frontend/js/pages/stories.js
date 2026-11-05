@@ -297,18 +297,20 @@ function storiesPage() {
 
     async loadLogo(side) {
       const g = this.cur['group_' + side];
+      if (!g.logo_url) return;   // ไม่มีโลโก้ = แสดงชื่อย่อบนพื้นสีของกลุ่มแทน
       try {
-        const res = await fetch(`${window.APP_CONFIG.API_URL}/api/council/groups/${g.id}/files/logo`, { credentials: 'include' });
-        if (!res.ok) return;
+        // โลโก้อยู่ที่ images.wavevycity.com: ดึงเป็น blob เพื่อวาดลงรูปได้ (ต้องให้เว็บนั้นอนุญาต CORS)
+        const res = await fetch(g.logo_url, { mode: 'cors' });
+        if (!res.ok) throw new Error('logo ' + res.status);
         this.logos[side] = URL.createObjectURL(await res.blob());
       } catch (e) {
-        /* ไม่มีโลโก้ = แสดงชื่อย่อบนพื้นสีของกลุ่มแทน */
+        this.logos[side] = g.logo_url;   // CORS ไม่ผ่าน: แสดงได้ แต่ส่งออกเป็นรูปภาพอาจไม่มีโลโก้
       }
     },
 
     freeLogos() {
       for (const side of ['a', 'b']) {
-        if (this.logos[side]) URL.revokeObjectURL(this.logos[side]);
+        if (this.logos[side] && this.logos[side].startsWith('blob:')) URL.revokeObjectURL(this.logos[side]);
         this.logos[side] = '';
       }
       this.blank = false;

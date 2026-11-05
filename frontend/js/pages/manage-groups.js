@@ -13,14 +13,14 @@ const KINDS = {
     allowed: ['เสื้อโปโล 1 ชิ้น', 'ฮูด 1 ชิ้น (โมเดลตัวเกม)', 'เสื้อยืด 1 ชิ้น', 'Accessories 1 ชิ้น'],
   },
 };
-/** สีของชุดชั่วคราวเบอร์ 1–23 (ตามเท็กซ์เจอร์ polofm/polomale 1–23) ใช้แสดงตัวอย่างสี */
+/** สีของชุดชั่วคราวเบอร์ 0–23 (ตามเท็กซ์เจอร์ polofm/polomale 0–23; เบอร์ 0 = สีดำ) ใช้แสดงตัวอย่างสี — ตำแหน่งในอาร์เรย์ = เบอร์ */
 const TEMP_COLORS = [
-  '#ef4444', '#3b82f6', '#10b981', '#fcd34d', '#8b5cf6', '#f9a8d4', '#f97316', '#92613a', '#e0d5c8', '#ff7066', '#00008b', '#ff00ff',
+  '#000000', '#ef4444', '#3b82f6', '#10b981', '#fcd34d', '#8b5cf6', '#f9a8d4', '#f97316', '#92613a', '#e0d5c8', '#ff7066', '#00008b', '#ff00ff',
   '#98fb98', '#a52a2a', '#b5305f', '#556b2f', '#99ffff', '#b8860b', '#da60ff', '#a0a0a0', '#ffe0e0', '#e0e8e0', '#7cfc00',
 ];
 const blankPerson = () => ({ key: Math.random().toString(36).slice(2), ic_name: '', ic_phone: '', discord_id: '' });
 const blankForm = () => ({
-  kind: 'gang', name: '', short_name: '', color_hex: '', color_name: '', color_auto: true,
+  kind: 'gang', name: '', short_name: '', logo_url: '', color_hex: '', color_name: '', color_auto: true,
   leader: blankPerson(), co: [],
   temp_outfit_color: null, protect: 'no',
 });
@@ -146,7 +146,9 @@ const OUTFITS = [
   { key: 'accessories', label: 'Accessories' },
 ];
 const FAMILY_OUTFITS = ['hoodie', 'tshirt', 'polo', 'accessories']; // ครอบครัวลงได้เฉพาะ ฮูด เสื้อยืด เสื้อโปโล และ accessories
-const blankTxn = () => ({ kind: 'rename', name: '', short_name: '', logo: null, color_hex: '', color_name: '', color_auto: true, outfit_zip: null, leader_name: '', leader_phone: '', leader_discord: '', member_names: '', reason: '' });
+const LOGO_HOST = 'images.wavevycity.com';   // โลโก้รับเฉพาะลิงก์จากเว็บนี้ (ฝั่งเซิร์ฟเวอร์ตรวจซ้ำ)
+const logoOk = (u) => { try { const x = new URL(String(u || '').trim()); return x.protocol === 'https:' && x.hostname.toLowerCase() === LOGO_HOST && !x.username && !x.password && !x.port && x.pathname.length > 1; } catch (e) { return false; } };
+const blankTxn = () => ({ kind: 'rename', name: '', short_name: '', logo_url: '', color_hex: '', color_name: '', color_auto: true, outfit_zip: null, leader_name: '', leader_phone: '', leader_discord: '', member_names: '', reason: '' });
 
 /** วันเวลาปัจจุบันแบบไทย เช่น 29 ต.ค. 69 22:08 · เวลาไทย (UTC+7) */
 const nowThai = () => {
@@ -369,7 +371,7 @@ function manageGroupsPage() {
       return this.createErrors[k] || '';
     },
 
-    // ── ชุดชั่วคราว: เลือกเบอร์สี 1–23 (วันเดียวกันซ้ำกันไม่ได้) ──
+    // ── ชุดชั่วคราว: เลือกเบอร์สี 0–23 (วันเดียวกันซ้ำกันไม่ได้) ──
     tempColors: TEMP_COLORS,
     tempTaken: [], // เบอร์ที่ถูกใช้ไปแล้ววันนี้
     tempIds: { male: '1254', female: '1300' },
@@ -379,7 +381,7 @@ function manageGroupsPage() {
         const r = await API.get('/api/council/groups/temp-colors');
         this.tempTaken = r.taken || [];
         this.tempIds = { male: r.male || '1254', female: r.female || '1300' };
-        if (this.f.temp_outfit_color && this.tempTaken.includes(this.f.temp_outfit_color)) this.f.temp_outfit_color = null;
+        if (this.f.temp_outfit_color !== null && this.tempTaken.includes(this.f.temp_outfit_color)) this.f.temp_outfit_color = null;
       } catch (e) {
         this.tempTaken = []; // โหลดไม่ได้ก็เลือกได้ เซิร์ฟเวอร์ตรวจซ้ำให้
       }
@@ -474,7 +476,7 @@ function manageGroupsPage() {
       }
       delete this.createErrors[key];
       if (!file) return;
-      const limit = { logo: 2, outfit_zip: 50 }[key];
+      const limit = { outfit_zip: 50 }[key];
       if (!file.name.toLowerCase().endsWith('.' + ext)) {
         this.createErrors[key] = ext === 'png' ? 'ต้องเป็นไฟล์ .PNG เท่านั้น' : 'ต้องเป็นไฟล์ .ZIP เท่านั้น';
         ev.target.value = '';
@@ -497,7 +499,7 @@ function manageGroupsPage() {
       if (!this.hexOk) er.color_hex = 'โค้ดสีต้องเป็นรูปแบบ #RRGGBB';
       if (!this.f.color_name.trim()) er.color_name = 'กรุณากรอกชื่อสี';
       else if (this.hexOk && colorNameError(this.f.color_hex, this.f.color_name)) er.color_name = colorNameError(this.f.color_hex, this.f.color_name);
-      if (!this.files.logo) er.logo = 'กรุณาแนบรูปโลโก้ (.PNG)';
+      if (!logoOk(this.f.logo_url)) er.logo_url = 'ลิงก์โลโก้ต้องขึ้นต้นด้วย https://' + LOGO_HOST + '/ เท่านั้น';
       const person = (p, key, discordRequired) => {
         if (!p.ic_name.trim()) er[`${key}.ic_name`] = 'กรุณากรอกชื่อ-นามสกุล IC';
         const d = p.discord_id.trim();
@@ -505,7 +507,7 @@ function manageGroupsPage() {
       };
       person(this.f.leader, 'leader', true);
       this.filledCo().forEach(([c, i]) => person(c, `co_leaders.${i}`, false));
-      if (!this.f.temp_outfit_color) er.temp_outfit_color = 'กรุณาเลือกเบอร์สีชุดชั่วคราว';
+      if (this.f.temp_outfit_color === null || this.f.temp_outfit_color === undefined) er.temp_outfit_color = 'กรุณาเลือกเบอร์สีชุดชั่วคราว';
       else if (this.tempTaken.includes(this.f.temp_outfit_color)) er.temp_outfit_color = 'เบอร์นี้ถูกใช้ไปแล้ววันนี้ กรุณาเลือกเบอร์อื่น';
       if (!this.files.outfit_zip) er.outfit_zip = 'กรุณาแนบไฟล์ชุด (.ZIP)';
       return er;
@@ -522,7 +524,7 @@ function manageGroupsPage() {
       const k = this.kindInfo;
       fd.append('type', k.type);
       if (k.lady) fd.append('is_lady', '1');
-      for (const key of ['name', 'short_name', 'color_hex', 'color_name']) fd.append(key, this.f[key].trim());
+      for (const key of ['name', 'short_name', 'logo_url', 'color_hex', 'color_name']) fd.append(key, this.f[key].trim());
       fd.append('temp_outfit_color', this.f.temp_outfit_color);
       const person = (p, prefix) => {
         fd.append(`${prefix}[ic_name]`, p.ic_name.trim());
@@ -1158,24 +1160,7 @@ function manageGroupsPage() {
       }
     },
 
-    pickTxLogo(ev) {
-      const file = ev.target.files[0];
-      this.txn.logo = null;
-      if (this.txLogoPreview) URL.revokeObjectURL(this.txLogoPreview);
-      this.txLogoPreview = '';
-      delete this.txErrors.logo;
-      if (!file) return;
-      if (!file.name.toLowerCase().endsWith('.png')) {
-        this.txErrors.logo = 'ต้องเป็นไฟล์ .PNG เท่านั้น';
-        ev.target.value = '';
-      } else if (file.size > 2 * 1024 * 1024) {
-        this.txErrors.logo = 'ไฟล์ใหญ่เกิน 2 MB';
-        ev.target.value = '';
-      } else {
-        this.txn.logo = file;
-        this.txLogoPreview = URL.createObjectURL(file);
-      }
-    },
+    logoOk,
 
     /** รายชื่อสมาชิกที่ออก: แยกด้วยบรรทัดใหม่/จุลภาค ตัดช่องว่าง ตัดชื่อซ้ำ (ไม่สนตัวพิมพ์) */
     get releaseNames() {
@@ -1231,6 +1216,7 @@ function manageGroupsPage() {
       if (t.kind === 'rename') {
         if (!ENGLISH_NAME.test(t.name.trim())) er.name = 'ชื่อต้องเป็นภาษาอังกฤษ (ใช้ตัวเลขร่วมได้) และมีตัวอักษรอย่างน้อย 1 ตัว';
         if (!SHORT_NAME.test(t.short_name.trim())) er.short_name = 'ชื่อย่อต้องเป็นตัวพิมพ์ใหญ่ภาษาอังกฤษหรือตัวเลข 1–4 ตัวอักษร';
+        if (!logoOk(t.logo_url)) er.logo_url = 'ลิงก์โลโก้ต้องขึ้นต้นด้วย https://' + LOGO_HOST + '/ เท่านั้น';
       }
       if ((t.kind === 'release_slot' || t.kind === 'release_free') && !this.releaseNames.length) er.member_names = 'กรุณากรอกชื่อสมาชิกที่ออกอย่างน้อย 1 ชื่อ';
       if ((t.kind === 'release_slot' || t.kind === 'release_free') && this.releaseNames.length > 50) er.member_names = 'ออกพร้อมกันได้ไม่เกิน 50 ชื่อต่อธุรกรรม';
@@ -1260,7 +1246,7 @@ function manageGroupsPage() {
       if (t.kind === 'rename') {
         put('name', t.name.trim());
         put('short_name', t.short_name.trim());
-        if (t.logo) fd.append('payload[logo]', t.logo);
+        put('logo_url', t.logo_url.trim());
       } else if (t.kind === 'recolor') {
         put('color_hex', t.color_hex.trim());
         put('color_name', t.color_name.trim());
@@ -1491,7 +1477,7 @@ function manageGroupsPage() {
     get tempOutfitText() {
       const g = this.g;
       const parts = [];
-      if (g && g.temp_outfit_color) parts.push('สีเบอร์ ' + g.temp_outfit_color);
+      if (g && g.temp_outfit_color !== null && g.temp_outfit_color !== undefined) parts.push('สีเบอร์ ' + g.temp_outfit_color);
       if (g && g.temp_outfit_male) parts.push('ชาย ' + g.temp_outfit_male);
       if (g && g.temp_outfit_female) parts.push('หญิง ' + g.temp_outfit_female);
       return parts.join(' · '); // ว่าง = ไม่ระบุ (หน้าจอซ่อนแถวนี้)
