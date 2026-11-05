@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="th" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>แดชบอร์ด | WAVEVY COUNCIL</title>
+  <link rel="icon" href="/img/favicon.png">
+  <script src="/js/theme.js"></script>
+  <script src="/js/icons.js"></script>
+  <link rel="stylesheet" href="/css/output.css">
+  <script src="/js/config.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/pages/dashboard.js"></script>
+  <script defer src="/js/layout.js"></script>
+  <script defer src="/js/vendor/alpine.min.js"></script>
+</head>
+<body>
+  <div id="site-header"></div>
+
+  <main class="container-app py-8" x-data="dashboardPage()">
+    <div x-show="!ready" class="py-24 text-center text-muted">กำลังตรวจสอบสิทธิ์...</div>
+
+    <div x-show="ready" x-cloak>
+      <header class="rg-head">
+        <div class="min-w-0">
+          <p class="rg-eyebrow">WAVEVY COUNCIL / DASHBOARD</p>
+          <h1 class="rg-title"><i class="ic rg-ic" data-icon="layout-dashboard" aria-hidden="true"></i>แดชบอร์ดสรุป</h1>
+          <p class="rg-sub">ภาพรวมสำหรับประธานและรองประธานสภา · อัปเดต <span x-text="updated || '—'"></span></p>
+        </div>
+        <div class="rg-actions">
+          <button type="button" class="btn-outline" @click="load()" :disabled="loading" x-text="loading ? 'กำลังโหลด...' : 'รีเฟรช'"></button>
+        </div>
+      </header>
+
+      <p x-show="error" x-text="error" class="penalty-box mt-5"></p>
+
+      <div x-show="d" x-cloak class="mt-6 space-y-6">
+        <!-- ตัวเลขหลัก -->
+        <section class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <a href="/requests.html" class="card card-link px-4 py-3">
+            <p class="text-xs text-muted">คำขอรออนุมัติ</p>
+            <p class="mt-1 text-2xl font-semibold" x-text="d.requests.pending"></p>
+            <p class="mt-1 text-xs text-muted" x-text="d.requests.pending_over_day ? 'ค้างเกิน 1 วัน ' + d.requests.pending_over_day + ' รายการ' : 'ไม่มีรายการค้างเกิน 1 วัน'"></p>
+          </a>
+          <a href="/tasks.html" class="card card-link px-4 py-3">
+            <p class="text-xs text-muted">งานค้างแจ้งเตือน</p>
+            <p class="mt-1 text-2xl font-semibold" x-text="d.alerts.count || 0"></p>
+            <p class="mt-1 text-xs text-muted" x-text="'เร่งด่วน ' + ((d.alerts.by_severity || {}).high || 0) + ' · ควรทำ ' + ((d.alerts.by_severity || {}).medium || 0)"></p>
+          </a>
+          <a href="/finance.html" class="card card-link px-4 py-3">
+            <p class="text-xs text-muted">กองกลางของสภา</p>
+            <p class="mt-1 text-2xl font-semibold" x-text="money(d.finance.central)"></p>
+            <p class="mt-1 text-xs text-muted" x-text="d.finance.currency"></p>
+          </a>
+          <a href="/duty-report.html" class="card card-link px-4 py-3">
+            <p class="text-xs text-muted">อยู่ในเวรตอนนี้</p>
+            <p class="mt-1 text-2xl font-semibold" x-text="d.duty.on_now.length + ' คน'"></p>
+            <p class="mt-1 text-xs text-muted" x-text="'เวรสัปดาห์นี้รวม ' + hm(d.duty.week_total_seconds)"></p>
+          </a>
+        </section>
+
+        <div class="grid gap-6 lg:grid-cols-2">
+          <!-- ทะเบียน -->
+          <section class="card px-4 py-4">
+            <h2 class="font-semibold">แก๊ง / ครอบครัว</h2>
+            <div class="mt-3 grid grid-cols-3 gap-3">
+              <div><p class="text-xs text-muted">ทั้งหมด</p><p class="text-xl font-semibold" x-text="d.groups.total"></p></div>
+              <div><p class="text-xs text-muted">แก๊ง</p><p class="text-xl font-semibold" x-text="d.groups.gangs"></p></div>
+              <div><p class="text-xs text-muted">ครอบครัว</p><p class="text-xl font-semibold" x-text="d.groups.families"></p></div>
+            </div>
+            <p class="mt-2 text-xs text-muted" x-text="'ขึ้นทะเบียนใหม่เดือนนี้ ' + d.groups.new_this_month"></p>
+            <ul class="mt-3 space-y-2">
+              <template x-for="s in d.groups.by_status" :key="s.key">
+                <li>
+                  <div class="flex justify-between text-sm"><span x-text="s.label"></span><span class="text-muted" x-text="s.count"></span></div>
+                  <div class="mt-1 h-2 overflow-hidden rounded-full bg-[var(--accent-soft)]"><div class="h-full rounded-full bg-[var(--accent)]" :style="'width:' + pct(s.count, d.groups.total) + '%'"></div></div>
+                </li>
+              </template>
+            </ul>
+          </section>
+
+          <!-- คำขอ -->
+          <section class="card px-4 py-4">
+            <h2 class="font-semibold">คำขอ / ธุรกรรม</h2>
+            <div class="mt-3 grid grid-cols-3 gap-3">
+              <div><p class="text-xs text-muted">รออนุมัติ</p><p class="text-xl font-semibold" x-text="d.requests.pending"></p></div>
+              <div><p class="text-xs text-muted">อนุมัติสัปดาห์นี้</p><p class="text-xl font-semibold" x-text="d.requests.approved_this_week"></p></div>
+              <div><p class="text-xs text-muted">ไม่อนุมัติสัปดาห์นี้</p><p class="text-xl font-semibold" x-text="d.requests.rejected_this_week"></p></div>
+            </div>
+            <p class="mt-2 text-xs text-muted" x-show="d.requests.oldest_pending_at" x-text="'คำขอเก่าสุดที่ยังรออยู่: ' + stamp(d.requests.oldest_pending_at)"></p>
+            <ul class="mt-3 space-y-1.5">
+              <template x-for="k in d.requests.by_kind" :key="k.key">
+                <li class="flex justify-between text-sm"><span x-text="k.label"></span><span class="text-muted" x-text="k.count"></span></li>
+              </template>
+              <li x-show="!d.requests.by_kind.length" class="text-sm text-muted">ไม่มีคำขอค้าง</li>
+            </ul>
+          </section>
+
+          <!-- การเงิน -->
+          <section class="card px-4 py-4">
+            <h2 class="font-semibold">การเงินเดือนนี้ <span class="text-xs font-normal text-muted" x-text="'(ตั้งแต่ ' + d.finance.month_from + ')'"></span></h2>
+            <div class="mt-3 grid grid-cols-3 gap-3">
+              <div><p class="text-xs text-muted">รายรับ</p><p class="text-lg font-semibold" x-text="money(d.finance.month_income)"></p></div>
+              <div><p class="text-xs text-muted">รายจ่าย</p><p class="text-lg font-semibold" x-text="money(d.finance.month_expense)"></p></div>
+              <div><p class="text-xs text-muted">คงเหลือ</p><p class="text-lg font-semibold" x-text="money(d.finance.month_balance)"></p></div>
+            </div>
+            <div class="mt-3 grid gap-4 sm:grid-cols-2">
+              <div>
+                <p class="text-xs text-muted">รายรับสูงสุด</p>
+                <ul class="mt-1 space-y-1">
+                  <template x-for="r in d.finance.top_income" :key="r.key"><li class="flex justify-between text-sm"><span x-text="r.label"></span><span class="text-muted" x-text="money(r.amount)"></span></li></template>
+                  <li x-show="!d.finance.top_income.length" class="text-sm text-muted">—</li>
+                </ul>
+              </div>
+              <div>
+                <p class="text-xs text-muted">รายจ่ายสูงสุด</p>
+                <ul class="mt-1 space-y-1">
+                  <template x-for="r in d.finance.top_expense" :key="r.key"><li class="flex justify-between text-sm"><span x-text="r.label"></span><span class="text-muted" x-text="money(r.amount)"></span></li></template>
+                  <li x-show="!d.finance.top_expense.length" class="text-sm text-muted">—</li>
+                </ul>
+              </div>
+            </div>
+          </section>
+
+          <!-- เงินกู้ -->
+          <section class="card px-4 py-4">
+            <h2 class="font-semibold">สัญญาเงินกู้</h2>
+            <div class="mt-3 grid grid-cols-2 gap-3">
+              <div><p class="text-xs text-muted">สัญญาที่ยังค้างชำระ</p><p class="text-xl font-semibold" x-text="d.loans.active"></p></div>
+              <div><p class="text-xs text-muted">เกินกำหนด</p><p class="text-xl font-semibold" x-text="d.loans.overdue"></p></div>
+              <div><p class="text-xs text-muted">ยอดค้างรับคืน</p><p class="text-lg font-semibold" x-text="money(d.loans.outstanding)"></p></div>
+              <div><p class="text-xs text-muted">ปล่อยกู้สะสม (ต้นเงิน)</p><p class="text-lg font-semibold" x-text="money(d.loans.lent_total)"></p></div>
+            </div>
+            <a href="/finance.html" class="btn-outline mt-4 inline-block">ไปหน้าการเงิน</a>
+          </section>
+
+          <!-- เวร -->
+          <section class="card px-4 py-4 lg:col-span-2">
+            <h2 class="font-semibold">เวรของสภา</h2>
+            <div class="mt-3 grid gap-6 sm:grid-cols-2">
+              <div>
+                <p class="text-xs text-muted">อยู่ในเวรตอนนี้</p>
+                <ul class="mt-2 space-y-1.5">
+                  <template x-for="u in d.duty.on_now" :key="u.id">
+                    <li class="flex justify-between text-sm"><span><span x-text="u.name"></span> <span class="text-xs text-muted" x-text="u.role_label"></span></span><span class="text-muted" x-text="'ตั้งแต่ ' + time(u.started_at)"></span></li>
+                  </template>
+                  <li x-show="!d.duty.on_now.length" class="text-sm text-muted">ไม่มีใครอยู่ในเวร</li>
+                </ul>
+              </div>
+              <div>
+                <p class="text-xs text-muted">ชั่วโมงเวรสัปดาห์นี้สูงสุด 5 อันดับ</p>
+                <ol class="mt-2 space-y-1.5">
+                  <template x-for="(u, i) in d.duty.top_week" :key="u.id">
+                    <li class="flex justify-between text-sm"><span><span class="text-muted" x-text="(i + 1) + '.'"></span> <span x-text="u.name"></span></span><span class="text-muted" x-text="hm(u.seconds)"></span></li>
+                  </template>
+                  <li x-show="!d.duty.top_week.length" class="text-sm text-muted">ยังไม่มีข้อมูลเวร</li>
+                </ol>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

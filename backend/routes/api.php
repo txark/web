@@ -59,6 +59,10 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     });
 
     // สรุปชั่วโมงเวรของสภาแต่ละคน: รองประธานขึ้นไป
+    // แดชบอร์ดสรุปภาพรวม: รองประธานขึ้นไป
+    Route::get('council/dashboard', [\App\Http\Controllers\Council\DashboardController::class, 'show'])
+        ->middleware(['role:vice_president', 'duty', 'log.access:แดชบอร์ด']);
+
     Route::prefix('council/duty-report')->middleware(['role:vice_president', 'duty', 'log.access:สรุปชั่วโมงเวร'])->group(function () {
         Route::get('/', [DutyReportController::class, 'index']);
         Route::get('{user}', [DutyReportController::class, 'show']);
