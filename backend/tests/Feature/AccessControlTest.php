@@ -177,7 +177,7 @@ class AccessControlTest extends TestCase
 
     // ───────── Admin อยู่นอกลำดับสภา ─────────
 
-    public function test_admin_works_like_council_but_not_vice_president_only_pages(): void
+    public function test_admin_works_at_president_level(): void
     {
         $admin = $this->as(Role::Admin);
 
@@ -188,8 +188,8 @@ class AccessControlTest extends TestCase
         foreach (['/api/council/groups', '/api/council/alerts', '/api/council/announcements', '/api/duty'] as $url) {
             $this->actingAs($admin)->getJson($url)->assertOk();
         }
-        // แต่หน้าเฉพาะรองประธานขึ้นไป (สรุปชั่วโมงเวร ฯลฯ) ยังไม่ใช่ของ Admin
-        $this->actingAs($admin)->getJson('/api/council/duty-report')->assertForbidden();
+        // หน้าเฉพาะรองประธานขึ้นไป (สรุปชั่วโมงเวร ฯลฯ) Admin เข้าได้เท่ายศประธาน
+        $this->actingAs($admin)->getJson('/api/council/duty-report')->assertOk();
     }
 
     public function test_admin_manages_and_changes_ranks_but_cannot_touch_other_admins(): void

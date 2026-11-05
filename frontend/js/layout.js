@@ -25,11 +25,7 @@
     ['/logs.html', 'บันทึกกิจกรรม', 'file-text'],
   ];
   // Admin: จัดการผู้ใช้ · บันทึกกิจกรรม · ตั้งค่าระบบ (ไม่มีเมนูงานสภา)
-  const adminManage = [
-    ['/users.html', 'จัดการผู้ใช้', 'users'],
-    ['/logs.html', 'บันทึกกิจกรรม', 'file-text'],
-    ['/system-settings.html', 'ตั้งค่าระบบ', 'sliders'],
-  ];
+  const adminManage = [...manage, ['/system-settings.html', 'ตั้งค่าระบบ', 'sliders']];
   const manageActive = manage.some(([href]) => href === here);
   const manageItems = manage
     .map(([href, label, icon]) => `<a href="${href}" role="menuitem" class="menu-item"${cur(href === here)}>${ic(icon)}${label}</a>`)

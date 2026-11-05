@@ -84,9 +84,9 @@ enum Role: string
         if ($min === self::Admin) {
             return $this === self::Admin;
         }
-        // Admin ใช้งานได้เท่าสภา (ระดับ Member ลงมา) แต่ไม่ถึงรองประธาน/ประธาน; หน้าจัดการผู้ใช้/บันทึกกิจกรรมเปิดให้ Admin ด้วย role:...,admin แยกต่างหาก
+        // Admin ใช้งานได้เท่ายศประธาน (ผ่านทุกการตรวจสิทธิ์ระดับสภา) แต่ไม่ต้องเข้าเวร
         if ($this === self::Admin) {
-            return $min->level() <= self::Member->level();
+            return $min->level() <= self::President->level();
         }
 
         return $this->level() >= $min->level();

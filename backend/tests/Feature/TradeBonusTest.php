@@ -53,7 +53,7 @@ class TradeBonusTest extends TestCase
     {
         $g = Group::factory()->create();
         $this->getJson(self::URL.'/trades')->assertUnauthorized();
-        foreach ([Role::Member, Role::Secretary, Role::Gang, Role::Admin] as $role) {
+        foreach ([Role::Member, Role::Secretary, Role::Gang] as $role) {
             $this->council($role);
             foreach (['/trades', '/bonus'] as $path) {
                 $this->getJson(self::URL.$path)->assertForbidden();

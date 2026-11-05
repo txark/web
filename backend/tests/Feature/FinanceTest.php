@@ -104,7 +104,7 @@ class FinanceTest extends TestCase
     public function test_only_vice_president_up_can_use_it(): void
     {
         $this->getJson(self::URL.'/summary')->assertUnauthorized();
-        foreach ([Role::Member, Role::Operations, Role::Senior, Role::Secretary, Role::Gang, Role::Admin] as $role) {
+        foreach ([Role::Member, Role::Operations, Role::Senior, Role::Secretary, Role::Gang] as $role) {
             $this->council($role);
             $this->getJson(self::URL.'/summary')->assertForbidden();
             $this->postJson(self::URL.'/records', [])->assertForbidden();

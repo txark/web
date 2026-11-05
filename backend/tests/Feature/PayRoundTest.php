@@ -115,7 +115,7 @@ class PayRoundTest extends TestCase
     public function test_only_president_and_vice_president_can_use_it(): void
     {
         $this->getJson(self::URL.'/bonus')->assertUnauthorized();
-        foreach ([Role::Member, Role::Operations, Role::Secretary, Role::Gang, Role::Admin] as $role) {
+        foreach ([Role::Member, Role::Operations, Role::Secretary, Role::Gang] as $role) {
             $this->boss($role);
             $this->getJson(self::URL.'/bonus')->assertForbidden();
             $this->preview()->assertForbidden();

@@ -77,7 +77,7 @@ class LoanTest extends TestCase
     {
         $g = Group::factory()->create();
         $this->getJson(self::URL.'/loans')->assertUnauthorized();
-        foreach ([Role::Member, Role::Secretary, Role::Gang, Role::Admin] as $role) {
+        foreach ([Role::Member, Role::Secretary, Role::Gang] as $role) {
             $this->council($role);
             $this->getJson(self::URL.'/loans')->assertForbidden();
             $this->loan($g)->assertForbidden();
