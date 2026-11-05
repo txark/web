@@ -17,8 +17,8 @@ WORKDIR /app
 COPY backend/composer.json backend/composer.lock ./
 RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-interaction
 
-# ── 3) ตัวรันจริง ──
-FROM php:8.3-apache
+# ── 3) ตัวรันจริง (PHP 8.4: Symfony ที่ lock ไว้ต้องการ >= 8.4.1) ──
+FROM php:8.4-apache
 RUN apt-get update && apt-get install -y --no-install-recommends libpq-dev libzip-dev unzip \
     && docker-php-ext-install pdo_pgsql zip opcache bcmath \
     && a2enmod rewrite headers \
