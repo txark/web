@@ -266,10 +266,12 @@ class GroupManagementTest extends TestCase
         ])->assertCreated()->assertJsonPath('data.members_count', 2);
         $this->assertNull(GroupMember::where('character_name', 'Deputy One')->first()->discord_id);
 
-        // แต่ถ้ากรอกต้องถูกรูปแบบ และ Discord ID ของหัวหน้ายังบังคับ
+        // แต่ถ้ากรอกต้องถูกรูปแบบ ส่วน Discord ID ของหัวหน้าก็ไม่บังคับเช่นกัน
         $this->register(['name' => 'Other', 'short_name' => 'OTH', 'co_leaders' => [['ic_name' => 'Dep', 'discord_id' => '123']]])
             ->assertUnprocessable()->assertJsonValidationErrors('co_leaders.0.discord_id');
         $this->register(['name' => 'Other', 'short_name' => 'OTH', 'leader' => ['ic_name' => 'Boss', 'discord_id' => '']])
+            ->assertCreated();
+        $this->register(['name' => 'Another', 'short_name' => 'ANO', 'leader' => ['ic_name' => 'Boss2', 'discord_id' => '12']])
             ->assertUnprocessable()->assertJsonValidationErrors('leader.discord_id');
     }
 

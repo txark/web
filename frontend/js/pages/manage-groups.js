@@ -505,7 +505,7 @@ function manageGroupsPage() {
         const d = p.discord_id.trim();
         if ((discordRequired || d) && !/^\d{17,20}$/.test(d)) er[`${key}.discord_id`] = 'Discord ID ต้องเป็นตัวเลข 17-20 หลัก';
       };
-      person(this.f.leader, 'leader', true);
+      person(this.f.leader, 'leader', false);
       this.filledCo().forEach(([c, i]) => person(c, `co_leaders.${i}`, false));
       if (this.f.temp_outfit_color === null || this.f.temp_outfit_color === undefined) er.temp_outfit_color = 'กรุณาเลือกเบอร์สีชุดชั่วคราว';
       else if (this.tempTaken.includes(this.f.temp_outfit_color)) er.temp_outfit_color = 'เบอร์นี้ถูกใช้ไปแล้ววันนี้ กรุณาเลือกเบอร์อื่น';

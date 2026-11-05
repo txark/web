@@ -141,7 +141,7 @@ class GroupController extends Controller
             'color_name' => ['required', 'string', 'max:60'],
             'logo_url' => ['required', 'string', 'max:500', new \App\Rules\WavevyImageUrl],   // โลโก้: ลิงก์จาก images.wavevycity.com เท่านั้น
             'leader' => ['required', 'array'],
-            ...$person('leader'),
+            ...$person('leader', false),
             'co_leaders' => ['nullable', 'array', "max:{$maxCo}"], // รองไม่บังคับ
             'co_leaders.*' => ['array'],
             ...$person('co_leaders.*', false),

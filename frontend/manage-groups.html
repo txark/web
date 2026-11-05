@@ -882,7 +882,7 @@
             <p class="reg-err" x-show="e('leader.ic_phone')" x-text="e('leader.ic_phone')"></p>
           </div>
           <div class="reg-field">
-            <label class="reg-label" for="l-did">Discord ID</label>
+            <label class="reg-label" for="l-did">Discord ID <span class="reg-hint">(ไม่บังคับ)</span></label>
             <input id="l-did" x-model="f.leader.discord_id" inputmode="numeric" autocomplete="off" class="input" :aria-invalid="!!e('leader.discord_id')">
             <p class="reg-err" x-show="e('leader.discord_id')" x-text="e('leader.discord_id')"></p>
           </div>
