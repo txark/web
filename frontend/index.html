@@ -185,6 +185,14 @@
             </a>
           </template>
           <template x-if="open && admin()">
+            <a href="/dashboard.html" class="card card-link p-6">
+              <span class="card-ic" aria-hidden="true"><i class="ic" data-icon="layout-dashboard"></i></span>
+              <p class="eyebrow">Dashboard</p>
+              <h3 class="mt-2 text-lg font-semibold">แดชบอร์ดสรุป</h3>
+              <p class="mt-1 text-sm text-muted">ภาพรวมคำขอ ทะเบียน การเงิน เงินกู้ และเวรของสภา</p>
+            </a>
+          </template>
+          <template x-if="open && admin()">
             <a href="/duty-report.html" class="card card-link p-6">
               <span class="card-ic" aria-hidden="true"><i class="ic" data-icon="clock"></i></span>
               <p class="eyebrow">Duty</p>
