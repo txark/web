@@ -148,6 +148,14 @@
             <h3 class="mt-2 text-lg font-semibold">กฎ</h3>
             <p class="mt-1 text-sm text-muted">กฎสภา บทลงโทษ มาตรการสูงสุด Blacklist และการคว่ำบาตร</p>
           </a>
+          <template x-if="open && admin()">
+            <a href="/dashboard.html" class="card card-link p-6">
+              <span class="card-ic" aria-hidden="true"><i class="ic" data-icon="layout-dashboard"></i></span>
+              <p class="eyebrow">Dashboard</p>
+              <h3 class="mt-2 text-lg font-semibold">แดชบอร์ด</h3>
+              <p class="mt-1 text-sm text-muted">ภาพรวมคำขอ ทะเบียน การเงิน เงินกู้ และเวรของสภา</p>
+            </a>
+          </template>
 
           <template x-if="open">
             <a href="/transactions.html" class="card card-link p-6">
@@ -182,14 +190,6 @@
               <p class="eyebrow">Administration</p>
               <h3 class="mt-2 text-lg font-semibold">จัดการผู้ใช้</h3>
               <p class="mt-1 text-sm text-muted">เพิ่ม Discord ID และกำหนดบทบาท</p>
-            </a>
-          </template>
-          <template x-if="open && admin()">
-            <a href="/dashboard.html" class="card card-link p-6">
-              <span class="card-ic" aria-hidden="true"><i class="ic" data-icon="layout-dashboard"></i></span>
-              <p class="eyebrow">Dashboard</p>
-              <h3 class="mt-2 text-lg font-semibold">แดชบอร์ดสรุป</h3>
-              <p class="mt-1 text-sm text-muted">ภาพรวมคำขอ ทะเบียน การเงิน เงินกู้ และเวรของสภา</p>
             </a>
           </template>
           <template x-if="open && admin()">
