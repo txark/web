@@ -1,0 +1,10 @@
+.git
+**/node_modules
+backend/vendor
+backend/.env
+backend/storage/logs/*
+backend/storage/framework/sessions/*
+backend/tests
+frontend/css/output.css
+frontend/js/vendor
+frontend/fonts
