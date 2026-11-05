@@ -948,7 +948,7 @@
           <p class="reg-rule-foot">ไฟล์ชุดขนาด 1024×1024 · โพลิกอนไม่เกิน 20,000</p>
         </div>
         <div class="reg-field mt-3">
-          <label class="reg-label" for="o-zip">ไฟล์ชุด <span class="reg-hint">(.ZIP เท่านั้น)</span></label>
+          <label class="reg-label" for="o-zip">ไฟล์ชุด <span class="reg-hint">(.ZIP เท่านั้น · ไม่บังคับ ส่งภายหลังได้)</span></label>
           <input id="o-zip" type="file" accept=".zip,application/zip,application/x-zip-compressed" class="reg-file" @change="pick($event, 'outfit_zip', 'zip')">
           <p x-show="files.outfit_zip" x-cloak class="reg-preview-name mt-2" x-text="files.outfit_zip ? 'ไฟล์ที่เลือก: ' + files.outfit_zip.name + ' · ' + size(files.outfit_zip) : ''"></p>
           <p class="reg-err" x-show="e('outfit_zip')" x-text="e('outfit_zip')"></p>

@@ -90,6 +90,18 @@ class DutyTest extends TestCase
         $this->postJson('/api/logout')->assertSuccessful();
     }
 
+    public function test_logout_ends_the_open_shift_without_a_note(): void
+    {
+        $user = $this->actAs(Role::Member);
+        $this->postJson('/api/duty/start')->assertOk();
+
+        $this->postJson('/api/logout')->assertSuccessful();
+
+        $shift = DutyShift::where('user_id', $user->id)->firstOrFail();
+        $this->assertNotNull($shift->ended_at);
+        $this->assertSame('ออกจากระบบ', $shift->note);
+    }
+
     public function test_start_is_idempotent_and_keeps_the_original_start_time(): void
     {
         $user = $this->actAs(Role::Member);

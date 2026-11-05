@@ -177,7 +177,6 @@ body {
     z-index: 30;
     background: var(--header-bg);
     border-bottom: 1px solid var(--line);
-    backdrop-filter: blur(10px);
   }
   @media (min-width: 640px) {
     .site-header {
@@ -266,7 +265,6 @@ body {
     place-items: center;
     padding: 1rem;
     background: var(--overlay);
-    backdrop-filter: blur(5px);
     animation: ui-fade 0.16s ease-out;
   }
   .ui-backdrop.ui-closing {
@@ -920,7 +918,6 @@ body {
     place-items: center;
     padding: 1rem;
     background: var(--overlay);
-    backdrop-filter: blur(5px);
   }
   .reg-modal {
     display: flex;
@@ -1546,7 +1543,6 @@ body {
     place-items: center;
     padding: 1rem;
     background: var(--overlay);
-    backdrop-filter: blur(5px);
   }
   .gd-modal {
     display: flex;
@@ -2957,7 +2953,6 @@ body {
     place-items: center;
     padding: 1rem;
     background: var(--overlay);
-    backdrop-filter: blur(5px);
   }
   .gd-dlg {
     display: flex;
@@ -4363,7 +4358,6 @@ body {
 
   .modal-overlay {
     background: var(--overlay);
-    backdrop-filter: blur(3px);
   }
 
   /* ── สตอรี่ (หน้ารายการ / ฟอร์ม / ป๊อปอัป / หนังสือสัญญา) ── */
@@ -4726,7 +4720,6 @@ body {
     place-items: center;
     padding: 1rem;
     background: var(--overlay, rgb(2 8 12 / 0.7));
-    backdrop-filter: blur(4px);
   }
   .st-modal {
     display: flex;
@@ -6889,7 +6882,7 @@ body {
   .rp-state .ic { margin-right: 0.35rem; }
 
   /* ── เตือนความจำ: ป๊อปอัปกลางจอ (js/reminder-popup.js) ── */
-  .rm-backdrop { position: fixed; inset: 0; z-index: 300; display: grid; place-items: center; padding: 1rem; background: var(--overlay); backdrop-filter: blur(5px); animation: rm-fade 0.2s ease-out; }
+  .rm-backdrop { position: fixed; inset: 0; z-index: 300; display: grid; place-items: center; padding: 1rem; background: var(--overlay); animation: rm-fade 0.2s ease-out; }
   .rm-pop { width: min(30rem, 100%); max-height: calc(100dvh - 2rem); display: flex; flex-direction: column; border: 1px solid var(--accent); border-radius: 1.3rem; background: var(--panel); box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45); overflow: hidden; animation: rm-pop 0.25s ease-out; }
   .rm-head { display: flex; align-items: center; gap: 0.8rem; padding: 1.1rem 1.3rem; border-bottom: 1px solid var(--line); }
   .rm-head h2 { font-weight: 700; font-size: 1.15rem; line-height: 1.2; }

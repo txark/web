@@ -147,7 +147,7 @@ class GroupController extends Controller
             ...$person('co_leaders.*', false),
             // ชุดชั่วคราวเป็นเบอร์สี 1..N (ไม่แนบรูป) และวันเดียวกันใช้เบอร์ซ้ำกันไม่ได้
             'temp_outfit_color' => ['required', 'integer', 'min:0', 'max:'.config('council.groups.temp_outfit.colors')],
-            'outfit_zip' => ['required', 'file', 'max:51200', $this->signature('zip')],
+            'outfit_zip' => ['nullable', 'file', 'max:51200', $this->signature('zip')], // ไม่บังคับ ส่งภายหลังได้
             'protect' => ['sometimes', 'boolean'],
         ], self::MESSAGES + [
             'short_name.regex' => 'ชื่อย่อต้องเป็นตัวพิมพ์ใหญ่ภาษาอังกฤษหรือตัวเลขเท่านั้น ไม่เกิน 4 ตัวอักษร',
@@ -181,8 +181,10 @@ class GroupController extends Controller
                     throw ValidationException::withMessages(['temp_outfit_color' => "เบอร์สีชุดชั่วคราว {$data['temp_outfit_color']} ถูกแก๊ง/ครอบครัวอื่นใช้ไปแล้วในวันนี้ กรุณาเลือกเบอร์อื่น"]);
                 }
 
-                $zip = $request->file('outfit_zip')->store('groups/outfits', 'local');
-                $stored[] = ['local', $zip];
+                $zip = $request->file('outfit_zip')?->store('groups/outfits', 'local');
+                if ($zip) {
+                    $stored[] = ['local', $zip];
+                }
                 $protect = $request->boolean('protect');
 
                 $group = Group::create([

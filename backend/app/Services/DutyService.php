@@ -160,6 +160,24 @@ class DutyService
         return $shift;
     }
 
+    /** ออกจากระบบ = ออกเวร (ไม่ต้องระบุหมายเหตุแม้ออกก่อนครบเวลาขั้นต่ำ) */
+    public function endOnLogout(User $user): ?DutyShift
+    {
+        $shift = $this->current($user);
+        if (! $shift) {
+            return null;
+        }
+
+        $seconds = (int) $shift->started_at->diffInSeconds(now());
+        $shift->update(['ended_at' => now(), 'ended_reason' => DutyShift::MANUAL, 'note' => 'ออกจากระบบ']);
+
+        activity('duty')->causedBy($user)->performedOn($shift)->event('end')
+            ->withProperties(['seconds' => $seconds, 'note' => 'ออกจากระบบ', 'short' => false, 'logout' => true])
+            ->log('ออกเวร (นาน '.$this->humanDuration($seconds).') — ออกจากระบบ');
+
+        return $shift;
+    }
+
     /** เวรล่าสุดที่ระบบบังคับออกให้ (ไว้แจ้งผู้ใช้ตอนกลับมา) */
     public function lastForcedEnd(User $user): ?DutyShift
     {

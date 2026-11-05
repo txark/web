@@ -85,6 +85,7 @@ class DiscordController extends Controller
     public function logout(Request $request): Response
     {
         if ($user = $request->user()) {
+            app(\App\Services\DutyService::class)->endOnLogout($user); // ออกจากระบบ = ออกเวร
             $this->audit('logout', 'ออกจากระบบ', $user);
         }
 

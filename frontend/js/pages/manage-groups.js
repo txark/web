@@ -509,7 +509,6 @@ function manageGroupsPage() {
       this.filledCo().forEach(([c, i]) => person(c, `co_leaders.${i}`, false));
       if (this.f.temp_outfit_color === null || this.f.temp_outfit_color === undefined) er.temp_outfit_color = 'กรุณาเลือกเบอร์สีชุดชั่วคราว';
       else if (this.tempTaken.includes(this.f.temp_outfit_color)) er.temp_outfit_color = 'เบอร์นี้ถูกใช้ไปแล้ววันนี้ กรุณาเลือกเบอร์อื่น';
-      if (!this.files.outfit_zip) er.outfit_zip = 'กรุณาแนบไฟล์ชุด (.ZIP)';
       return er;
     },
 
