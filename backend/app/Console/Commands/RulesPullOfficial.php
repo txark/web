@@ -18,6 +18,9 @@ class RulesPullOfficial extends Command
     {
         $data = $importer->fetch($this->option('url') ?: null);
         $total = array_sum(array_map('count', $data['sections']));
+        if ($total > 0) {
+            $importer->markChecked(); // เข้าดูเว็บทางการสำเร็จ = อัปเดตวันที่เข้าดูล่าสุด
+        }
 
         if ($total === 0) {
             $this->error('ไม่พบกฎในหน้าที่ดึงมา (โครงหน้าเว็บอาจเปลี่ยน) — ไม่ได้แก้ไขอะไร');

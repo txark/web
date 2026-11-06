@@ -139,12 +139,20 @@ class OfficialRulesImporter
                         ]);
                         $total++;
                     }
-                    RuleSectionMeta::updateOrCreate(['section' => $key], ['source_checked_at' => today()->toDateString()]);
                 }
             });
+            $this->markChecked();
         });
 
         return $total;
+    }
+
+    /** บันทึกวันที่เข้าดูเว็บทางการล่าสุดของทุกหมวด (แสดงในหน้ากฎ) */
+    public function markChecked(): void
+    {
+        foreach (RuleSection::cases() as $section) {
+            RuleSectionMeta::updateOrCreate(['section' => $section->value], ['source_checked_at' => today()->toDateString()]);
+        }
     }
 
     /** ไฟล์ข้อมูลตั้งต้นของกฎหมวดสภา (ได้จาก php artisan rules:pull-official --save=...) */
