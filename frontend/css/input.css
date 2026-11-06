@@ -18,22 +18,22 @@
   --st-b: #ffadc0;
   --st-b-bg: rgba(220, 90, 120, 0.28);
   --st-b-line: rgba(230, 100, 130, 0.5);
-  --bg: #070c12;
-  --glow: radial-gradient(900px 460px at 90% -10%, rgba(110, 224, 204, 0.07), transparent 65%);
-  --header-bg: rgba(7, 12, 18, 0.92);
-  --panel: #0d141c;
-  --panel-2: #0a1118;
+  --bg: #11171f;
+  --glow: radial-gradient(900px 460px at 90% -10%, rgba(110, 160, 230, 0.07), transparent 65%);
+  --header-bg: rgba(17, 23, 31, 0.92);
+  --panel: #18202a;
+  --panel-2: #141b24;
   --head-a: #10455a;
   --head-b: #0b2c3d;
-  --line: #1b2631;
-  --fg: #e8eef3;
-  --muted: #8a9aa8;
-  --accent: #6ee0cc;
-  --accent-soft: rgba(110, 224, 204, 0.1);
-  --gold: #e9c982;
-  --gold-soft: rgba(233, 201, 130, 0.09);
-  --danger: #f2a08b;
-  --danger-line: #e8806a;
+  --line: #28323f;
+  --fg: #d3dce5;
+  --muted: #8896a6;
+  --accent: #8fb4ea;
+  --accent-soft: rgba(143, 180, 234, 0.13);
+  --gold: #d6bd86;
+  --gold-soft: rgba(214, 189, 134, 0.09);
+  --danger: #e3a08e;
+  --danger-line: #cf8573;
   --danger-soft: rgba(242, 128, 106, 0.1);
   --ok: #6fd6a8;
   --ok-soft: rgba(111, 214, 168, 0.13);
@@ -41,8 +41,8 @@
   --warn-soft: rgba(240, 195, 107, 0.14);
   --bad: #f2907c;
   --bad-soft: rgba(242, 144, 124, 0.14);
-  --overlay: rgba(2, 8, 12, 0.72);
-  --on-accent: #04201c;
+  --overlay: rgba(6, 10, 14, 0.7);
+  --on-accent: #0f1b2e;
 
   /* กล่องหมายเหตุ / โทษ */
   --note-bg: var(--gold-soft);
@@ -587,7 +587,7 @@ body {
     width: auto;
     height: 6.5rem;
     flex: none;
-    filter: drop-shadow(0 10px 40px rgba(127, 210, 239, 0.22));
+    filter: drop-shadow(0 10px 40px rgba(143, 180, 234, 0.22));
   }
   @media (min-width: 900px) {
     .login-logo {
@@ -4261,9 +4261,10 @@ body {
   .hero {
     position: relative;
     overflow: hidden;
-    border: 1px solid rgba(127, 210, 239, 0.28);
+    --hero-accent: #8fb4ea;
+    border: 1px solid color-mix(in srgb, var(--hero-accent) 28%, transparent);
     border-radius: 1.9rem;
-    background: linear-gradient(120deg, #12495f 0%, #0c3043 48%, #0a2432 100%);
+    background: linear-gradient(120deg, #22385a 0%, #1a2638 50%, #141c28 100%);
     color: #e7f1f7;
     box-shadow: 0 30px 70px -40px rgba(0, 0, 0, 0.7);
   }
@@ -4276,7 +4277,7 @@ body {
   }
   .hero-rule {
     height: 2px;
-    background: linear-gradient(90deg, #7fd2ef, transparent);
+    background: linear-gradient(90deg, var(--hero-accent, #8fb4ea), transparent);
   }
   .hero-notice {
     padding: 0.8rem 1.1rem;
@@ -7736,7 +7737,7 @@ body {
   height: 8rem;
   transform: translateY(-50%);
   opacity: 0.08;
-  background: no-repeat center / contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none' stroke='%236ee0cc' stroke-width='6' stroke-linecap='round'%3E%3Cpath d='M8 32c14-14 28-14 42 0s28 14 42 0'/%3E%3Cpath d='M8 54c14-14 28-14 42 0s28 14 42 0'/%3E%3Cpath d='M8 76c14-14 28-14 42 0s28 14 42 0'/%3E%3C/svg%3E");
+  background: no-repeat center / contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none' stroke='%238fb4ea' stroke-width='6' stroke-linecap='round'%3E%3Cpath d='M8 32c14-14 28-14 42 0s28 14 42 0'/%3E%3Cpath d='M8 54c14-14 28-14 42 0s28 14 42 0'/%3E%3Cpath d='M8 76c14-14 28-14 42 0s28 14 42 0'/%3E%3C/svg%3E");
   pointer-events: none;
 }
 @media (max-width: 639px) {

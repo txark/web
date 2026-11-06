@@ -25,9 +25,9 @@
       <svg class="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 1200 420" preserveAspectRatio="none" aria-hidden="true">
         <defs>
           <linearGradient id="swoosh" x1="0" x2="1" y1="0" y2="0">
-            <stop offset="0" stop-color="#7fd2ef" stop-opacity="0"/>
-            <stop offset=".55" stop-color="#7fd2ef" stop-opacity=".32"/>
-            <stop offset="1" stop-color="#7fd2ef" stop-opacity="0"/>
+            <stop offset="0" style="stop-color:var(--hero-accent)" stop-opacity="0"/>
+            <stop offset=".55" style="stop-color:var(--hero-accent)" stop-opacity=".32"/>
+            <stop offset="1" style="stop-color:var(--hero-accent)" stop-opacity="0"/>
           </linearGradient>
         </defs>
         <path d="M-60 430 C 300 310, 700 90, 1260 -10" stroke="url(#swoosh)" stroke-width="52" fill="none"/>
@@ -42,7 +42,7 @@
         <div x-show="!loading && (council() || isSiteAdmin())" x-cloak>
           <p class="eyebrow-gold">WAVEVY CITY / COUNCIL</p>
           <h1 class="font-display mt-4 text-2xl font-semibold sm:text-3xl">สวัสดี</h1>
-          <p class="font-display mt-1 break-words text-4xl font-bold tracking-wide text-[#7fd2ef] sm:text-5xl" x-text="displayName"></p>
+          <p class="font-display mt-1 break-words text-4xl font-bold tracking-wide text-[var(--hero-accent)] sm:text-5xl" x-text="displayName"></p>
           <p class="mt-2 text-sm text-[#cfe2ec]" x-text="user ? user.role_label + ' · ' + user.role_name : ''"></p>
           <div class="hero-rule mt-6 max-w-md"></div>
 
@@ -62,7 +62,7 @@
           <p x-show="err" x-text="err" class="mt-3 text-sm text-[#f2907c]"></p>
 
           <div class="mt-7 flex flex-wrap gap-3" x-show="dutyRequired">
-            <button type="button" x-show="!onDuty" @click="toggleDuty()" :disabled="busy" class="rounded-xl bg-[#7fd2ef] px-6 py-2.5 font-semibold text-[#06222f] transition hover:brightness-110 disabled:opacity-60" x-text="busy ? 'กำลังดำเนินการ...' : 'เข้าเวร'"></button>
+            <button type="button" x-show="!onDuty" @click="toggleDuty()" :disabled="busy" class="rounded-xl bg-[var(--hero-accent)] px-6 py-2.5 font-semibold text-[#0f1b2e] transition hover:brightness-110 disabled:opacity-60" x-text="busy ? 'กำลังดำเนินการ...' : 'เข้าเวร'"></button>
             <button type="button" x-show="onDuty" @click="toggleDuty()" :disabled="busy" class="rounded-xl border border-[#f2907c]/60 px-6 py-2.5 font-semibold text-[#f6b7a8] transition hover:border-[#f2907c] disabled:opacity-60" x-text="busy ? 'กำลังดำเนินการ...' : 'ออกเวร'"></button>
           </div>
         </div>
@@ -71,7 +71,7 @@
         <div x-show="!loading && !council() && !isSiteAdmin()" x-cloak>
           <p class="eyebrow-gold">WAVEVY CITY / COUNCIL</p>
           <h1 class="font-display mt-4 text-2xl font-semibold sm:text-3xl">ยินดีต้อนรับสู่</h1>
-          <p class="font-display mt-1 text-4xl font-bold tracking-wide text-[#7fd2ef] sm:text-5xl">WAVEVY COUNCIL</p>
+          <p class="font-display mt-1 text-4xl font-bold tracking-wide text-[var(--hero-accent)] sm:text-5xl">WAVEVY COUNCIL</p>
           <div class="hero-rule mt-6 max-w-md"></div>
 
           <p class="mt-6 text-[#cfe2ec]">ก่อนติดต่อสภา ทำธุรกรรม หรือดำเนินสตอรี่<br>โปรดอ่านกฎและข้อปฏิบัติ เพื่อให้ทุกฝ่ายเข้าใจแนวทางเดียวกัน</p>
@@ -89,8 +89,8 @@
           </div>
 
           <div class="mt-7 flex flex-wrap gap-3">
-            <a href="/rules.html" class="rounded-xl bg-[#7fd2ef] px-5 py-2.5 font-semibold text-[#06222f] transition hover:brightness-110">อ่านกฎและข้อปฏิบัติ</a>
-            <a href="/groups.html" class="rounded-xl border border-[#7fd2ef]/40 px-5 py-2.5 font-semibold text-[#e7f1f7] transition hover:border-[#7fd2ef]">ดูทำเนียบ</a>
+            <a href="/rules.html" class="rounded-xl bg-[var(--hero-accent)] px-5 py-2.5 font-semibold text-[#0f1b2e] transition hover:brightness-110">อ่านกฎและข้อปฏิบัติ</a>
+            <a href="/groups.html" class="rounded-xl border border-[color-mix(in_srgb,var(--hero-accent)_40%,transparent)] px-5 py-2.5 font-semibold text-[#e7f1f7] transition hover:border-[var(--hero-accent)]">ดูทำเนียบ</a>
           </div>
         </div>
 
