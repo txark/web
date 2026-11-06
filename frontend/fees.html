@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="th" data-theme="light" data-default-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ค่าบริการสภา | WAVEVY COUNCIL</title>
+  <link rel="icon" href="/img/favicon.png">
+  <script src="/js/theme.js"></script>
+  <script src="/js/icons.js"></script>
+  <link rel="stylesheet" href="/css/output.css">
+  <script src="/js/config.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/pages/fees.js"></script>
+  <script defer src="/js/layout.js"></script>
+  <script defer src="/js/vendor/alpine.min.js"></script>
+</head>
+<body class="pub">
+  <div id="site-header"></div>
+
+  <main class="container-app py-8" x-data="feesPage()">
+    <header class="rg-head">
+      <div class="min-w-0">
+        <p class="rg-eyebrow">WAVEVY COUNCIL</p>
+        <h1 class="rg-title">ค่าบริการสภา</h1>
+        <p class="rg-sub">มาตรฐานค่าใช้จ่ายต่อการทำธุรกรรมของสภา · หน่วย WVDL</p>
+      </div>
+    </header>
+
+    <p x-show="loading" class="mt-12 text-center text-muted">กำลังโหลด...</p>
+    <p x-show="error" x-text="error" class="penalty-box mt-8 text-center"></p>
+
+    <div class="pub-body mt-6" x-show="!loading && !error" x-cloak>
+      <template x-for="g in groups" :key="g.title">
+        <section class="pub-sec">
+          <h2 x-text="g.title || 'อัตราค่าบริการ'"></h2>
+          <ul class="fee-list">
+            <template x-for="r in g.rows" :key="r.title">
+              <li><span x-text="r.title"></span><b x-text="r.amount"></b></li>
+            </template>
+          </ul>
+        </section>
+      </template>
+      <div class="pub-note"><b>หมายเหตุ</b> ธุรกรรมที่ต้องใช้บัตร ผู้เล่นต้องจัดเตรียมบัตรมาเองทุกครั้ง รายละเอียดเพิ่มเติมดูที่ <a href="/rules.html#cc" class="text-accent underline">กฎหมวด CC</a></div>
+    </div>
+  </main>
+
+  <footer class="container-app pb-8 pt-2 text-xs text-muted">WAVEVY COUNCIL · เมืองคลื่น</footer>
+</body>
+</html>

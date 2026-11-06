@@ -8100,3 +8100,59 @@ body {
 .pub .callout {
   border-radius: 2px;
 }
+
+/* เมนูบนแบบต้นแบบ: รายการสูงเต็มแถบ เส้นใต้สีเน้นชิดขอบล่างของแถบ */
+@media (min-width: 1024px) {
+  .site-header .site-bar {
+    padding-block: 0;
+    min-height: 4.5rem;
+  }
+  .site-header .site-bar > nav {
+    align-self: stretch;
+    align-items: stretch;
+    gap: 0.25rem;
+  }
+  .site-header .nav-pill {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-inline: 0.9rem;
+    padding: 0 0.1rem;
+    box-shadow: none;
+  }
+  .site-header .nav-pill[aria-current="page"] {
+    box-shadow: none;
+  }
+  .site-header .nav-pill[aria-current="page"]::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 2px;
+    background: var(--accent);
+  }
+  .site-header .nav-num {
+    opacity: 0.5;
+  }
+}
+
+.fee-list {
+  margin-top: 0.4rem;
+}
+.fee-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+  font-size: 0.95rem;
+}
+.fee-list li:last-child {
+  border-bottom: 0;
+}
+.fee-list b {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
