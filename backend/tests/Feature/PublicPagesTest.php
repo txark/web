@@ -27,33 +27,34 @@ class PublicPagesTest extends TestCase
 
         $this->assertSame(['cc', 'visit', 'evid', 'fees', 'summon', 'reg', 'gang', 'buy', 'deal', 'match', 'prot', 'max', 'duty'], collect($response->json('data'))->pluck('key')->all());
 
-        // กฎหมวดสภา CC ฉบับ 1.2: 139 ข้อหลักจาก PDF (ย้ายตารางราคา CC-004 ไปหมวดค่าบริการ = 138 การ์ด)
-        // ทุกหมวดแสดงแบบเดียวกัน: การ์ดข้อกฎมีรหัสข้อ (เช่น CC-001) และชื่อเรื่อง
+        // กฎหมวดสภา (เว็บทางการ ฉบับ 1.10): 140 ข้อหลัก ย้ายตารางราคา CC-004 ไปหมวดค่าบริการ = 139 การ์ด
         $all = collect($response->json('data'))->flatMap(fn ($s) => $s['rules']);
-        $this->assertSame(138, $all->where('kind', 'rule')->count());
-        // ทุกการ์ดข้อกฎมีรหัสข้อตามไฟล์ต้นฉบับและชื่อเรื่อง
         $rules = $all->where('kind', 'rule');
+        $this->assertSame(139, $rules->count());
+        // ทุกการ์ดข้อกฎมีรหัสข้อตามเว็บทางการและชื่อเรื่อง
         $this->assertSame(0, $rules->filter(fn ($r) => empty($r['code']) || empty($r['title']))->count());
         $this->assertSame('CC-001', $rules->first()['code']);
-        $this->assertSame('บทบาทและเวลาเปิดทำการ', $rules->first()['title']);
-        $this->assertSame(138, $rules->pluck('code')->unique()->count());
-        // หมวดย่อยมีเฉพาะอัตราค่าบริการ (จัดกลุ่มรายการ) และ REG (แยกแก๊ง / ครอบครัว)
-        $this->assertSame(['สมาชิก', 'ชุด', 'แก้ไขข้อมูล', 'คูลดาวน์และ Protect', 'แก๊ง', 'ครอบครัว', 'แก๊งและครอบครัว'], $all->where('kind', 'heading')->pluck('title')->all());
-        $this->assertSame(0, $all->filter(fn ($r) => preg_match('/[A-Z]+-\d{3} — /u', ($r['title'] ?? '').($r['body'] ?? '')) === 1)->count());
+        $this->assertSame('BE ON DUTY', $rules->first()['title']);
+        $this->assertSame(139, $rules->pluck('code')->unique()->count());
+        // หมวดย่อยมีเฉพาะอัตราค่าบริการ (จัดกลุ่มรายการ)
+        $this->assertSame(['สมาชิก', 'ชุด', 'แก้ไขข้อมูล', 'คูลดาวน์และ Protect'], $all->where('kind', 'heading')->pluck('title')->all());
 
         $rulesOf = fn (string $key) => collect(collect($response->json('data'))->firstWhere('key', $key)['rules']);
         $this->assertCount(3, $rulesOf('cc')->where('kind', 'rule'));
         $this->assertCount(23, $rulesOf('duty')->where('kind', 'rule'));
-        $this->assertCount(14, $rulesOf('visit')->where('kind', 'rule'));
-        $this->assertStringStartsWith('เมื่อคำให้การสองฝ่าย', $rulesOf('evid')->first()['body']);
+        $this->assertCount(15, $rulesOf('visit')->where('kind', 'rule'));
+        $this->assertSame('VISIT-015', $rulesOf('visit')->last()['code']);
+        $this->assertStringStartsWith('หากทั้งสองฝ่าย', $rulesOf('evid')->first()['body']);
 
-        // หลายข้อใต้หัวข้อเดียวรวมเป็นการ์ดเดียว: ย่อหน้านำ + หัวข้อย่อย (•)
-        $summon = $rulesOf('summon')->first(fn ($r) => str_contains($r['body'], 'ครั้งที่ 1: ปรับ'));
-        $this->assertStringContainsString("มีผลดังนี้
-• ครั้งที่ 1: ปรับ 500,000 WVDL", $summon['body']);
-        // MATCH: เงื่อนไขเพิ่มเติมเป็นการ์ดเดียว ไม่แยก 8 ข้อ
-        $this->assertSame(8, substr_count($rulesOf('match')->first(fn ($r) => str_contains($r['body'], 'ซองปืนได้เฉพาะ'))['body'], '•'));
+        // บทลงโทษหลายระดับอยู่ในช่องโทษ (บรรทัดละระดับ)
+        $summon = $rulesOf('summon')->firstWhere('code', 'SUMMON-004');
+        $this->assertStringContainsString("ครั้งที่ 1 ปรับ 500,000 WVDL", $summon['penalty']);
+        $this->assertStringContainsString("
+ครั้งที่ 4 ", $summon['penalty']);
+        // MATCH-016: ข้อกำหนดเพิ่มเติมเป็นการ์ดเดียว ข้อย่อยเป็นรายการ (•)
+        $this->assertSame(8, substr_count($rulesOf('match')->firstWhere('code', 'MATCH-016')['body'], '•'));
     }
+
 
     public function test_sections_are_grouped_contiguously_for_the_table_of_contents(): void
     {

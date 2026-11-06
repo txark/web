@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Enums\RuleSection;
 use App\Models\Rule;
 use App\Models\RuleSectionMeta;
+use App\Services\OfficialRulesImporter;
 use Illuminate\Database\Seeder;
 
 /**
@@ -83,6 +84,13 @@ class RuleSeeder extends Seeder
      */
     private function allSections(): array
     {
-        return CouncilRulesV12::all();
+        $all = CouncilRulesV12::all();
+
+        // หมวดสภาใช้ข้อมูลล่าสุดจากเว็บทางการ (ไฟล์ database/data/council-rules.json) ส่วนอัตราค่าบริการคงของเดิม
+        foreach (OfficialRulesImporter::snapshot()['sections'] ?? [] as $key => $cards) {
+            $all[$key] = array_map(fn ($c) => ['kind' => 'rule'] + array_filter($c, fn ($v) => $v !== null && $v !== ''), $cards);
+        }
+
+        return $all;
     }
 }

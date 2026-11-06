@@ -20,6 +20,12 @@ function homePage() {
     async init() {
       await auth.init();
       this.user = auth.user;
+
+      // หน้าแรกของผู้เยี่ยมชม/แก๊ง/ครอบครัว = หน้ากฎ (สภาเห็นเมนูงานสภาที่หน้านี้ตามเดิม)
+      if (!this.council()) {
+        location.replace('/rules.html');
+        return;
+      }
       const blocked = new URLSearchParams(location.search).get('duty') === 'required';
 
       if (this.council()) {
