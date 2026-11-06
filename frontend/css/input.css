@@ -8040,8 +8040,10 @@ body {
 
 /* ───────── สไตล์ทางการ: กล่องโทษ/หมายเหตุแบบป้ายหัวเล็ก เหลี่ยมมน 2–4px เส้นบาง ───────── */
 .pub .rule-extra {
-  display: block;
-  padding: 0.8rem 1rem 0.9rem;
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
   border: 1px solid;
   border-left-width: 1px;
   border-radius: 2px;
@@ -8056,7 +8058,9 @@ body {
 }
 .pub .rule-extra .rule-chip {
   display: block;
-  margin: 0 0 0.35rem;
+  flex: none;
+  min-width: 4.2rem;
+  margin: 0;
   padding: 0;
   border-radius: 0;
   background: none;
