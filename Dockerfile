@@ -29,6 +29,12 @@ RUN sed -ri "s#/var/www/html#${APACHE_DOCUMENT_ROOT}#g" /etc/apache2/sites-avail
     && printf '<Directory /var/www/app/public>\n  AllowOverride All\n  Require all granted\n  DirectoryIndex index.html index.php\n</Directory>\n' > /etc/apache2/conf-available/app.conf \
     && a2enconf app
 
+# หน้าเว็บ/CSS/JS ให้เบราว์เซอร์ตรวจกับเซิร์ฟเวอร์ทุกครั้ง (ไม่ใช้ของเก่าในแคช) เพื่อให้การอัปเดตหน้าตาขึ้นทันทีหลัง deploy
+RUN printf '<FilesMatch "\.(html|css|js)$">
+  Header set Cache-Control "no-cache"
+</FilesMatch>
+' > /etc/apache2/conf-available/nocache.conf     && a2enconf nocache
+
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www/app
 COPY backend/ ./
