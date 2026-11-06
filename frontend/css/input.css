@@ -3722,7 +3722,6 @@ body {
   }
   .toc-group[data-active="true"] {
     border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
-    box-shadow: 0 8px 24px -16px var(--accent);
   }
   .toc-group-title {
     font-family: 'Prompt', 'Noto Sans Thai Looped', ui-sans-serif, system-ui, sans-serif;
@@ -3800,7 +3799,6 @@ body {
   .toc-item[aria-current="true"] {
     border-color: var(--accent);
     background: linear-gradient(135deg, var(--accent-soft), transparent);
-    box-shadow: 0 6px 22px -12px var(--accent);
   }
   .toc-no {
     display: grid;
@@ -8001,16 +7999,24 @@ body {
 }
 .chapter-mark {
   position: absolute;
-  right: 2rem;
-  top: 1.6rem;
+  right: 1.5rem;
+  top: 50%;
+  transform: translateY(-50%);
   color: var(--accent);
   font-family: 'Prompt', ui-sans-serif, system-ui, sans-serif;
-  font-size: 3rem;
-  font-weight: 700;
-  opacity: 0.25;
+  font-size: clamp(4.5rem, 11vw, 9.5rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  opacity: 0.13;
   pointer-events: none;
+  user-select: none;
 }
 .pub .panel-head {
+  position: relative;
+  overflow: hidden;
+}
+.pub .panel-head > *:not(.chapter-mark) {
   position: relative;
 }
 .chapter-chips {
