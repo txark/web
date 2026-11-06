@@ -8237,3 +8237,27 @@ body {
     justify-content: flex-start;
   }
 }
+
+/* ท้ายการ์ดข้อกฎ: รหัสข้อซ้าย · ปุ่มแชร์ขวา (ปุ่มกรอบบาง) */
+.rule-share {
+  margin-top: 0.9rem;
+  padding-top: 0.75rem;
+}
+.rule-share button {
+  padding: 0.3rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 0.3rem;
+  background: transparent;
+  font-size: 0.78rem;
+  font-weight: 500;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.rule-share button:hover {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.rule-share button .ic {
+  width: 0.95rem;
+  height: 0.95rem;
+}
