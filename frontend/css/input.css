@@ -8111,6 +8111,7 @@ body {
     align-self: stretch;
     align-items: stretch;
     gap: 0.25rem;
+    overflow: visible; /* บนจอกว้างไม่ต้องเลื่อน (ไม่งั้นเส้นใต้ที่ยื่นลงมาทำให้เกิดแถบเลื่อน) */
   }
   .site-header .nav-pill {
     position: relative;
@@ -8155,4 +8156,16 @@ body {
 .fee-list b {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+.site-header .btn-outline {
+  white-space: nowrap;
+}
+@media (min-width: 1024px) and (max-width: 1199px) {
+  .theme-label {
+    display: none;
+  }
+  .site-header .nav-pill {
+    margin-inline: 0.55rem;
+  }
 }
