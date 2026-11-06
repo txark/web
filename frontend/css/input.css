@@ -8037,3 +8037,55 @@ body {
     display: none;
   }
 }
+
+/* ───────── สไตล์ทางการ: กล่องโทษ/หมายเหตุแบบป้ายหัวเล็ก เหลี่ยมมน 2–4px เส้นบาง ───────── */
+.pub .rule-extra {
+  display: block;
+  padding: 0.8rem 1rem 0.9rem;
+  border: 1px solid;
+  border-left-width: 1px;
+  border-radius: 2px;
+}
+.pub .note-box.rule-extra {
+  border-color: color-mix(in srgb, var(--note-line) 35%, var(--line));
+  background: color-mix(in srgb, var(--note-line) 6%, transparent);
+}
+.pub .penalty-box.rule-extra {
+  border-color: color-mix(in srgb, var(--pen-line) 35%, var(--line));
+  background: color-mix(in srgb, var(--pen-line) 6%, transparent);
+}
+.pub .rule-extra .rule-chip {
+  display: block;
+  margin: 0 0 0.35rem;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.pub .note-box.rule-extra .rule-chip {
+  background: none;
+  color: var(--note-label);
+}
+.pub .penalty-box.rule-extra .rule-chip {
+  background: none;
+  color: var(--pen-label);
+}
+.pub .rule-extra .amt {
+  font-weight: 700;
+}
+.pub .rule-card,
+.pub .panel,
+.pub .pub-sec,
+.pub .gc,
+.pub .rg-head,
+.pub-filter,
+.pub-toolbar,
+.pub .card {
+  border-radius: 0.3rem;
+}
+.pub .callout {
+  border-radius: 2px;
+}
