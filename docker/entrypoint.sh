@@ -19,4 +19,13 @@ php artisan db:seed --force
 php artisan config:cache
 php artisan view:cache
 
+# ตัวรันตารางงานในคอนเทนเนอร์เดียวกัน (ซิงก์กฎจากเว็บทางการทุกชั่วโมง ปิดเวรที่ค้าง ล็อกสล็อตสตอรี่)
+# รันเป็น www-data เพื่อไฟล์ที่สร้างใน storage ไม่เป็นของ root
+runuser -u www-data -- php artisan schedule:work >/dev/null &
+
+# ซิงก์กฎจากเว็บทางการหนึ่งครั้งตอนเริ่ม (เบื้องหลัง ไม่หน่วงการเปิดเว็บ) — แผนฟรีที่หลับอยู่จะได้กฎล่าสุดทุกครั้งที่ตื่น
+if [ "${RULES_AUTO_SYNC:-true}" != "false" ]; then
+  (timeout 90 runuser -u www-data -- php artisan rules:pull-official --apply || true) &
+fi
+
 exec apache2-foreground

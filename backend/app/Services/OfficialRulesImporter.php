@@ -147,6 +147,25 @@ class OfficialRulesImporter
         return $total;
     }
 
+    /** ข้อมูลที่ดึงมาครบถ้วนพอจะเชื่อถือไหม (กันหน้าเว็บเปลี่ยนโครงแล้วดึงได้ไม่ครบ) */
+    public function isComplete(array $sections): bool
+    {
+        return count($sections) >= (int) config('council.rules_sync.min_sections')
+            && array_sum(array_map('count', $sections)) >= (int) config('council.rules_sync.min_rules');
+    }
+
+    /** มีส่วนที่ต่างจากในระบบไหม (เพิ่ม/หาย/แก้เนื้อหา) */
+    public function hasChanges(array $sections): bool
+    {
+        foreach ($this->diff($sections) as $d) {
+            if ($d['added'] || $d['removed'] || $d['changed']) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /** บันทึกวันที่เข้าดูเว็บทางการล่าสุดของทุกหมวด (แสดงในหน้ากฎ) */
     public function markChecked(): void
     {

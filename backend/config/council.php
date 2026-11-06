@@ -142,6 +142,14 @@ return [
     'report_timezone' => env('COUNCIL_REPORT_TIMEZONE', 'Asia/Bangkok'),
 
     // เข้า/ออกเวร: สภาต้องเข้าเวรก่อนใช้ส่วนงานสภา (ยกเว้นหน้าแรกและหน้ากฎ)
+    // ซิงก์กฎหมวดสภาจากเว็บทางการอัตโนมัติ (ทุกชั่วโมง + ตอนเริ่มระบบ) — ปิดได้ด้วย RULES_AUTO_SYNC=false
+    // ป้องกันข้อมูลเพี้ยน: จะอัปเดตก็ต่อเมื่อดึงมาได้ครบจำนวนหมวด/ข้อขั้นต่ำเท่านั้น
+    'rules_sync' => [
+        'enabled' => filter_var(env('RULES_AUTO_SYNC', true), FILTER_VALIDATE_BOOL),
+        'min_sections' => 12,
+        'min_rules' => 100,
+    ],
+
     'duty' => [
         'enforced' => filter_var(env('DUTY_ENFORCED', true), FILTER_VALIDATE_BOOL),
         'exempt_roles' => [],   // บทบาทที่ไม่ต้องเข้าเวรเพิ่มเติม (Admin อยู่นอกลำดับสภาอยู่แล้ว จึงไม่ต้องเข้าเวร)

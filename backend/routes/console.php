@@ -18,3 +18,10 @@ Schedule::command('duty:close-abandoned')->everyMinute();
 
 // ล็อกสล็อตของสตอรี่ที่ถึงเวลาล็อก (ก่อนเริ่มเล่น 15 นาที) ถ้าตัวรันไม่ทำงาน ระบบล็อกให้ตอนเปิดดูรายการ/แก้สมาชิกครั้งถัดไป
 Schedule::command('stories:sync-locks')->everyMinute();
+
+// ซิงก์กฎหมวดสภาจากเว็บทางการ (https://official.wavevycity.com/rules) ทุกชั่วโมง
+// อัปเดตเมื่อดึงมาได้ครบและมีส่วนที่เปลี่ยนเท่านั้น · ปิดด้วย RULES_AUTO_SYNC=false
+Schedule::command('rules:pull-official --apply')
+    ->hourly()
+    ->withoutOverlapping()
+    ->when(fn () => (bool) config('council.rules_sync.enabled'));

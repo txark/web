@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Services\OfficialRulesImporter;
 use Illuminate\Console\Command;
+use Throwable;
 
 class RulesPullOfficial extends Command
 {
@@ -16,17 +17,21 @@ class RulesPullOfficial extends Command
 
     public function handle(OfficialRulesImporter $importer): int
     {
-        $data = $importer->fetch($this->option('url') ?: null);
-        $total = array_sum(array_map('count', $data['sections']));
-        if ($total > 0) {
-            $importer->markChecked(); // เข้าดูเว็บทางการสำเร็จ = อัปเดตวันที่เข้าดูล่าสุด
+        try {
+            $data = $importer->fetch($this->option('url') ?: null);
+        } catch (Throwable $e) {
+            $this->error('ดึงกฎจากเว็บทางการไม่สำเร็จ: '.$e->getMessage().' — ไม่ได้แก้ไขอะไร');
+
+            return self::FAILURE;
         }
 
+        $total = array_sum(array_map('count', $data['sections']));
         if ($total === 0) {
             $this->error('ไม่พบกฎในหน้าที่ดึงมา (โครงหน้าเว็บอาจเปลี่ยน) — ไม่ได้แก้ไขอะไร');
 
             return self::FAILURE;
         }
+        $importer->markChecked(); // เข้าดูเว็บทางการสำเร็จ = อัปเดตวันที่เข้าดูล่าสุด
 
         $this->info('ฉบับ '.($data['version'] ?? '?').' · มีผลตั้งแต่ '.($data['effective'] ?? '?').' · กฎหมวดสภา '.$total.' ข้อ ใน '.count($data['sections']).' หมวด');
 
@@ -50,6 +55,18 @@ class RulesPullOfficial extends Command
 
         if (! $this->option('apply')) {
             $this->warn('ยังไม่ได้บันทึก — ใส่ --apply เพื่ออัปเดตจริง');
+
+            return self::SUCCESS;
+        }
+
+        if (! $importer->isComplete($data['sections'])) {
+            $this->error('ข้อมูลที่ดึงมาไม่ครบ (น้อยกว่าเกณฑ์ขั้นต่ำ) — ไม่ได้แก้ไขกฎในระบบ');
+
+            return self::FAILURE;
+        }
+
+        if (! $importer->hasChanges($data['sections'])) {
+            $this->info('กฎในระบบตรงกับเว็บทางการแล้ว ไม่มีอะไรต้องอัปเดต');
 
             return self::SUCCESS;
         }
