@@ -640,12 +640,25 @@ body {
     box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
   }
   .login-back {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 1rem;
+    border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--line));
+    border-radius: 0.6rem;
+    background: var(--accent-soft);
     color: var(--accent);
-    font-size: 0.82rem;
+    font-size: 0.92rem;
+    font-weight: 600;
+    transition: background 0.15s, border-color 0.15s;
   }
   .login-back:hover {
-    text-decoration: underline;
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 22%, transparent);
+  }
+  .login-back .ic {
+    width: 1rem;
+    height: 1rem;
   }
   .login-card-title {
     margin-top: 0.45rem;
