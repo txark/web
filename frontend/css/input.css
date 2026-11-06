@@ -8017,14 +8017,14 @@ body {
 }
 .chapter-mark {
   position: absolute;
-  right: 1.25rem;
+  right: 0.5rem;
   top: 50%;
   transform: translateY(-50%);
   /* ตัวอักษรเส้นขอบโปร่งใส (outline) ไล่จางไปทางซ้าย แทนตัวทึบก้อนเดียว */
   color: transparent;
   -webkit-text-stroke: 1.5px color-mix(in srgb, var(--accent) 42%, transparent);
   font-family: 'Prompt', ui-sans-serif, system-ui, sans-serif;
-  font-size: clamp(4.5rem, 11vw, 9.5rem);
+  font-size: clamp(6.5rem, 17vw, 17rem);
   font-weight: 700;
   line-height: 1;
   letter-spacing: 0.02em;
