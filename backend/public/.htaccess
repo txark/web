@@ -16,6 +16,11 @@
     # /index (ไม่มีนามสกุล) = หน้ากฎ
     RewriteRule ^index/?$ /rules.html [R=302,L]
 
+    # ยังไม่เคยมีเซสชัน (ยังไม่ได้ล็อกอิน) เปิดหน้าแรกแล้วไปหน้ากฎทันที ไม่ต้องรอหน้าโหลด
+    # (ผู้ที่มีคุกกี้เซสชันแต่ไม่ได้ล็อกอิน หน้าแรกจะเด้งไปหน้ากฎเองหลังตรวจสิทธิ์)
+    RewriteCond %{HTTP_COOKIE} !-session= [NC]
+    RewriteRule ^(index\.html)?$ /rules.html [R=302,L]
+
     # Redirect Trailing Slashes If Not A Folder...
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_URI} (.+)/$
