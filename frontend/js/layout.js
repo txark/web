@@ -114,7 +114,7 @@
   host.innerHTML = `
     <header class="site-header" x-data="authState()">
       <div class="container-app site-bar flex flex-wrap items-center justify-between gap-x-3 gap-y-2 py-3 sm:gap-x-4">
-        <a href="/index.html" class="brand" aria-label="WAVEVY COUNCIL"><span class="brand-main">WAVEVY.</span><span class="brand-sub">COUNCIL</span></a>
+        <a href="/rules.html" :href="user && can('member') ? '/index.html' : '/rules.html'" class="brand" aria-label="WAVEVY COUNCIL"><span class="brand-main">WAVEVY.</span><span class="brand-sub">COUNCIL</span></a>
 
         <!-- มือถือ: เมนูลงมาแถวที่สอง -->
         <nav class="order-3 flex w-full items-center gap-1 overflow-x-auto sm:order-none sm:mr-auto sm:w-auto" x-show="${onHome ? "user && (user.role === 'gang' || user.role === 'family')" : 'true'}">${nav}
