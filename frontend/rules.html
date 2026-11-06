@@ -187,7 +187,12 @@
                         <span class="rule-no"><em x-text="c.key.toUpperCase()"></em><b x-text="pad(r.n)"></b><small x-text="'ข้อ ' + r.n"></small></span>
                         <div class="min-w-0 flex-1 break-words">
                           <!-- หัวข้อ -->
-                          <h4 class="rule-title" x-show="r.title" x-text="r.title"></h4>
+                          <div class="rule-head" x-show="r.title">
+                            <h4 class="rule-title" x-text="r.title"></h4>
+                            <span class="rule-badges" x-show="badges(r).length">
+                              <template x-for="b in badges(r)" :key="b.label"><span class="rule-badge" :class="'rb-' + b.kind" x-text="b.label"></span></template>
+                            </span>
+                          </div>
 
                           <!-- คำอธิบาย -->
                           <div class="rule-desc space-y-1.5">

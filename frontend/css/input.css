@@ -8187,3 +8187,50 @@ body {
     margin-inline: 0.55rem;
   }
 }
+
+/* ป้ายชนิดบทลงโทษที่หัวข้อข้อกฎ */
+.rule-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.7rem;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid var(--line);
+}
+.rule-head .rule-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.rule-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  flex: none;
+}
+.rule-badge {
+  padding: 0.2rem 0.65rem;
+  border: 1px solid;
+  border-radius: 0.3rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.rb-fine { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 60%, transparent); background: color-mix(in srgb, var(--ok) 10%, transparent); }
+.rb-serve { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 60%, transparent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.rb-yellow { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 60%, transparent); background: color-mix(in srgb, var(--warn) 10%, transparent); }
+.rb-red { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 65%, transparent); background: color-mix(in srgb, var(--bad) 12%, transparent); }
+@media (max-width: 639px) {
+  .rule-head {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .rule-badges {
+    justify-content: flex-start;
+  }
+}

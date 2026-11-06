@@ -364,6 +364,18 @@ function rulesPage() {
       return !q || [r.code, r.title, r.body, r.note, r.penalty].some((t) => t && t.toLowerCase().includes(q));
     },
 
+    /** ป้ายชนิดบทลงโทษของข้อ (ค่าปรับ / บำเพ็ญ / ใบเหลือง / ใบแดง) ดูจากข้อความบทลงโทษ */
+    badges(r) {
+      const p = String(r.penalty || '');
+      if (!p) return [];
+      const out = [];
+      if (/ปรับ/.test(p)) out.push({ label: 'ค่าปรับ', kind: 'fine' });
+      if (/บำเพ็ญ/.test(p)) out.push({ label: 'บำเพ็ญ', kind: 'serve' });
+      if (/ใบเหลือง/.test(p)) out.push({ label: 'ใบเหลือง', kind: 'yellow' });
+      if (/ใบแดง/.test(p)) out.push({ label: 'ใบแดง', kind: 'red' });
+      return out;
+    },
+
     /** คัดลอกลิงก์ตรงถึงข้อนี้ */
     async share(r, c) {
       const url = `${location.origin}${location.pathname}?rule=${r.id}#${c.key}`;
