@@ -20,16 +20,36 @@
   <div id="site-header"></div>
 
   <main class="container-app py-8" x-data="rulesPage()">
-    <header class="rg-head">
-          <div class="min-w-0">
-            <p class="rg-eyebrow">WAVEVY COUNCIL / RULES</p>
-            <h1 class="rg-title"><i class="ic rg-ic" data-icon="book-open" aria-hidden="true"></i>กฎและข้อปฏิบัติ</h1>
-            <p class="rg-sub">ระเบียบการติดต่อสภาและการดำเนินการของแก๊ง / ครอบครัว</p>
-          </div>
-          <div class="rg-actions">
-            <input type="search" x-model.debounce.200ms="q" placeholder="ค้นหาในกฎ เช่น หน้ากาก, อาวุธ, Blacklist" class="input hidden lg:block lg:w-96" aria-label="ค้นหาในกฎ">
-          </div>
-        </header>
+    <header class="pub-hero">
+      <img src="/img/logo.png" alt="WAVEVY COUNCIL" class="pub-hero-logo">
+      <div class="min-w-0">
+        <p class="pub-hero-eyebrow">THE COUNCIL RULEBOOK</p>
+        <h1 class="pub-hero-title">กฎและข้อปฏิบัติ<span>Wavevy Council<i>.</i></span></h1>
+        <p class="pub-hero-sub">แนวทางเดียวกัน สำหรับทุกคนในเมืองคลื่น<br>อ่านข้อกำหนด เงื่อนไข และบทลงโทษให้ชัดเจน ก่อนเริ่มดำเนินการ</p>
+      </div>
+      <div class="pub-hero-stats" x-show="!loading && !error" x-cloak>
+        <p class="pub-hero-tag">CLEAR RULES.<br>SHARED RESPECT.</p>
+        <p class="pub-hero-num"><b x-text="pad(totalChapters)"></b><em>/</em><b x-text="totalRules"></b></p>
+        <p class="pub-hero-cap"><span>หมวดหมู่</span><span>ข้อกำหนดตามต้นฉบับ</span></p>
+      </div>
+    </header>
+
+    <div class="pub-toolbar hidden lg:flex" x-show="!loading && !error">
+      <label class="pub-search">
+        <i class="ic" data-icon="search" aria-hidden="true"></i>
+        <input type="search" x-model.debounce.200ms="q" placeholder="ค้นหาทุกหมวด เช่น Protect, LOCK SLOT, 500,000" aria-label="ค้นหาในกฎ">
+        <kbd class="pub-kbd" aria-hidden="true">/</kbd>
+      </label>
+      <label class="pub-select">
+        <span>แสดง</span>
+        <select x-model="filter" aria-label="กรองข้อกำหนด">
+          <option value="">ข้อกำหนดทั้งหมด</option>
+          <option value="penalty">เฉพาะที่มีบทลงโทษ</option>
+          <option value="note">เฉพาะที่มีหมายเหตุ</option>
+        </select>
+      </label>
+      <span class="pub-toolbar-count"><b x-text="shownRules"></b> / <span x-text="totalRules"></span> รายการ</span>
+    </div>
 
     <p x-show="loading" class="mt-12 text-center text-muted">กำลังโหลด...</p>
     <p x-show="error" x-text="error" class="penalty-box mt-12 text-center"></p>
@@ -108,6 +128,13 @@
             </template>
           </nav>
 
+          <div class="pub-guide">
+            <p>READING GUIDE</p>
+            <span><i class="g-pen"></i>บทลงโทษ</span>
+            <span><i class="g-note"></i>หมายเหตุ</span>
+            <span><i class="g-cond"></i>เงื่อนไข</span>
+          </div>
+
           <p class="toc-foot mt-5 border-t border-line px-1 pt-4 text-[11px] tracking-[0.2em] text-muted">
             WAVEVY CITY<br>COUNCIL RULEBOOK
           </p>
@@ -125,7 +152,13 @@
                 <span x-text="'CHAPTER ' + pad(c.no)"></span>
                 <span class="font-normal normal-case tracking-normal text-muted" x-text="'· ' + c.group"></span>
               </p>
+              <span class="chapter-mark" aria-hidden="true" x-text="c.key.toUpperCase()"></span>
               <h2 class="type-chapter mt-1" x-text="c.label"></h2>
+              <div class="chapter-chips" x-show="!searching">
+                <template x-for="s in (groups.find((g) => g.label === c.group) || { items: [] }).items" :key="s.key">
+                  <button type="button" class="chapter-chip" :aria-current="s.key === c.key" @click="choose(s.key)" x-text="s.label.split(' · ').pop()"></button>
+                </template>
+              </div>
               <div class="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-xs text-muted">
                 <span>
                   <span x-text="count(c) + ' รายการ'"></span>
@@ -149,9 +182,9 @@
                 <div :class="(r.kind === 'price' && !r.last) || (r.kind === 'heading' && c.key === 'fees') ? 'price-join' : ''">
                   <!-- ข้อกฎ -->
                   <template x-if="r.kind === 'rule'">
-                    <article class="card rule-card p-3.5 sm:p-5">
+                    <article class="card rule-card p-3.5 sm:p-5" :id="'rule-' + r.id">
                       <div class="flex flex-col gap-2 sm:flex-row sm:gap-4">
-                        <span class="rule-no" x-text="'ข้อ ' + r.n"></span>
+                        <span class="rule-no"><em x-text="c.key.toUpperCase()"></em><b x-text="pad(r.n)"></b><small x-text="'ข้อ ' + r.n"></small></span>
                         <div class="min-w-0 flex-1 break-words">
                           <!-- หัวข้อ -->
                           <h4 class="rule-title" x-show="r.title" x-text="r.title"></h4>
@@ -184,6 +217,10 @@
                                 </template>
                               </div>
                             </template>
+                          </div>
+                          <div class="rule-share">
+                            <span class="rule-code" x-text="r.code"></span>
+                            <button type="button" @click="share(r, c)" x-text="copiedId === r.id ? 'คัดลอกลิงก์แล้ว' : 'แชร์ข้อนี้'"></button>
                           </div>
                         </div>
                       </div>

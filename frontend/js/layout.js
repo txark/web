@@ -112,11 +112,8 @@
 
   host.innerHTML = `
     <header class="site-header" x-data="authState()">
-      <div class="container-app flex flex-wrap items-center justify-between gap-x-3 gap-y-2 py-3 sm:gap-x-4">
-        <a href="/index.html" class="font-display flex items-center gap-2 text-base font-bold tracking-wide max-[380px]:text-sm sm:text-lg">
-          <img src="/img/favicon.png" alt="" class="h-7 w-7">
-          <span>WAVEVY <span class="text-accent">COUNCIL</span></span>
-        </a>
+      <div class="container-app site-bar flex flex-wrap items-center justify-between gap-x-3 gap-y-2 py-3 sm:gap-x-4">
+        <a href="/index.html" class="brand" aria-label="WAVEVY COUNCIL"><span class="brand-main">WAVEVY.</span><span class="brand-sub">COUNCIL</span></a>
 
         <!-- มือถือ: เมนูลงมาแถวที่สอง -->
         <nav class="order-3 flex w-full items-center gap-1 overflow-x-auto sm:order-none sm:mr-auto sm:w-auto" x-show="${onHome ? "user && (user.role === 'gang' || user.role === 'family')" : 'true'}">${nav}
@@ -140,7 +137,7 @@
             </div>
           </template>
           <template x-if="!loading && !user">
-            <a href="/login.html" class="btn-outline">Log in</a>
+            <a href="/login.html" class="btn-outline">Log in <span aria-hidden="true">↗</span></a>
           </template>
 
           <button type="button" id="theme-toggle" class="btn-outline" aria-label="สลับโหมดสี"></button>
@@ -163,7 +160,7 @@
   const paint = () => {
     const dark = document.documentElement.getAttribute('data-theme') !== 'light';
     // แสดงเฉพาะไอคอน (ดวงจันทร์ = ตอนนี้โหมดมืด, ดวงอาทิตย์ = ตอนนี้โหมดสว่าง); ข้อความอยู่ที่ title/aria-label เพื่อผู้ใช้โปรแกรมอ่านจอ
-    btn.innerHTML = dark ? moon : sun;
+    btn.innerHTML = (dark ? sun : moon) + '<span class="theme-label">' + (dark ? 'โหมดสว่าง' : 'โหมดมืด') + '</span>';
     const label = dark ? 'โหมดมืดอยู่ — กดเพื่อสลับเป็นโหมดสว่าง' : 'โหมดสว่างอยู่ — กดเพื่อสลับเป็นโหมดมืด';
     btn.title = label;
     btn.setAttribute('aria-label', label);

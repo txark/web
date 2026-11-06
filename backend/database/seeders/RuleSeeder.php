@@ -66,6 +66,7 @@ class RuleSeeder extends Seeder
         foreach ($items as $i => $item) {
             Rule::create([
                 'section' => $section,
+                'code' => $item['code'] ?? null,
                 'sort_order' => ($i + 1) * 10,
                 'kind' => $item['kind'] ?? 'rule',
                 'title' => $item['title'] ?? null,

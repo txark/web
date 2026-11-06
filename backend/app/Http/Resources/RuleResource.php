@@ -12,6 +12,7 @@ class RuleResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'code' => $this->code,
             'kind' => $this->kind,
             'title' => $this->title,
             'body' => $this->body,

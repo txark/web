@@ -8,6 +8,8 @@ function rulesPage() {
     spyRetries: 0,
     spyLock: false, // ระหว่างเลื่อนอัตโนมัติ ไม่อัปเดตตามการเลื่อน กันตัวเน้นกระพริบผ่านหมวดย่อยระหว่างทาง
     q: '',
+    filter: '', // '' = ทั้งหมด · penalty = มีบทลงโทษ · note = มีหมายเหตุ
+    copiedId: null,
     loading: true,
     error: '',
 
@@ -27,6 +29,14 @@ function rulesPage() {
           this.spy();
         });
       };
+      // กด / เพื่อไปที่ช่องค้นหา (เหมือนเว็บต้นแบบ)
+      window.addEventListener('keydown', (e) => {
+        if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey) return;
+        const tag = (document.activeElement?.tagName || '').toLowerCase();
+        if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+        const box = [...document.querySelectorAll('input[type=search]')].find((i) => i.offsetParent !== null);
+        if (box) { e.preventDefault(); box.focus(); }
+      });
       window.addEventListener('scroll', onScroll, { passive: true });
       window.addEventListener('resize', onScroll);
       // กดลิงก์ในเมนูบนที่ชี้หมวดอื่นของหน้านี้ (เช่น ประกาศเรียก) ขณะอยู่ในหน้ากฎอยู่แล้ว
@@ -66,6 +76,7 @@ function rulesPage() {
           );
         }
         this.reveal(this.current);
+        this.focusSharedRule();
         this.$nextTick(() => this.spy());
       } catch (e) {
         this.error = API.describe(e, 'โหลดกฎไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
@@ -348,17 +359,63 @@ function rulesPage() {
     },
 
     matches(r, q) {
-      return [r.title, r.body, r.note, r.penalty].some((t) => t && t.toLowerCase().includes(q));
+      if (this.filter === 'penalty' && !r.penalty) return false;
+      if (this.filter === 'note' && !r.note) return false;
+      return !q || [r.code, r.title, r.body, r.note, r.penalty].some((t) => t && t.toLowerCase().includes(q));
+    },
+
+    /** คัดลอกลิงก์ตรงถึงข้อนี้ */
+    async share(r, c) {
+      const url = `${location.origin}${location.pathname}?rule=${r.id}#${c.key}`;
+      try {
+        await navigator.clipboard.writeText(url);
+      } catch (e) {
+        window.prompt('คัดลอกลิงก์ข้อนี้', url);
+      }
+      this.copiedId = r.id;
+      setTimeout(() => { if (this.copiedId === r.id) this.copiedId = null; }, 1800);
+    },
+
+    /** เปิดลิงก์แบบ ?rule=ID: ไปที่หมวดของข้อนั้นแล้วเลื่อนไปหา */
+    focusSharedRule() {
+      const id = parseInt(new URLSearchParams(location.search).get('rule'), 10);
+      if (!id) return;
+      const sec = this.sections.find((x) => x.rules.some((r) => r.id === id));
+      if (!sec) return;
+      this.current = sec.key;
+      this.reveal(sec.key);
+      this.$nextTick(() => {
+        const el = document.getElementById('rule-' + id);
+        if (!el) return;
+        this.scrollToEl(el);
+        el.classList.add('rule-flash');
+        setTimeout(() => el.classList.remove('rule-flash'), 2200);
+      });
     },
 
     // จำนวนข้อในหมวดที่ตรงกับคำค้น (แสดงในสารบัญตอนค้นหา)
     matchCount(s) {
       const q = this.q.trim().toLowerCase();
-      return q ? s.rules.filter((r) => this.matches(r, q)).length : 0;
+      return this.searching ? s.rules.filter((r) => this.matches(r, q)).length : 0;
+    },
+
+    // สถิติหัวหน้า: จำนวนหมวด / ข้อกำหนดทั้งหมด / ที่แสดงอยู่ตอนนี้
+    get totalChapters() {
+      return this.sections.length;
+    },
+    // นับข้อหลักตามต้นฉบับ: ตารางอัตราค่าบริการ (CC-004) นับเป็น 1 ข้อ ไม่นับทีละรายการราคา
+    ruleTotal(s) {
+      return s.key === 'fees' ? (s.rules.some((r) => r.kind === 'price') ? 1 : 0) : this.count(s);
+    },
+    get totalRules() {
+      return this.sections.reduce((n, s) => n + this.ruleTotal(s), 0);
+    },
+    get shownRules() {
+      return this.searching ? this.chapters.reduce((n, s) => n + this.ruleTotal(s), 0) : this.totalRules;
     },
 
     get searching() {
-      return this.q.trim() !== '';
+      return this.q.trim() !== '' || this.filter !== '';
     },
 
     // ค้นหา = แสดงทุกหมวดที่มีข้อตรงคำค้น, ไม่ค้นหา = แสดงหมวดที่เลือก
@@ -377,6 +434,7 @@ function rulesPage() {
 
     choose(key) {
       this.q = '';
+      this.filter = '';
       this.tocOpen = false;
       // เลือกหมวดในกลุ่มอื่น: กลุ่มเดิมที่เปิดอยู่ย่อลงอัตโนมัติ
       const prev = this.groups.find((x) => x.items.some((s) => s.key === this.current));

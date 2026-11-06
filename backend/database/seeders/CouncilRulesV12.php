@@ -12,8 +12,6 @@ use App\Enums\RuleSection;
  */
 class CouncilRulesV12
 {
-    /** ข้อหลักที่ยังแสดงชื่อเรื่อง (หัวข้อ) ในการ์ดข้อกฎ: MAX ข้อ 4-5 */
-    private const SHOW_TITLE = ['MAX-004', 'MAX-005', 'เงื่อนไขเพิ่มเติม'];
 
     /** @return array<string, list<array<string, string>>> */
     public static function all(): array
@@ -74,11 +72,8 @@ class CouncilRulesV12
         $out = [];
         $flush = function (?string $title, ?string $code, array $rules, array $extras) use (&$out) {
             if ($rules) {
-                $card = ['kind' => 'rule'];
-                // ไม่แสดงชื่อเรื่องของข้อ ยกเว้นข้อที่เลือกไว้ใน SHOW_TITLE
-                if (in_array($code, self::SHOW_TITLE, true) || in_array($title, self::SHOW_TITLE, true)) {
-                    $card['title'] = $title;
-                }
+                // รหัสข้อ (เช่น CC-001) และชื่อเรื่องแสดงบนการ์ดทุกข้อ
+                $card = array_filter(['kind' => 'rule', 'code' => $code, 'title' => $title]);
                 if (count($rules) === 1) {
                     $card['body'] = $rules[0]['body'];
                     if (! empty($rules[0]['penalty'])) {
@@ -435,7 +430,7 @@ class CouncilRulesV12
                 $r('สภาไม่รับเรื่องขณะกำลังเล่นในห้องสตอรี่ ให้เก็บหลักฐานและแจ้งหลังเล่นเสร็จ'),
                 $h('MATCH-015', 'โปรแกรมหรือไฟล์เอาเปรียบ'),
                 $r('ใช้โปรแกรมหรือแปลงไฟล์เพื่อได้ประโยชน์ ทั้งตอนซื้อเรื่องและตอนเล่น มีโทษใบแดงและแพ้สตอรี่ทันที'),
-                ['kind' => 'heading', 'title' => 'เงื่อนไขเพิ่มเติม'],
+                ['kind' => 'heading', 'title' => 'MATCH-016 — เงื่อนไขเพิ่มเติมในห้อง'],
                 $r('ใส่ซองปืนได้เฉพาะผู้ใช้ปืนในไฟต์'),
                 $r('ห้ามผ้า ทรงผม หรือเครื่องประดับบดบังโลโก้แก๊งตลอดช่วงสตอรี่'),
                 $r('ห้องสตอรี่ห้ามแฟชั่นทุกประเภท'),

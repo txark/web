@@ -22,6 +22,7 @@ class GroupController extends Controller
             'kind' => ['nullable', Rule::in(['gang', 'lady', 'family'])],   // gang = แก๊งทั่วไป · lady = แก๊งหญิงล้วน · family = ครอบครัว
             'status' => ['nullable', Rule::enum(GroupStatus::class)],
             'q' => ['nullable', 'string', 'max:100'],
+            'protect' => ['nullable', 'boolean'],                          // 1 = เฉพาะที่อยู่ในช่วง Protect
             'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
         ]);
 
@@ -36,6 +37,7 @@ class GroupController extends Controller
             })
             ->when($filters['status'] ?? null, fn ($q, $v) => $q->where('status', $v))
             ->when($filters['q'] ?? null, fn ($q, $v) => $q->whereLike('name', "%{$v}%"))
+            ->when($request->boolean('protect'), fn ($q) => $q->where('protect_until', '>', now()))
             ->orderBy('name')
             ->paginate($filters['per_page'] ?? 24)
             ->withQueryString();

@@ -28,11 +28,15 @@ class PublicPagesTest extends TestCase
         $this->assertSame(['cc', 'visit', 'evid', 'fees', 'summon', 'reg', 'gang', 'buy', 'deal', 'match', 'prot', 'max', 'duty'], collect($response->json('data'))->pluck('key')->all());
 
         // กฎหมวดสภา CC ฉบับ 1.2: 139 ข้อหลักจาก PDF (ย้ายตารางราคา CC-004 ไปหมวดค่าบริการ = 138 การ์ด)
-        // ทุกหมวดแสดงแบบเดียวกัน: การ์ดข้อกฎมีชื่อเรื่องเด่น ไม่มีรหัสข้อ และไม่มีหมวดย่อย
+        // ทุกหมวดแสดงแบบเดียวกัน: การ์ดข้อกฎมีรหัสข้อ (เช่น CC-001) และชื่อเรื่อง
         $all = collect($response->json('data'))->flatMap(fn ($s) => $s['rules']);
         $this->assertSame(138, $all->where('kind', 'rule')->count());
-        // ไม่แสดงหัวข้อ (ชื่อเรื่อง) ของแต่ละข้อ ยกเว้น MATCH ข้อ 16 และ MAX ข้อ 4-5
-        $this->assertSame(['เงื่อนไขเพิ่มเติม', 'ผลของ Blacklist', 'ผลของการคว่ำบาตร'], $all->where('kind', 'rule')->whereNotNull('title')->pluck('title')->values()->all());
+        // ทุกการ์ดข้อกฎมีรหัสข้อตามไฟล์ต้นฉบับและชื่อเรื่อง
+        $rules = $all->where('kind', 'rule');
+        $this->assertSame(0, $rules->filter(fn ($r) => empty($r['code']) || empty($r['title']))->count());
+        $this->assertSame('CC-001', $rules->first()['code']);
+        $this->assertSame('บทบาทและเวลาเปิดทำการ', $rules->first()['title']);
+        $this->assertSame(138, $rules->pluck('code')->unique()->count());
         // หมวดย่อยมีเฉพาะอัตราค่าบริการ (จัดกลุ่มรายการ) และ REG (แยกแก๊ง / ครอบครัว)
         $this->assertSame(['สมาชิก', 'ชุด', 'แก้ไขข้อมูล', 'คูลดาวน์และ Protect', 'แก๊ง', 'ครอบครัว', 'แก๊งและครอบครัว'], $all->where('kind', 'heading')->pluck('title')->all());
         $this->assertSame(0, $all->filter(fn ($r) => preg_match('/[A-Z]+-\d{3} — /u', ($r['title'] ?? '').($r['body'] ?? '')) === 1)->count());
@@ -205,6 +209,18 @@ class PublicPagesTest extends TestCase
         $this->assertSame(['Bears'], $names('status=blacklist'));
         $this->assertSame(['Wolves'], $names('q=wolv'));
         $this->assertSame(['Bears', 'Foxes', 'Wolves'], $names(''));
+    }
+
+    public function test_group_list_can_filter_groups_under_protect(): void
+    {
+        Group::factory()->create(['name' => 'Shielded', 'protect_until' => now()->addDays(3)]);
+        Group::factory()->create(['name' => 'Expired', 'protect_until' => now()->subDay()]);
+        Group::factory()->create(['name' => 'Open', 'protect_until' => null]);
+
+        $names = fn (string $qs) => collect($this->getJson("/api/public/groups?{$qs}")->json('data'))->pluck('name')->all();
+
+        $this->assertSame(['Shielded'], $names('protect=1'));
+        $this->assertSame(['Expired', 'Open', 'Shielded'], $names(''));
     }
 
     public function test_group_list_rejects_invalid_filters_and_paginates(): void

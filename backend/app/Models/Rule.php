@@ -9,7 +9,7 @@ use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
 #[Fillable([
-    'section', 'sort_order', 'kind', 'title', 'body',
+    'section', 'code', 'sort_order', 'kind', 'title', 'body',
     'note_label', 'note', 'penalty', 'is_published',
 ])]
 class Rule extends Model

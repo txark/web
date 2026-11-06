@@ -21,48 +21,50 @@
 
   <main class="container-app py-8">
     <header class="rg-head">
-          <div class="min-w-0">
-            <p class="rg-eyebrow">WAVEVY COUNCIL / DIRECTORY</p>
-            <h1 class="rg-title"><i class="ic rg-ic" data-icon="users" aria-hidden="true"></i>ทำเนียบ Gang &amp; Family</h1>
-            <p class="rg-sub">รายชื่อที่อยู่ภายใต้การดูแลของสภา</p>
-          </div>
-        </header>
-
-    <!-- ตัวกรอง -->
-    <div class="mt-6 flex flex-col gap-3 md:flex-row md:items-center">
-      <input type="search" x-model.debounce.300ms="q" placeholder="ค้นหาชื่อ Gang / Family" class="input md:w-72" aria-label="ค้นหาชื่อ">
-
-      <div class="flex flex-wrap gap-2">
-        <template x-for="t in types" :key="t.value">
-          <button type="button" class="chip" :aria-pressed="type === t.value" @click="type = t.value; reload()" x-text="t.label"></button>
-        </template>
+      <div class="min-w-0">
+        <p class="rg-eyebrow">WAVEVY COUNCIL</p>
+        <h1 class="rg-title">ทำเนียบ Gang &amp; Family</h1>
+        <p class="rg-sub">ทะเบียนแก๊ง / ครอบครัว · เลือกสังกัดเพื่อดูรายละเอียด</p>
+        <div class="pub-meta"><span x-text="(meta ? meta.total : 0) + ' สังกัด'"></span><span>ข้อมูลทะเบียนปัจจุบัน</span></div>
       </div>
-    </div>
+    </header>
+
+    <!-- ค้นหา / ตัวกรอง -->
+    <section class="pub-filter">
+      <label class="pub-filter-label" for="g-q">ค้นหาแก๊ง / ครอบครัว</label>
+      <input id="g-q" type="search" x-model.debounce.300ms="q" placeholder="ค้นหาชื่อแก๊ง ครอบครัว หรือตัวย่อ" class="pub-filter-input">
+      <div class="mt-3 flex flex-wrap items-center gap-2">
+        <template x-for="t in types" :key="t.value">
+          <button type="button" class="chip" :aria-pressed="type === t.value" @click="type = t.value; reload()"><span x-text="t.label"></span> <span class="chip-n" x-show="counts[t.value] !== undefined" x-text="counts[t.value]"></span></button>
+        </template>
+        <label class="pub-check"><input type="checkbox" x-model="protect"><span>อยู่ในช่วง Protect</span></label>
+      </div>
+      <p class="mt-3 text-xs text-muted" x-show="meta">แสดง <span x-text="groups.length"></span> จาก <span x-text="meta ? meta.total : 0"></span> สังกัด</p>
+    </section>
 
     <p x-show="error" x-text="error" class="penalty-box mt-8 text-center"></p>
     <p x-show="loading" class="mt-12 text-center text-muted">กำลังโหลด...</p>
     <p x-show="!loading && !error && groups.length === 0" class="mt-12 text-center text-muted">ไม่พบ Gang หรือ Family</p>
 
     <!-- รายการ -->
-    <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4" x-show="groups.length > 0">
+    <div class="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4" x-show="groups.length > 0">
       <template x-for="g in groups" :key="g.id">
-        <button type="button" @click="open(g)" class="card card-link dr-card flex items-center gap-3.5 p-4 text-left" :style="'--gc:' + (g.color_hex || 'var(--accent)')">
-          <template x-if="g.logo_url">
-            <img :src="g.logo_url" alt="" class="dr-logo">
-          </template>
-          <template x-if="!g.logo_url">
-            <div class="dr-tile" x-text="g.name.charAt(0).toUpperCase()"></div>
-          </template>
-
-          <div class="min-w-0 flex-1">
-            <div class="flex min-w-0 items-center gap-2"><p class="truncate font-semibold" x-text="g.name"></p><span x-show="g.protect_active" class="dr-protect shrink-0" title="กลุ่มนี้มี Protect อยู่"><i class="ic" data-icon="shield" aria-hidden="true"></i>Protect</span></div>
-            <div class="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1">
-              <span class="dr-type" :class="'dr-type-' + (g.type === 'family' ? 'family' : g.is_lady ? 'lady' : 'gang')" x-text="typeTag(g)"></span>
-              <span class="dr-status" :class="'is-' + g.status"><i aria-hidden="true"></i><span x-text="g.status_label"></span></span>
-              <span x-show="g.slots_locked" class="dr-note">ล็อก Slot</span>
-            </div>
-            <p class="dr-leader"><span>Leader</span><b x-text="g.leader || '-'"></b></p>
-          </div>
+        <button type="button" @click="open(g)" class="gc" :style="'--gc:' + (g.color_hex || 'var(--accent)')">
+          <span class="gc-top">
+            <span class="gc-pill" x-text="g.status_label"></span>
+            <span class="gc-pill" :class="g.protect_active ? 'is-on' : ''" x-text="g.protect_active ? 'มี Protect' : 'ไม่มี Protect'"></span>
+          </span>
+          <span class="gc-logo">
+            <template x-if="g.logo_url"><img :src="g.logo_url" alt=""></template>
+            <template x-if="!g.logo_url"><span class="gc-logo-no"><b x-text="g.short_name || g.name.charAt(0).toUpperCase()"></b><small>ยังไม่มีโลโก้</small></span></template>
+          </span>
+          <span class="gc-name" x-text="g.name"></span>
+          <span class="gc-short" x-text="g.short_name || typeTag(g)"></span>
+          <span class="gc-row">
+            <span><small>Leader</small><b x-text="g.leader || 'ไม่ระบุ'"></b></span>
+            <span><small>สี / รหัสสี</small><b><i class="gc-dot" :style="'background:' + (g.color_hex || 'transparent')"></i><span x-text="g.color_name || 'ไม่ระบุชื่อสี'"></span></b><em x-text="g.color_hex || ''"></em></span>
+          </span>
+          <span class="gc-more">ดูรายละเอียด</span>
         </button>
       </template>
     </div>

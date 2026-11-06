@@ -9,6 +9,8 @@ function groupsPage() {
     q: '',
     type: '',
     status: '',
+    protect: false,
+    counts: {},
     page: 1,
 
     groups: [],
@@ -21,7 +23,18 @@ function groupsPage() {
 
     init() {
       this.load();
+      this.loadCounts();
       this.$watch('q', () => this.reload());
+      this.$watch('protect', () => this.reload());
+    },
+
+    /** จำนวนในแต่ละปุ่มกรอง (ทั้งหมด / แก๊ง / แก๊งหญิง / ครอบครัว) */
+    async loadCounts() {
+      try {
+        const total = async (kind) => (await API.get(`/api/public/groups?per_page=1${kind ? '&kind=' + kind : ''}`)).meta.total;
+        const [all, gang, lady, family] = await Promise.all([total(''), total('gang'), total('lady'), total('family')]);
+        this.counts = { '': all, gang, lady, family };
+      } catch (e) {}
     },
 
     reload() {
@@ -42,6 +55,7 @@ function groupsPage() {
       if (this.q.trim()) params.set('q', this.q.trim());
       if (this.type) params.set('kind', this.type);
       if (this.status) params.set('status', this.status);
+      if (this.protect) params.set('protect', '1');
 
       try {
         const res = await API.get(`/api/public/groups?${params}`);
