@@ -18,19 +18,18 @@
   --st-b: #ffadc0;
   --st-b-bg: rgba(220, 90, 120, 0.28);
   --st-b-line: rgba(230, 100, 130, 0.5);
-  --bg: #061219;
-  --glow: radial-gradient(900px 520px at 88% -6%, rgba(56, 140, 170, 0.28), transparent 65%),
-    radial-gradient(700px 520px at -4% 38%, rgba(20, 70, 95, 0.26), transparent 70%);
-  --header-bg: rgba(5, 16, 24, 0.86);
-  --panel: #0c2230;
-  --panel-2: #0a1c28;
+  --bg: #070c12;
+  --glow: radial-gradient(900px 460px at 90% -10%, rgba(110, 224, 204, 0.07), transparent 65%);
+  --header-bg: rgba(7, 12, 18, 0.92);
+  --panel: #0d141c;
+  --panel-2: #0a1118;
   --head-a: #10455a;
   --head-b: #0b2c3d;
-  --line: #1b3b4f;
-  --fg: #e7f1f7;
-  --muted: #86a3b3;
-  --accent: #7fd2ef;
-  --accent-soft: rgba(127, 210, 239, 0.1);
+  --line: #1b2631;
+  --fg: #e8eef3;
+  --muted: #8a9aa8;
+  --accent: #6ee0cc;
+  --accent-soft: rgba(110, 224, 204, 0.1);
   --gold: #e9c982;
   --gold-soft: rgba(233, 201, 130, 0.09);
   --danger: #f2a08b;
@@ -43,7 +42,7 @@
   --bad: #f2907c;
   --bad-soft: rgba(242, 144, 124, 0.14);
   --overlay: rgba(2, 8, 12, 0.72);
-  --on-accent: #06222f;
+  --on-accent: #04201c;
 
   /* กล่องหมายเหตุ / โทษ */
   --note-bg: var(--gold-soft);
@@ -7205,5 +7204,247 @@ body {
     margin-top: 20px;
     padding-top: 12px;
     border-top: 1px solid #1f4256;
+  }
+}
+
+
+/* ───────── หน้าสาธารณะ + เมนูบน: สไตล์มินิมอล (เส้นบาง พื้นเรียบ ไม่มีเงา) ───────── */
+@layer components {
+  .site-header {
+    background: var(--header-bg);
+    border-bottom: 1px solid var(--line);
+  }
+  .nav-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.85rem 0.35rem;
+    margin-inline: 0.45rem;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: inset 0 -2px 0 transparent;
+  }
+  .nav-pill:hover {
+    background: none;
+  }
+  .nav-pill[aria-current="page"] {
+    background: none;
+    border: 0;
+    box-shadow: inset 0 -2px 0 var(--accent);
+    font-weight: 600;
+  }
+  .nav-num {
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    opacity: 0.55;
+    font-variant-numeric: tabular-nums;
+  }
+  .nav-pill[aria-current="page"] .nav-num {
+    color: var(--accent);
+    opacity: 1;
+  }
+
+  /* ส่วนหัวหน้าเป็นแผงเรียบ มีเส้นเน้นด้านบน */
+  .pub .rg-head {
+    position: relative;
+    padding: 1.6rem 1.75rem;
+    border: 1px solid var(--line);
+    border-top: 2px solid var(--accent);
+    border-radius: 0.9rem;
+    background: var(--panel);
+  }
+  .pub .rg-eyebrow {
+    color: var(--accent);
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+  }
+  .pub .rg-title {
+    font-size: 1.75rem;
+    letter-spacing: -0.01em;
+  }
+  .pub .rg-title .ic {
+    display: none;
+  }
+  .pub .rg-sub {
+    max-width: 46rem;
+  }
+  .pub .card,
+  .pub .rg-panel {
+    border-radius: 0.75rem;
+    box-shadow: none;
+  }
+  .pub .card-link:hover {
+    border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+    transform: none;
+  }
+  .pub .chip {
+    border-radius: 0.5rem;
+  }
+
+  /* หน้าเนื้อหา (เกี่ยวกับ / สมาชิกสภา) */
+  .pub-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1.4rem;
+    margin-top: 1.1rem;
+    padding-top: 0.9rem;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 0.78rem;
+  }
+  .pub-layout {
+    display: grid;
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+  }
+  @media (min-width: 1024px) {
+    .pub-layout {
+      grid-template-columns: 15rem minmax(0, 1fr);
+    }
+  }
+  .pub-toc {
+    align-self: start;
+    border-top: 2px solid var(--accent);
+    padding-top: 0.8rem;
+  }
+  @media (min-width: 1024px) {
+    .pub-toc {
+      position: sticky;
+      top: calc(var(--header-h, 3.5rem) + 1rem);
+    }
+  }
+  .pub-toc p {
+    font-weight: 600;
+  }
+  .pub-toc a {
+    display: block;
+    padding: 0.35rem 0;
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+  .pub-toc a:hover {
+    color: var(--fg);
+  }
+  .pub-body {
+    display: grid;
+    gap: 1rem;
+    min-width: 0;
+  }
+  .pub-sec {
+    padding: 1.4rem 1.5rem;
+    border: 1px solid var(--line);
+    border-radius: 0.75rem;
+    background: var(--panel);
+    scroll-margin-top: 5rem;
+  }
+  .pub-sec h2 {
+    padding-bottom: 0.7rem;
+    border-bottom: 1px solid var(--line);
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+  .pub-sec h3 {
+    margin-top: 1.1rem;
+    color: var(--gold);
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+  .pub-sec p {
+    margin-top: 0.7rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+  .pub-list {
+    margin-top: 0.6rem;
+    counter-reset: n;
+  }
+  .pub-list li {
+    counter-increment: n;
+    display: grid;
+    grid-template-columns: 1.6rem 1fr;
+    padding: 0.55rem 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+    font-size: 0.9rem;
+  }
+  .pub-list li:last-child {
+    border-bottom: 0;
+  }
+  .pub-list li::before {
+    content: counter(n) ".";
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .pub-note {
+    margin-top: 0.8rem;
+    padding: 0.6rem 0.9rem;
+    border-left: 2px solid var(--gold);
+    border-radius: 0.4rem;
+    background: var(--gold-soft);
+    font-size: 0.85rem;
+  }
+  .pub-note b {
+    color: var(--gold);
+  }
+
+  .pub-ranks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1.25rem;
+  }
+  .pub-ranks a {
+    padding: 0.45rem 0.9rem;
+    border: 1px solid var(--line);
+    border-radius: 0.5rem;
+    background: var(--panel);
+    color: var(--muted);
+    font-size: 0.82rem;
+  }
+  .pub-ranks a:hover {
+    color: var(--fg);
+    border-color: var(--accent);
+  }
+  .pub-rank {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--line);
+    scroll-margin-top: 5rem;
+  }
+  .pub-rank-head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.7rem;
+  }
+  .pub-rank-head .n {
+    color: var(--accent);
+    font-size: 0.72rem;
+    font-weight: 600;
+  }
+  .pub-rank-head h2 {
+    font-size: 1.2rem;
+    font-weight: 700;
+  }
+  .pub-rank-head .c {
+    margin-left: auto;
+    color: var(--muted);
+    font-size: 0.75rem;
+  }
+  .pub-empty {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    margin-top: 0.9rem;
+    padding: 1.1rem 1.25rem;
+    border: 1px dashed var(--line);
+    border-radius: 0.75rem;
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+  .pub-empty .ic {
+    width: 1.5rem;
+    height: 1.5rem;
+    color: var(--accent);
   }
 }

@@ -11,10 +11,12 @@
 
   // ผู้เยี่ยมชม/แก๊ง/ครอบครัว
   const publicNav = [
-    ['/rules.html', 'กฎและข้อปฏิบัติ', 'book-open'],
-    ['/groups.html', 'ทำเนียบ', 'users'],
+    ['/rules.html', 'กฎและข้อปฏิบัติ'],
+    ['/groups.html', 'ทำเนียบ'],
+    ['/about.html', 'เกี่ยวกับแก๊ง ครอบครัว'],
+    ['/members.html', 'สมาชิกสภา'],
   ]
-    .map(([href, label, icon]) => `<a href="${href}" class="nav-pill"${cur(href === here)}>${ic(icon)}${label}</a>`)
+    .map(([href, label], i) => `<a href="${href}" class="nav-pill"${cur(href === here)}><span class="nav-num">${String(i + 1).padStart(2, '0')}</span>${label}</a>`)
     .join('');
 
   // เมนู "จัดการ" (ดรอปดาวน์): เฉพาะรองประธานขึ้นไป
