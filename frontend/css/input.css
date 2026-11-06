@@ -7928,8 +7928,15 @@ body {
   border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
 }
 .rule-share button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   color: var(--muted);
   font-size: 0.75rem;
+}
+.rule-share button .ic {
+  width: 0.9rem;
+  height: 0.9rem;
 }
 .rule-share button:hover {
   color: var(--accent);
