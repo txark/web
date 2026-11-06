@@ -11,6 +11,7 @@
   <script src="/js/config.js"></script>
   <script src="/js/api.js"></script>
   <script src="/js/auth.js"></script>
+  <script src="/js/pages/about.js"></script>
   <script defer src="/js/layout.js"></script>
   <script defer src="/js/vendor/alpine.min.js"></script>
 </head>
@@ -27,15 +28,30 @@
     </header>
 
     <div class="pub-layout">
-      <nav class="pub-toc" aria-label="สารบัญ">
-        <p>สารบัญ</p>
-        <a href="#gang">แก๊ง GANG</a>
-        <a href="#outfit-gang">ชุดที่ลงได้ของแก๊ง</a>
-        <a href="#family">ครอบครัว Family</a>
-        <a href="#outfit-family">ชุดที่ลงได้ของครอบครัว</a>
-        <a href="#members">การเพิ่ม-ออกสมาชิก</a>
-        <a href="#fees">ค่าบริการ</a>
-      </nav>
+      <aside class="pub-toc" x-data="aboutToc()" aria-label="สารบัญ">
+        <div class="toc">
+          <div class="toc-head"><span>สารบัญ</span><span class="text-xs font-normal text-muted">INDEX / 03</span></div>
+          <template x-for="g in groups" :key="g.label">
+            <div class="toc-group" :data-active="hasCurrent(g)">
+              <button type="button" class="toc-group-title" @click="toggle(g)" :aria-expanded="isOpen(g)">
+                <span class="toc-chevron" aria-hidden="true">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+                </span>
+                <span class="min-w-0 flex-1 truncate" x-text="g.label"></span>
+                <span class="toc-pill" x-text="g.items.length"></span>
+              </button>
+              <div class="toc-items" x-show="isOpen(g)">
+                <template x-for="(it, i) in g.items" :key="it[0]">
+                  <a :href="'#' + it[0]" class="toc-item" :aria-current="current === it[0]" @click="current = it[0]">
+                    <span class="toc-no" x-text="pad(i + 1)"></span>
+                    <span class="toc-label" x-text="it[1]"></span>
+                  </a>
+                </template>
+              </div>
+            </div>
+          </template>
+        </div>
+      </aside>
 
       <div class="pub-body">
         <section id="gang" class="pub-sec">

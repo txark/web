@@ -7305,8 +7305,6 @@ body {
   }
   .pub-toc {
     align-self: start;
-    border-top: 2px solid var(--accent);
-    padding-top: 0.8rem;
   }
   @media (min-width: 1024px) {
     .pub-toc {
@@ -7317,13 +7315,13 @@ body {
   .pub-toc p {
     font-weight: 600;
   }
-  .pub-toc a {
+  .pub-toc > a {
     display: block;
     padding: 0.35rem 0;
     color: var(--muted);
     font-size: 0.85rem;
   }
-  .pub-toc a:hover {
+  .pub-toc > a:hover {
     color: var(--fg);
   }
   .pub-body {
