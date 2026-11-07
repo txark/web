@@ -13,7 +13,8 @@ function tasksPage() {
     error: '',
     filter: '',
     copiedId: '',
-    kind: '', // หมวดที่เลือกใน sidebar ('' = ทั้งหมด)
+    cat: '', // กลุ่มหมวดที่เลือก (ดัชนีใน groups; '' = ทั้งหมด)
+    kind: '', // หมวดย่อยที่เลือก ('' = ทั้งกลุ่ม)
     // sidebar: หมวดของคำขอ/ธุรกรรมที่รออนุมัติ + งานตรวจสอบ
     sections: [
       { title: '', items: [{ value: '', icon: 'list-checks', label: 'ทั้งหมด' }] },
@@ -144,7 +145,32 @@ function tasksPage() {
 
     /** รายการตามหมวดที่เลือก */
     get byKind() {
-      return this.kind ? this.items.filter((a) => this.catOf(a) === this.kind) : this.items;
+      if (this.kind) return this.items.filter((a) => this.catOf(a) === this.kind);
+      if (this.cat !== '') return this.items.filter((a) => this.inGroup(this.groups[this.cat], a));
+      return this.items;
+    },
+
+    /** กลุ่มหมวด (ไม่รวม "ทั้งหมด"): คำขอและธุรกรรม · บันทึก · ตรวจสอบ */
+    get groups() {
+      const meta = [
+        { short: 'คำขอและธุรกรรม', icon: 'inbox' },
+        { short: 'บันทึก', icon: 'sticky-note' },
+        { short: 'ตรวจสอบ', icon: 'shield' },
+      ];
+      return this.sections.slice(1).map((g, i) => ({ ...g, ...meta[i] }));
+    },
+
+    inGroup(g, a) {
+      return g.items.some((k) => k.value === this.catOf(a));
+    },
+
+    countGroup(g) {
+      return this.items.filter((a) => this.inGroup(g, a)).length;
+    },
+
+    setCat(i) {
+      this.cat = i;
+      this.kind = '';
     },
 
     get shown() {

@@ -8534,3 +8534,5 @@ html.has-side .side-top { view-transition-name: sidetop; }
 .ts-chip[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: var(--on-accent, #fff); font-weight: 600; }
 .ts-chip b { min-width: 1.25rem; padding: 0.05rem 0.4rem; border-radius: 999px; background: var(--accent); color: var(--on-accent, #fff); font-size: 0.7rem; font-weight: 700; text-align: center; }
 .ts-chip[aria-pressed="true"] b { background: rgba(255, 255, 255, 0.25); color: inherit; }
+.ts-sub { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
+.ts-sub .ts-chip { padding: 0.35rem 0.8rem; font-size: 0.82rem; }

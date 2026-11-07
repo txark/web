@@ -39,23 +39,32 @@
       <p x-show="error" x-text="error" class="penalty-box mt-5"></p>
 
       <div class="ts-layout" x-show="!error">
-        <!-- ตัวกรองหมวดงานค้าง: จัดกลุ่มตามประเภท -->
-        <nav class="ts-filter" aria-label="หมวดงานค้าง">
-          <template x-for="sec in sections" :key="sec.title">
-            <div class="ts-grp">
-              <p class="ts-grp-t" x-show="sec.title" x-text="sec.title"></p>
-              <div class="ts-chips">
-                <template x-for="k in sec.items" :key="k.value">
-                  <button type="button" class="ts-chip" :aria-pressed="kind === k.value" @click="kind = k.value">
-                    <i class="ic" :data-icon="k.icon || 'list-checks'" aria-hidden="true"></i>
-                    <span x-text="k.label"></span>
-                    <b x-show="countKind(k.value) > 0" x-text="countKind(k.value)"></b>
-                  </button>
-                </template>
-              </div>
-            </div>
+        <!-- หมวดงานค้าง: ระดับกลุ่ม (แท็บ) → ระดับย่อย (ชิป) -->
+        <nav class="fn-tabs" aria-label="กลุ่มงานค้าง">
+          <button type="button" class="fn-tab" role="tab" :aria-selected="cat === ''" @click="setCat('')">
+            <i class="ic" data-icon="list-checks" aria-hidden="true"></i>ทั้งหมด
+            <span class="badge" :class="items.length ? 'badge-blacklist' : 'badge-muted'" x-text="items.length"></span>
+          </button>
+          <template x-for="(g, i) in groups" :key="g.short">
+            <button type="button" class="fn-tab" role="tab" :aria-selected="cat === i" @click="setCat(i)">
+              <i class="ic" :data-icon="g.icon" aria-hidden="true"></i><span x-text="g.short"></span>
+              <span class="badge" :class="countGroup(g) ? 'badge-blacklist' : 'badge-muted'" x-text="countGroup(g)"></span>
+            </button>
           </template>
         </nav>
+
+        <div class="ts-sub" x-show="cat !== '' && groups[cat] && groups[cat].items.length > 1" x-cloak>
+          <button type="button" class="ts-chip" :aria-pressed="kind === ''" @click="kind = ''">ทั้งกลุ่ม</button>
+          <template x-for="k in (groups[cat] ? groups[cat].items : [])" :key="k.value">
+            <button type="button" class="ts-chip" :aria-pressed="kind === k.value" @click="kind = k.value">
+              <i class="ic" :data-icon="k.icon || 'list-checks'" aria-hidden="true"></i>
+              <span x-text="k.label"></span>
+              <b x-show="countKind(k.value) > 0" x-text="countKind(k.value)"></b>
+            </button>
+          </template>
+        </div>
+
+        <div class="mt-5"></div>
 
         <div class="min-w-0">
           <!-- เพิ่มบันทึกเตือนความจำ -->
