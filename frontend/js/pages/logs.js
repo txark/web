@@ -192,8 +192,18 @@ function logsPage() {
 
     // ข้อมูลเสริมที่แสดงในรายละเอียด (ตัด key ที่แสดงแยกแล้ว)
     extras(row) {
+      return [...this.txLines(row), ...this.techLines(row)];
+    },
+
+    // รายละเอียดธุรกรรม: ทำอะไรบ้าง (รหัส ชนิด แก๊ง/ครอบครัว จำนวนเงิน ฯลฯ)
+    txLines(row) {
+      return row.details || [];
+    },
+
+    // ข้อมูลการเข้าใช้: IP อุปกรณ์ หน้า สาเหตุ ฯลฯ
+    techLines(row) {
       const p = row.properties || {};
-      const out = [...(row.details || [])]; // ธุรกรรม: ทำอะไรบ้าง
+      const out = [];
       if (p.ip) out.push(['IP', p.ip]);
       if (p.user_agent) out.push(['อุปกรณ์', this.device(p.user_agent)]);
       if (p.via === 'console') out.push(['ที่มา', 'คำสั่งบนเซิร์ฟเวอร์ (artisan)']);
