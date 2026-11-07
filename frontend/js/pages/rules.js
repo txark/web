@@ -8,6 +8,7 @@ function rulesPage() {
     spyRetries: 0,
     spyLock: false, // ระหว่างเลื่อนอัตโนมัติ ไม่อัปเดตตามการเลื่อน กันตัวเน้นกระพริบผ่านหมวดย่อยระหว่างทาง
     meta: null, // ฉบับ/วันมีผลของกฎ
+    now: Date.now(), // ใช้คำนวณสถานะเปิด/ปิดทำการ (อัปเดตทุกนาที)
     q: '',
     filter: '', // '' = ทั้งหมด · penalty = มีบทลงโทษ · note = มีหมายเหตุ
     copiedId: null,
@@ -38,6 +39,7 @@ function rulesPage() {
         const box = [...document.querySelectorAll('input[type=search]')].find((i) => i.offsetParent !== null);
         if (box) { e.preventDefault(); box.focus(); }
       });
+      setInterval(() => (this.now = Date.now()), 60000);
       window.addEventListener('scroll', onScroll, { passive: true });
       window.addEventListener('resize', onScroll);
       // กดลิงก์ในเมนูบนที่ชี้หมวดอื่นของหน้านี้ (เช่น ประกาศเรียก) ขณะอยู่ในหน้ากฎอยู่แล้ว
@@ -292,6 +294,22 @@ function rulesPage() {
     /** ชื่อหมวดไม่รวมรหัสนำหน้า (รหัสอยู่ในป้ายแล้ว): "CC · เกี่ยวกับสภา" → "เกี่ยวกับสภา" */
     shortLabel(s) {
       return String(s.label).includes(' · ') ? String(s.label).split(' · ').slice(1).join(' · ') : s.label;
+    },
+
+    /** เวลาทำการสภา: อ่านจากกฎ CC-001 ("เวลาทำการ 18.30 – 00.00") ถ้าไม่พบใช้ค่ามาตรฐาน · สถานะตามเวลาไทย */
+    get hours() {
+      if (!this.sections.length) return null;
+      const rule = this.sections.flatMap((s) => s.rules).find((r) => r.code === 'CC-001');
+      const m = /(\d{1,2})[.:](\d{2})\s*[–-]\s*(\d{1,2})[.:](\d{2})/.exec(rule?.body || '');
+      const [oh, om, ch, cm] = m ? m.slice(1).map(Number) : [18, 30, 0, 0];
+      const f = (h, mi) => `${String(h).padStart(2, '0')}.${String(mi).padStart(2, '0')}`;
+      const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(this.now));
+      const cur = Number(parts.find((p) => p.type === 'hour').value) * 60 + Number(parts.find((p) => p.type === 'minute').value);
+      const open = oh * 60 + om;
+      const close = ch * 60 + cm;
+      const openNow = close > open ? cur >= open && cur < close : cur >= open || cur < close;
+
+      return { open: f(oh, om), close: f(ch, cm), openNow };
     },
 
     pad(n) {

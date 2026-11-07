@@ -8400,3 +8400,15 @@ body {
   font-weight: 700;
   letter-spacing: 0.08em;
 }
+
+.pub-hero-meta.is-open i {
+  background: var(--ok);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 22%, transparent);
+}
+.pub-hero-meta .hours-state {
+  color: var(--fg);
+  font-weight: 600;
+}
+.pub-hero-meta.is-open .hours-state {
+  color: var(--ok);
+}
