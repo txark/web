@@ -8503,3 +8503,9 @@ html.has-side.side-open .side-backdrop { display: block; position: fixed; inset:
 /* หมวดธุรกรรม: แท็บแนวนอนแทนแถบรายการด้านข้าง */
 .tx-layout { display: block; }
 .tx-layout .tx-empty { margin-top: 1.5rem; }
+
+/* เปลี่ยนหน้าแบบนุ่ม (Chrome/Edge): แถบซ้ายกับแถบบนอยู่นิ่ง ไม่กระพริบตอนคลิกเมนู */
+@view-transition { navigation: auto; }
+html.has-side .side { view-transition-name: side; }
+html.has-side .side-top { view-transition-name: sidetop; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 0.12s; }

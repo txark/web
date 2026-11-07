@@ -6,7 +6,10 @@ const ROLE_LEVEL = { gang: 1, family: 1, trainee: 2, member: 2, operations: 2, s
 // เวลานับจากนาฬิกาเซิร์ฟเวอร์ (offset) ไม่ใช่นาฬิกาเครื่องผู้ใช้ จึงแก้เวลาเครื่องเพื่อโกงชั่วโมงเวรไม่ได้
 const Duty = (() => {
   let state = null;
+  let fresh = false; // true = state มาจากเซิร์ฟเวอร์ในหน้านี้แล้ว (ไม่ใช่แค่ค่าที่จำไว้จากหน้าก่อน)
   let loading = null;
+  // ค่าจากหน้าก่อน (ต่อแท็บ) ใช้วาดเมนู/เวลาเวรทันทีตอนเปลี่ยนหน้า กันหน้ากระพริบ; ยังดึงค่าจริงจากเซิร์ฟเวอร์ทับเสมอ
+  try { state = JSON.parse(sessionStorage.getItem('duty.cache') || 'null'); } catch (e) {}
   const listeners = new Set();
 
   // หน้าที่สภาเปิดได้แม้ไม่ได้อยู่ในเวร (นอกนั้นต้องเข้าเวรก่อน)
@@ -42,6 +45,8 @@ const Duty = (() => {
 
   const apply = (d) => {
     state = { ...d, offset: Date.parse(d.server_time) - Date.now() };
+    fresh = true;
+    try { sessionStorage.setItem('duty.cache', JSON.stringify(state)); } catch (e) {}
     syncHeartbeat();
     listeners.forEach((fn) => fn(state));
     return state;
@@ -52,7 +57,7 @@ const Duty = (() => {
   return {
     // force = ไม่ใช้ค่าที่จำไว้
     load(force = false) {
-      if (state && !force) return Promise.resolve(state);
+      if (state && fresh && !force) return Promise.resolve(state);
       if (!loading || force) {
         loading = API.get('/api/duty').then((r) => apply(r.data)).finally(() => (loading = null));
       }
@@ -88,17 +93,22 @@ const Duty = (() => {
 })();
 
 function authState() {
+  let cached = null; // ผู้ใช้จากหน้าก่อน (ต่อแท็บ): วาดเมนูทันที แล้ว init() ตรวจกับเซิร์ฟเวอร์ทับ
+  try { cached = JSON.parse(sessionStorage.getItem('auth.user') || 'null'); } catch (e) {}
+  const council = !!cached && (cached.role === 'admin' || (ROLE_LEVEL[cached.role] ?? 0) >= ROLE_LEVEL.member);
   return {
-    user: null,
-    loading: true,
-    duty: null, // null = ไม่เกี่ยว (ไม่ใช่สภา) หรือยังโหลดไม่เสร็จ
+    user: cached,
+    loading: !cached,
+    duty: council ? Duty.state : null, // null = ไม่เกี่ยว (ไม่ใช่สภา) หรือยังโหลดไม่เสร็จ
     tick: 0,
 
     async init() {
       try {
         this.user = (await API.get('/api/user')).data;
+        try { sessionStorage.setItem('auth.user', JSON.stringify(this.user)); } catch (e) {}
       } catch (e) {
         this.user = null;
+        try { sessionStorage.removeItem('auth.user'); sessionStorage.removeItem('duty.cache'); } catch (e2) {}
       } finally {
         this.loading = false;
       }
@@ -153,6 +163,7 @@ function authState() {
 
     async logout() {
       await API.post('/api/logout');
+      try { sessionStorage.removeItem('auth.user'); sessionStorage.removeItem('duty.cache'); } catch (e) {}
       location.href = '/login.html';
     },
   };
