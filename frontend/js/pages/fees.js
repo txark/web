@@ -2,6 +2,9 @@
 function feesPage() {
   return {
     groups: [],
+    get total() {
+      return this.groups.reduce((n, g) => n + g.rows.length, 0);
+    },
     currency: 'WVDL',
     loading: true,
     error: '',

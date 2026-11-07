@@ -20,12 +20,17 @@
   <div id="site-header"></div>
 
   <main class="container-app py-8">
-    <header class="rg-head">
+    <header class="pub-hero pub-hero-page">
       <div class="min-w-0">
-        <p class="rg-eyebrow">WAVEVY COUNCIL</p>
-        <h1 class="rg-title">ทำเนียบ Gang &amp; Family</h1>
-        <p class="rg-sub">ทะเบียนแก๊ง / ครอบครัว · เลือกสังกัดเพื่อดูรายละเอียด</p>
-        <div class="pub-meta"><span x-text="(meta ? meta.total : 0) + ' สังกัด'"></span><span>ข้อมูลทะเบียนปัจจุบัน</span></div>
+        <p class="pub-hero-eyebrow">WAVEVY COUNCIL / REGISTRY</p>
+        <h1 class="pub-hero-title">ทำเนียบ<span>Gang &amp; Family<i>.</i></span></h1>
+        <p class="pub-hero-sub">ทะเบียนแก๊ง / ครอบครัว เลือกสังกัดเพื่อดูรายละเอียด</p>
+        <p class="pub-hero-meta"><i aria-hidden="true"></i><span>ข้อมูลทะเบียนปัจจุบัน</span></p>
+      </div>
+      <div class="pub-hero-stats">
+        <p class="pub-hero-tag">REGISTERED.<br>VERIFIED.</p>
+        <p class="pub-hero-num"><b x-text="meta ? meta.total : 0"></b></p>
+        <p class="pub-hero-cap"><span>สังกัด</span><span>ทั้งหมดในทะเบียน</span></p>
       </div>
     </header>
 

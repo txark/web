@@ -8357,3 +8357,35 @@ body {
     opacity: 0.1;
   }
 }
+
+/* ส่วนหัวหน้าอื่นๆ (ไม่มีโลโก้): ข้อความซ้าย · สถิติขวา โทนเดียวกับหน้ากฎ */
+.pub-hero-page {
+  padding-top: 2.2rem;
+  padding-bottom: 1.6rem;
+}
+@media (min-width: 1024px) {
+  .pub-hero-page {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 2.5rem;
+  }
+}
+.pub-hero-page .pub-hero-title {
+  font-size: 2rem;
+}
+.pub-hero-page .pub-hero-title span {
+  font-size: 2.6rem;
+}
+@media (min-width: 1024px) {
+  .pub-hero-page .pub-hero-title {
+    font-size: 2.2rem;
+  }
+  .pub-hero-page .pub-hero-title span {
+    font-size: 3rem;
+  }
+}
+.pub-hero-page .pub-hero-num {
+  margin-top: 1.6rem;
+}
+.pub-hero-page .pub-hero-num b {
+  font-size: 3.4rem;
+}
