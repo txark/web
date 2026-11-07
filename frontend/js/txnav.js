@@ -17,7 +17,7 @@
     const inner = `<i class="ic" data-icon="${it.icon || 'list-checks'}" aria-hidden="true"></i>${esc(it.label)}`;
     const body = it.soon
       ? `<span class="fn-tab" aria-disabled="true" title="กำลังพัฒนา">${inner}</span>`
-      : `<a href="${it.href}" class="fn-tab"${it.href === here ? ' aria-current="page"' : ''}>${inner}</a>`;
+      : `<a href="${it.href}" class="fn-tab"${it.href === here ? ' aria-current="page" aria-selected="true"' : ''}>${inner}</a>`;
     return it.min ? `<template x-if="auth && auth.can('${it.min}')">${body}</template>` : body;
   }).join('');
 
