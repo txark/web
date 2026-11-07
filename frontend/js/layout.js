@@ -140,37 +140,95 @@
             <a href="/login.html" class="btn-outline">Log in <span aria-hidden="true">↗</span></a>
           </template>
 
-          <button type="button" id="theme-toggle" class="btn-outline" aria-label="สลับโหมดสี"></button>
+          <button type="button" id="theme-toggle" class="btn-outline theme-btn" aria-label="สลับโหมดสี"></button>
         </div>
       </div>
     </header>`;
+
+
+  // ───────── สภา: แถบเมนูด้านซ้าย (workspace) แทนเมนูบน ─────────
+  // เลือกใช้เมื่อรู้ว่าเป็นสภา (Council ขึ้นไป); จำผลไว้ใน localStorage กันหน้ากระพริบ
+  try { if (localStorage.getItem('side') === '1') document.documentElement.classList.add('has-side'); } catch (e) {}
+
+  const sideLink = (href, label, icon, active, gated) => {
+    const a = `<a href="${href}" class="side-link"${cur(active)}>${ic(icon)}<span>${label}</span></a>`;
+    if (!gated) return a;
+    return `<template x-if="dutyOk">${a}</template><template x-if="!dutyOk"><span class="side-link is-locked" title="ต้องเข้าเวรก่อน" aria-disabled="true">${ic('lock')}<span>${label}</span></span></template>`;
+  };
+  const sideMain = [
+    sideLink('/index.html', 'ภาพรวม', 'layout-dashboard', here === '/' || here === '/index.html', false),
+    sideLink('/rules.html', 'กฎและข้อปฏิบัติ', 'book-open', here === '/rules.html', false),
+    sideLink('/transactions.html', 'ธุรกรรมสภา', 'arrow-left-right', ['/transactions.html', '/requests.html', '/manage-groups.html', '/outfits.html'].includes(here), true),
+    sideLink('/summons.html', 'ประกาศ', 'megaphone', ['/summons.html', '/fines.html', '/penalties.html', '/announcements.html'].includes(here), true),
+    sideLink('/activity-rounds.html', 'รายงานความเคลื่อนไหว', 'activity', here === '/activity-rounds.html', true),
+    `<template x-if="dutyOk"><a href="/tasks.html" class="side-link" x-data="alertBadge()"${cur(here === '/tasks.html')}>${ic('bell')}<span>แจ้งเตือนงานค้าง</span><b x-show="count > 0" x-text="count > 99 ? '99+' : count" class="nav-badge"></b></a></template><template x-if="!dutyOk"><span class="side-link is-locked" title="ต้องเข้าเวรก่อน" aria-disabled="true">${ic('lock')}<span>แจ้งเตือนงานค้าง</span></span></template>`,
+  ].join('');
+  const sideManage = (list) => list.map(([href, label, icon]) => sideLink(href, label, icon, href === here, false)).join('');
+  const sideTitle = (document.title.split('|')[0] || '').trim();
+  const sideHtml = `
+    <div class="side-backdrop" x-data @click="document.documentElement.classList.remove('side-open')"></div>
+    <aside class="side" x-data="authState()" x-effect="(() => { const on = !!user && can('member'); document.documentElement.classList.toggle('has-side', on); try { localStorage.setItem('side', on ? '1' : '0'); } catch (e) {} window.dispatchEvent(new Event('sidechange')); })()" aria-label="เมนูสภา">
+      <a href="/index.html" class="brand" aria-label="WAVEVY COUNCIL"><span class="brand-main">WAVEVY.</span><span class="brand-sub">COUNCIL</span></a>
+      <p class="side-label">COUNCIL WORKSPACE</p>
+      <nav class="side-nav" @click="document.documentElement.classList.remove('side-open')">
+        ${sideMain}
+        <template x-if="can('vice_president') && !isAdmin"><span class="contents"><p class="side-label side-label-sub">จัดการ</p>${sideManage(manage)}</span></template>
+        <template x-if="isAdmin"><span class="contents"><p class="side-label side-label-sub">จัดการ</p>${sideManage(adminManage)}</span></template>
+      </nav>
+      <div class="side-user" x-show="user" x-cloak>
+        <p class="side-user-k">ชื่อผู้ใช้</p>
+        <p class="side-user-name" x-text="user ? user.name : ''"></p>
+        <p class="side-user-ic" x-text="user && user.character_name ? user.character_name : ''"></p>
+        <dl class="side-user-meta">
+          <div><dt>ยศ</dt><dd x-text="user ? user.role_name : ''"></dd></div>
+        </dl>
+        <a href="/index.html" class="side-duty" x-show="duty && duty.required" :class="duty && duty.on_duty ? 'is-on' : ''">
+          <span class="duty-dot" aria-hidden="true"></span>
+          <span x-text="duty && duty.on_duty ? 'อยู่ในเวร ' + elapsed : 'ไม่ได้อยู่ในเวร'"></span>
+        </a>
+        <button class="btn-outline side-logout" @click="logout()">ออกจากระบบ</button>
+      </div>
+    </aside>
+    <div class="side-top" x-data="authState()">
+      <button type="button" class="side-burger btn-outline" aria-label="เมนู" @click="document.documentElement.classList.toggle('side-open')">☰</button>
+      <p class="side-crumb"><span>ศูนย์จัดการสภา</span><b>/ ${sideTitle === 'WAVEVY COUNCIL' ? 'ภาพรวมการทำงาน' : sideTitle}</b></p>
+      <span class="side-top-r">
+        <a href="/tasks.html" class="btn-outline side-bell" x-show="dutyOk" x-data="alertBadge()">${ic('bell')}<span class="hidden sm:inline">งานค้าง</span><b class="nav-badge" x-text="count"></b></a>
+        <button type="button" class="btn-outline theme-btn"></button>
+      </span>
+    </div>`;
+  host.insertAdjacentHTML('beforeend', sideHtml);
 
   // ความสูงเมนูบน (เปลี่ยนตามจอ: มือถือมี 2 แถว) ให้องค์ประกอบ sticky อื่นตรึงต่อใต้เมนู
   const headerEl = host.querySelector('.site-header');
   // เมนูตรึงเฉพาะจอ ≥640px; บนมือถือไม่ตรึง จึงให้จุดตรึงของแถบอื่นเป็น 0
   const setHeaderHeight = () => {
-    const pinned = getComputedStyle(headerEl).position === 'sticky';
-    document.documentElement.style.setProperty('--header-h', (pinned ? headerEl.offsetHeight : 0) + 'px');
+    const topEl = document.documentElement.classList.contains('has-side') ? host.querySelector('.side-top') : headerEl;
+    const pinned = getComputedStyle(topEl).position === 'sticky';
+    document.documentElement.style.setProperty('--header-h', (pinned ? topEl.offsetHeight : 0) + 'px');
   };
   setHeaderHeight();
   if (window.ResizeObserver) new ResizeObserver(setHeaderHeight).observe(headerEl);
   window.addEventListener('resize', setHeaderHeight);
+  window.addEventListener('sidechange', setHeaderHeight);
 
-  const btn = document.getElementById('theme-toggle');
+  const btns = [...host.querySelectorAll('.theme-btn')];
   const paint = () => {
     const dark = document.documentElement.getAttribute('data-theme') !== 'light';
     // แสดงเฉพาะไอคอน (ดวงจันทร์ = ตอนนี้โหมดมืด, ดวงอาทิตย์ = ตอนนี้โหมดสว่าง); ข้อความอยู่ที่ title/aria-label เพื่อผู้ใช้โปรแกรมอ่านจอ
-    btn.innerHTML = (dark ? sun : moon) + '<span class="theme-label">' + (dark ? 'โหมดสว่าง' : 'โหมดมืด') + '</span>';
     const label = dark ? 'โหมดมืดอยู่ — กดเพื่อสลับเป็นโหมดสว่าง' : 'โหมดสว่างอยู่ — กดเพื่อสลับเป็นโหมดมืด';
-    btn.title = label;
-    btn.setAttribute('aria-label', label);
+    btns.forEach((btn) => {
+      btn.innerHTML = (dark ? sun : moon) + '<span class="theme-label">' + (dark ? 'โหมดสว่าง' : 'โหมดมืด') + '</span>';
+      btn.title = label;
+      btn.setAttribute('aria-label', label);
+    });
   };
-  btn.addEventListener('click', () => {
+  btns.forEach((btn) => btn.addEventListener('click', () => {
     const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
     document.documentElement.setAttribute('data-theme', next);
     try { localStorage.setItem('theme', next); } catch (e) {}
     paint();
-  });
+  }));
   paint();
   // เตือนความจำของสภา: เด้งกลางจอพร้อมเสียงทุก 5 นาที (ทำงานเฉพาะสภา; สคริปต์ตรวจสิทธิ์เอง)
   if (!document.querySelector('script[data-reminder-popup]')) {

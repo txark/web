@@ -23,6 +23,6 @@ class OverviewTest extends TestCase
 
         Sanctum::actingAs(User::factory()->role(Role::Trainee)->loggedIn()->create());
         $this->getJson('/api/council/overview')->assertOk()
-            ->assertJsonStructure(['data' => ['gangs', 'families', 'pending', 'on_duty', 'recent']]);
+            ->assertJsonStructure(['data' => ['gangs', 'families', 'pending', 'on_duty', 'recent', 'protect']]);
     }
 }

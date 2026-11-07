@@ -39,6 +39,9 @@ class OverviewController extends Controller
             'pending' => Transaction::where('status', TransactionStatus::Pending->value)->count(),
             'on_duty' => $onDuty,
             'recent' => $recent,
+            'protect' => Group::query()->where('protect_until', '>', now())->orderBy('protect_until')->limit(5)
+                ->get(['name', 'protect_until'])
+                ->map(fn (Group $g) => ['name' => $g->name, 'until' => $g->protect_until->toIso8601String()])->values(),
         ]]);
     }
 }

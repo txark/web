@@ -8426,3 +8426,76 @@ body {
 .pub-hero-meta.is-open .hours-state {
   color: var(--ok);
 }
+
+
+/* ───────── สภา: แถบเมนูด้านซ้าย (workspace) ───────── */
+.side, .side-top, .side-backdrop { display: none; }
+html.has-side .site-header { display: none; }
+html.has-side .side-top {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  height: 3.4rem;
+  padding: 0 1rem;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+}
+html.has-side .side {
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 50;
+  width: 15.75rem;
+  padding: 1rem 1rem 1rem;
+  overflow-y: auto;
+  background: var(--bg);
+  border-right: 1px solid var(--line);
+  transform: translateX(-100%);
+  transition: transform 0.2s ease;
+}
+html.has-side.side-open .side { transform: none; }
+html.has-side.side-open .side-backdrop { display: block; position: fixed; inset: 0; z-index: 40; background: rgba(0, 0, 0, 0.45); }
+.side .brand { padding: 0.25rem 0.5rem 1rem; border-bottom: 1px solid var(--line); }
+.side-label { margin: 1.1rem 0.5rem 0.5rem; color: var(--muted); font-size: 0.65rem; font-weight: 600; letter-spacing: 0.18em; }
+.side-label-sub { margin-top: 1.4rem; }
+.side-nav { display: flex; flex-direction: column; gap: 0.2rem; }
+.side-link {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.62rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: 0.55rem;
+  color: var(--muted);
+  font-size: 0.86rem;
+  transition: background 0.15s, color 0.15s;
+}
+.side-link .ic { width: 1.05rem; height: 1.05rem; flex: none; }
+.side-link span { min-width: 0; flex: 1; }
+.side-link:hover { background: var(--accent-soft); color: var(--fg); }
+.side-link[aria-current="page"] { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 40%, transparent); color: var(--accent); }
+.side-link.is-locked { opacity: 0.45; cursor: not-allowed; }
+.side-user { margin-top: auto; padding: 0.9rem; border: 1px solid var(--line); border-radius: 0.7rem; background: var(--panel); font-size: 0.8rem; }
+.side-user-k { color: var(--muted); font-size: 0.72rem; }
+.side-user-name { margin-top: 0.15rem; color: var(--accent); font-size: 1rem; font-weight: 700; word-break: break-all; }
+.side-user-ic { margin-top: 0.15rem; color: var(--muted); }
+.side-user-meta { margin-top: 0.6rem; }
+.side-user-meta div { display: flex; gap: 1rem; padding: 0.15rem 0; }
+.side-user-meta dt { width: 2.2rem; color: var(--muted); }
+.side-duty { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.7rem; padding-top: 0.7rem; border-top: 1px solid var(--line); color: var(--muted); }
+.side-duty.is-on { color: var(--accent); }
+.side-logout { width: 100%; margin-top: 0.7rem; }
+.side-crumb { min-width: 0; margin-right: auto; overflow: hidden; color: var(--muted); font-size: 0.8rem; text-overflow: ellipsis; white-space: nowrap; }
+.side-crumb b { margin-left: 0.4rem; color: var(--fg); font-weight: 600; }
+.side-top-r { display: flex; align-items: center; gap: 0.5rem; }
+.side-bell { display: inline-flex; align-items: center; gap: 0.4rem; }
+.side-bell .ic { width: 1rem; height: 1rem; }
+@media (min-width: 1024px) {
+  html.has-side body { padding-left: 15.75rem; }
+  html.has-side .side { transform: none; }
+  html.has-side .side-burger { display: none; }
+}
