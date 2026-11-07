@@ -7452,6 +7452,20 @@ body {
     color: var(--muted);
     font-size: 0.85rem;
   }
+  .pub-members {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+    gap: 0.6rem;
+    margin-top: 0.9rem;
+  }
+  .pub-member {
+    padding: 0.7rem 1rem;
+    border: 1px solid var(--line);
+    border-radius: 0.65rem;
+    background: var(--panel);
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
   .pub-empty .ic {
     width: 1.5rem;
     height: 1.5rem;

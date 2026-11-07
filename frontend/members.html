@@ -11,13 +11,14 @@
   <script src="/js/config.js"></script>
   <script src="/js/api.js"></script>
   <script src="/js/auth.js"></script>
+  <script src="/js/pages/members.js"></script>
   <script defer src="/js/layout.js"></script>
   <script defer src="/js/vendor/alpine.min.js"></script>
 </head>
 <body class="pub">
   <div id="site-header"></div>
 
-  <main class="container-app py-8">
+  <main class="container-app py-8" x-data="membersPage()">
     <header class="pub-hero pub-hero-page">
       <div class="min-w-0">
         <p class="pub-hero-eyebrow">WAVEVY COUNCIL / MEMBERS</p>
@@ -31,23 +32,21 @@
       </div>
     </header>
 
-    <nav class="pub-ranks" aria-label="ตำแหน่ง">
-      <a href="#r1">ประธานสภา</a>
-      <a href="#r2">รองประธานสภา</a>
-      <a href="#r3">เลขาสภา</a>
-      <a href="#r4">สภาอาวุโส</a>
-      <a href="#r5">สภาปฏิบัติการ</a>
-      <a href="#r6">สภา</a>
-      <a href="#r7">สภาฝึกหัด</a>
+    <p x-show="error" x-cloak class="pub-empty" x-text="error"></p>
+
+    <nav class="pub-ranks" aria-label="ตำแหน่ง" x-show="ranks.length" x-cloak>
+      <template x-for="r in ranks" :key="r.role"><a :href="'#r-' + r.role" x-text="r.label"></a></template>
     </nav>
 
-    <section id="r1" class="pub-rank"><div class="pub-rank-head"><span class="n">01</span><h2>ประธานสภา</h2></div><div class="pub-empty"><i class="ic" data-icon="users" aria-hidden="true"></i>อยู่ระหว่างเตรียมข้อมูลสมาชิกในตำแหน่งนี้</div></section>
-    <section id="r2" class="pub-rank"><div class="pub-rank-head"><span class="n">02</span><h2>รองประธานสภา</h2></div><div class="pub-empty"><i class="ic" data-icon="users" aria-hidden="true"></i>อยู่ระหว่างเตรียมข้อมูลสมาชิกในตำแหน่งนี้</div></section>
-    <section id="r3" class="pub-rank"><div class="pub-rank-head"><span class="n">03</span><h2>เลขาสภา</h2></div><div class="pub-empty"><i class="ic" data-icon="users" aria-hidden="true"></i>อยู่ระหว่างเตรียมข้อมูลสมาชิกในตำแหน่งนี้</div></section>
-    <section id="r4" class="pub-rank"><div class="pub-rank-head"><span class="n">04</span><h2>สภาอาวุโส</h2></div><div class="pub-empty"><i class="ic" data-icon="users" aria-hidden="true"></i>อยู่ระหว่างเตรียมข้อมูลสมาชิกในตำแหน่งนี้</div></section>
-    <section id="r5" class="pub-rank"><div class="pub-rank-head"><span class="n">05</span><h2>สภาปฏิบัติการ</h2></div><div class="pub-empty"><i class="ic" data-icon="users" aria-hidden="true"></i>อยู่ระหว่างเตรียมข้อมูลสมาชิกในตำแหน่งนี้</div></section>
-    <section id="r6" class="pub-rank"><div class="pub-rank-head"><span class="n">06</span><h2>สภา</h2></div><div class="pub-empty"><i class="ic" data-icon="users" aria-hidden="true"></i>อยู่ระหว่างเตรียมข้อมูลสมาชิกในตำแหน่งนี้</div></section>
-    <section id="r7" class="pub-rank"><div class="pub-rank-head"><span class="n">07</span><h2>สภาฝึกหัด</h2></div><div class="pub-empty"><i class="ic" data-icon="users" aria-hidden="true"></i>อยู่ระหว่างเตรียมข้อมูลสมาชิกในตำแหน่งนี้</div></section>
+    <template x-for="(r, i) in ranks" :key="r.role">
+      <section :id="'r-' + r.role" class="pub-rank">
+        <div class="pub-rank-head"><span class="n" x-text="pad(i + 1)"></span><h2 x-text="r.label"></h2><span class="c" x-text="r.members.length + ' คน'"></span></div>
+        <div x-show="r.members.length" class="pub-members">
+          <template x-for="(m, j) in r.members" :key="j"><span class="pub-member" x-text="m.name"></span></template>
+        </div>
+        <div x-show="!r.members.length" class="pub-empty"><i class="ic" data-icon="users" aria-hidden="true"></i>ยังไม่มีสมาชิกในตำแหน่งนี้</div>
+      </section>
+    </template>
   </main>
 
   <footer class="container-app pb-8 pt-2 text-xs text-muted">WAVEVY COUNCIL · เมืองคลื่น</footer>

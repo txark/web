@@ -32,6 +32,7 @@ use Illuminate\Support\Facades\Route;
 // ข้อมูลสาธารณะ: ไม่ต้องล็อกอิน
 Route::prefix('public')->middleware('throttle:120,1')->group(function () {
     Route::get('rules', [RuleController::class, 'index']);
+    Route::get('members', [\App\Http\Controllers\Public\MemberController::class, 'index']);
     Route::get('groups', [GroupController::class, 'index']);
     Route::get('groups/{group}', [GroupController::class, 'show']);
     Route::get('stories/{token}', [PublicStoryController::class, 'show']); // หนังสือสัญญาตามลิงก์แชร์

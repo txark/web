@@ -7,6 +7,7 @@ use App\Enums\MemberPosition;
 use App\Models\Group;
 use App\Models\GroupMember;
 use App\Models\Rule;
+use App\Models\User;
 use Database\Seeders\RuleSeeder;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -295,5 +296,23 @@ class PublicPagesTest extends TestCase
         Group::factory()->create(['name' => 'Wavevy']);
 
         $this->assertSame(1, Group::where('name', 'Wavevy')->count());
+    }
+
+    public function test_members_are_public_with_ic_name_and_rank_only(): void
+    {
+        User::factory()->create(['role' => 'president', 'character_name' => 'Boss IC', 'name' => 'discordname']);
+        User::factory()->create(['role' => 'member', 'character_name' => null, 'name' => 'Fallback']);
+        User::factory()->create(['role' => 'admin', 'character_name' => 'Hidden Admin']);
+        User::factory()->create(['role' => 'gang', 'character_name' => 'Gang Guy']);
+
+        $res = $this->getJson('/api/public/members')->assertOk();
+
+        $this->assertSame('president', $res->json('data.0.role'));
+        $this->assertSame([['name' => 'Boss IC']], $res->json('data.0.members'));
+        $this->assertCount(7, $res->json('data'));
+        $all = json_encode($res->json());
+        $this->assertStringNotContainsString('Hidden Admin', $all);
+        $this->assertStringNotContainsString('Gang Guy', $all);
+        $this->assertStringContainsString('Fallback', $all);
     }
 }
