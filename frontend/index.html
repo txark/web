@@ -153,7 +153,7 @@
         <p x-show="!open" class="penalty-box mt-5">เข้าเวรก่อนเพื่อใช้งานเมนูสภา (ก่อนเข้าเวรเปิดได้เฉพาะหน้าแรกและกฎ)</p>
 
         <!-- ตัวเลขหลัก -->
-        <section x-show="open" class="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <section class="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
           <a href="/groups.html" class="card card-link px-4 py-3">
             <p class="text-xs text-muted">แก๊งในทะเบียน</p>
             <p class="mt-1 text-3xl font-semibold text-accent" x-text="ov ? ov.gangs : '—'"></p>
@@ -179,7 +179,7 @@
         <div class="mt-6 grid gap-6 lg:grid-cols-[1fr_20rem]">
           <div class="min-w-0 space-y-6">
             <!-- ธุรกรรมล่าสุด -->
-            <section x-show="open" class="card overflow-hidden">
+            <section class="card overflow-hidden">
               <div class="flex items-center justify-between px-5 py-4">
                 <h2 class="font-semibold">ธุรกรรมล่าสุด</h2>
                 <a href="/transactions.html" class="text-sm text-accent hover:underline">ดูทั้งหมด</a>
@@ -204,7 +204,7 @@
             </section>
 
             <!-- แดชบอร์ดย่อ สำหรับประธาน/รองประธาน -->
-            <section x-show="open && admin() && dash" x-cloak>
+            <section x-show="admin() && dash" x-cloak>
               <div class="mb-3 flex items-baseline justify-between">
                 <h2 class="font-semibold">แดชบอร์ด</h2>
                 <a href="/dashboard.html" class="text-sm text-accent hover:underline">ดูแดชบอร์ดเต็ม</a>

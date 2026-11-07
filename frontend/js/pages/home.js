@@ -41,8 +41,8 @@ function homePage() {
         });
         setInterval(() => this.tick++, 1000);
         await this.loadAlerts();
-        this.loadOverview();
       }
+      if (this.council()) this.loadOverview();
       this.loading = false;
 
       // ป๊อปอัปแจ้งเตือน (กลางจอ) หลังหน้าแสดงผลแล้ว
@@ -181,9 +181,8 @@ function homePage() {
       } catch (e) {}
     },
 
-    // ตัวเลขภาพรวม (สภา) + แดชบอร์ดย่อ (รองประธานขึ้นไป); โหลดได้เฉพาะตอนอยู่ในเวร
+    // ตัวเลขภาพรวม (สภา) + แดชบอร์ดย่อ (รองประธานขึ้นไป); ดูได้แม้ยังไม่เข้าเวร
     async loadOverview() {
-      if (!this.open) return;
       this.ovLoading = true;
       try {
         this.ov = (await API.get('/api/council/overview')).data;
