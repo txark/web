@@ -16,6 +16,9 @@ function homePage() {
     err: '',
     alerts: [],
     alertCount: 0,
+    ov: null,
+    ovLoading: false,
+    dash: null,
 
     async init() {
       await auth.init();
@@ -38,6 +41,7 @@ function homePage() {
         });
         setInterval(() => this.tick++, 1000);
         await this.loadAlerts();
+        this.loadOverview();
       }
       this.loading = false;
 
@@ -126,6 +130,7 @@ function homePage() {
         try {
           await Duty.start();
           await this.loadAlerts();
+          this.loadOverview();
         } catch (e) {
           this.err = e.message || 'ดำเนินการไม่สำเร็จ';
         } finally {
@@ -174,6 +179,37 @@ function homePage() {
         this.alerts = res.data;
         this.alertCount = res.meta.count;
       } catch (e) {}
+    },
+
+    // ตัวเลขภาพรวม (สภา) + แดชบอร์ดย่อ (รองประธานขึ้นไป); โหลดได้เฉพาะตอนอยู่ในเวร
+    async loadOverview() {
+      if (!this.open) return;
+      this.ovLoading = true;
+      try {
+        this.ov = (await API.get('/api/council/overview')).data;
+      } catch (e) {}
+      if (this.admin()) {
+        try {
+          this.dash = (await API.get('/api/council/dashboard')).data;
+        } catch (e) {}
+      }
+      this.ovLoading = false;
+    },
+
+    money(n) {
+      return Number(n || 0).toLocaleString('en-US');
+    },
+
+    hm(seconds) {
+      const s = Math.max(0, Math.round(seconds || 0));
+      const h = Math.floor(s / 3600);
+      const m = Math.floor((s % 3600) / 60);
+      if (h === 0 && m === 0) return s > 0 ? '< 1 นาที' : '0';
+      return h > 0 ? `${h} ชม. ${pad(m)} นาที` : `${m} นาที`;
+    },
+
+    stamp(iso) {
+      return iso ? new Intl.DateTimeFormat('th-TH-u-ca-buddhist', { timeZone: 'Asia/Bangkok', day: '2-digit', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(iso)).replace(',', '') : '—';
     },
 
     get displayName() {
