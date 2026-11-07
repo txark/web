@@ -2,7 +2,8 @@
 function summonsPage() {
   const BKK = 'Asia/Bangkok';
   const DEFAULT_PLACE = 'หน้าที่ทำการสภา';
-  const DISCORD_TAG_ID = '<a:8017warning:1533062332249542697>';    // อิโมจิ Discord (เคลื่อนไหว) นำหน้าบรรทัดแท็กท้ายข้อความ
+  const DISCORD_TAG_ID = '<:6060bluemegaphone:1470478774217998479>';    // อิโมจิ Discord นำหน้าบรรทัดแท็กท้ายข้อความ
+  const DISCORD_TICKET_URL = 'https://discord.com/channels/1189260716302147684/1459212495595110493';   // ห้อง TICKET ติดต่อสภา
   const DISCORD_ROLE_ID ='1561416124157919274';   // บทบาทใน Discord ที่แท็กตอนประกาศมาตรการที่ 3
   const todayBkk = () => new Intl.DateTimeFormat('en-CA', { timeZone: BKK }).format(new Date());   // YYYY-MM-DD เวลาไทย
   const COUNCIL = { id: 'council', council: true, name: 'สภา', short_name: '' };   // ผู้แจ้งเรียกเป็นสภาเอง (ไม่ใช่กลุ่มในทะเบียน)
@@ -178,10 +179,11 @@ function summonsPage() {
       const base = `ขอเชิญตัวแทน ${kind} : ${g.name}${g.short_name ? ' [' + g.short_name + ']' : ''} ติดต่อสภา${place} ${this.dimLabel(s.dimension)}`;
       switch (this.roundOf(s)) {
         case '2': return `/cc ${base}  สภาจะทำการล็อกธุรกรรมและระงับสิทธิ์กิจกรรมทั้งหมด จนกว่าจะมาติดต่อ`;
-        case '3': return `# ประกาศเรียกจากสภา
-${base} ขอให้เปิด TK ภายใน 24 ชั่วโมง ไม่ดำเนินการตามกำหนดเข้าข่าย BK
+        case '3': return `## [ ประกาศจากสภา WAVEVY CITY ]
 
-${DISCORD_TAG_ID} : <@&${DISCORD_ROLE_ID}>`;
+## ขอเชิญตัวแทน ${kind} : ${g.name}${g.short_name ? ' [' + g.short_name + ']' : ''} [กด TICKET ติดต่อสภา](${DISCORD_TICKET_URL}) ภายใน 24 ชม. ด้วยครับ/ค่ะ
+
+${DISCORD_TAG_ID}  : <@&${DISCORD_ROLE_ID}>`;
         default: return `/cc ${base} ในเวลานี้ด้วยครับ`;
       }
     },
