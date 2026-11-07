@@ -14,10 +14,10 @@
   const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
   const rows = ITEMS.map((it) => {
-    const inner = `<span class="tx-item-ic"><i class="ic" data-icon="${it.icon || 'list-checks'}" aria-hidden="true"></i></span><span class="tx-item-txt"><span class="tx-item-label">${esc(it.label)}</span><span class="tx-item-hint">${esc(it.hint)}</span></span>`;
+    const inner = `<i class="ic" data-icon="${it.icon || 'list-checks'}" aria-hidden="true"></i>${esc(it.label)}`;
     const body = it.soon
-      ? `<span class="tx-item tx-item-soon" aria-disabled="true" title="กำลังพัฒนา">${inner}<span class="tx-soon">เร็วๆ นี้</span></span>`
-      : `<a href="${it.href}" class="tx-item"${it.href === here ? ' aria-current="page"' : ''}>${inner}</a>`;
+      ? `<span class="fn-tab" aria-disabled="true" title="กำลังพัฒนา">${inner}</span>`
+      : `<a href="${it.href}" class="fn-tab"${it.href === here ? ' aria-current="page"' : ''}>${inner}</a>`;
     return it.min ? `<template x-if="auth && auth.can('${it.min}')">${body}</template>` : body;
   }).join('');
 
@@ -29,10 +29,12 @@
     },
   });
 
+  // แท็บแนวนอนใต้หัวหน้า (เหมือนหน้าประกาศ): ย้ายไปไว้หลังหัวเรื่องของหน้านั้น
   const host = document.getElementById('tx-sidebar');
   if (host) {
-    host.classList.add('tx-sidebar');
     host.setAttribute('aria-label', 'รายการธุรกรรม');
-    host.innerHTML = `<p class="tx-title"><a href="/transactions.html"${here === '/transactions.html' ? ' aria-current="page"' : ''}>ธุรกรรม</a></p><nav class="tx-list">${rows}</nav>`;
+    host.innerHTML = `<nav class="fn-tabs mt-6">${rows}</nav>`;
+    const head = document.querySelector('.rg-head');
+    if (head) head.insertAdjacentElement('afterend', host);
   }
 })();

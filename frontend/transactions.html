@@ -23,6 +23,13 @@
     <div x-show="!ready" class="py-24 text-center text-muted">กำลังตรวจสอบสิทธิ์...</div>
 
     <div x-show="ready" x-cloak class="tx-layout">
+      <header class="rg-head">
+        <div class="min-w-0">
+          <p class="rg-eyebrow">WAVEVY COUNCIL / TRANSACTIONS</p>
+          <h1 class="rg-title"><i class="ic rg-ic" data-icon="arrow-left-right" aria-hidden="true"></i>ธุรกรรมสภา</h1>
+          <p class="rg-sub">คำขอ ทะเบียนแก๊ง/ครอบครัว ชุด สตอรี่ และการเงินของสภา</p>
+        </div>
+      </header>
       <aside id="tx-sidebar" x-data="txSidebar()"></aside>
 
       <!-- หน้าหลักของธุรกรรม: ให้เลือกรายการจากแถบด้านข้าง -->
@@ -31,7 +38,7 @@
           <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg>
         </div>
         <h1 class="tx-empty-title">เลือกรายการที่จะทำ</h1>
-        <p class="mt-2 text-sm text-muted">เลือกรายการจากเมนูธุรกรรม<span class="hidden lg:inline">ด้านซ้าย</span><span class="lg:hidden">ด้านบน</span></p>
+        <p class="mt-2 text-sm text-muted">เลือกรายการจากแท็บด้านบน</p>
       </section>
     </div>
   </main>

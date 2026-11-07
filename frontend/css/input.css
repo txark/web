@@ -8499,3 +8499,7 @@ html.has-side.side-open .side-backdrop { display: block; position: fixed; inset:
   html.has-side .side { transform: none; }
   html.has-side .side-burger { display: none; }
 }
+
+/* หมวดธุรกรรม: แท็บแนวนอนแทนแถบรายการด้านข้าง */
+.tx-layout { display: block; }
+.tx-layout .tx-empty { margin-top: 1.5rem; }
