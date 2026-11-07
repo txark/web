@@ -39,20 +39,23 @@
       <p x-show="error" x-text="error" class="penalty-box mt-5"></p>
 
       <div class="ts-layout" x-show="!error">
-        <!-- sidebar: หมวดของคำขอ/ธุรกรรมและงานตรวจสอบ -->
-        <aside class="ts-side" aria-label="หมวดงานค้าง">
+        <!-- ตัวกรองหมวดงานค้าง: จัดกลุ่มตามประเภท -->
+        <nav class="ts-filter" aria-label="หมวดงานค้าง">
           <template x-for="sec in sections" :key="sec.title">
-            <div class="ts-sec">
-              <p class="ts-sec-title" x-show="sec.title" x-text="sec.title"></p>
-              <template x-for="k in sec.items" :key="k.value">
-                <button type="button" class="ts-item" :aria-pressed="kind === k.value" @click="kind = k.value">
-                  <i x-text="countKind(k.value)" :class="countKind(k.value) ? '' : 'is-zero'"></i>
-                  <span class="ts-item-l"><i class="ic" :data-icon="k.icon" aria-hidden="true"></i><span x-text="k.label"></span></span>
-                </button>
-              </template>
+            <div class="ts-grp">
+              <p class="ts-grp-t" x-show="sec.title" x-text="sec.title"></p>
+              <div class="ts-chips">
+                <template x-for="k in sec.items" :key="k.value">
+                  <button type="button" class="ts-chip" :aria-pressed="kind === k.value" @click="kind = k.value">
+                    <i class="ic" :data-icon="k.icon || 'list-checks'" aria-hidden="true"></i>
+                    <span x-text="k.label"></span>
+                    <b :class="countKind(k.value) ? 'has' : ''" x-text="countKind(k.value)"></b>
+                  </button>
+                </template>
+              </div>
             </div>
           </template>
-        </aside>
+        </nav>
 
         <div class="min-w-0">
           <!-- เพิ่มบันทึกเตือนความจำ -->
