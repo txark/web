@@ -49,7 +49,7 @@
                   <button type="button" class="ts-chip" :aria-pressed="kind === k.value" @click="kind = k.value">
                     <i class="ic" :data-icon="k.icon || 'list-checks'" aria-hidden="true"></i>
                     <span x-text="k.label"></span>
-                    <b :class="countKind(k.value) ? 'has' : ''" x-text="countKind(k.value)"></b>
+                    <b x-show="countKind(k.value) > 0" x-text="countKind(k.value)"></b>
                   </button>
                 </template>
               </div>

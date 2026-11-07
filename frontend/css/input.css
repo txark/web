@@ -8513,37 +8513,24 @@ html.has-side .side-top { view-transition-name: sidetop; }
 /* งานค้าง: แท็บแนวนอนแทนรายการหมวดด้านข้าง */
 .ts-layout { display: block; }
 
-/* งานค้าง: ตัวกรองหมวดแบบชิปจัดกลุ่ม */
-.ts-filter {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem 1.75rem;
-  margin-bottom: 1.25rem;
-  padding: 1rem 1.25rem;
-  border: 1px solid var(--line);
-  border-radius: 0.9rem;
-  background: var(--panel);
-}
-.ts-grp-t { margin-bottom: 0.45rem; color: var(--muted); font-size: 0.68rem; font-weight: 600; letter-spacing: 0.12em; }
-.ts-grp:not(:first-child) { padding-left: 1.75rem; border-left: 1px solid var(--line); }
-.ts-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+/* งานค้าง: แถบชิปหมวดบรรทัดเดียว เรียบ ๆ (ตัวเลขแสดงเฉพาะหมวดที่มีงาน) */
+.ts-filter { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.25rem; padding: 0; border: 0; background: none; }
+.ts-grp, .ts-chips { display: contents; }
+.ts-grp-t { display: none; }
 .ts-chip {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-  padding: 0.4rem 0.75rem;
+  padding: 0.45rem 0.85rem;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: transparent;
+  background: var(--panel);
   color: var(--muted);
-  font-size: 0.82rem;
+  font-size: 0.85rem;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 .ts-chip .ic { width: 0.95rem; height: 0.95rem; }
 .ts-chip:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); color: var(--fg); }
-.ts-chip[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 600; }
-.ts-chip b { min-width: 1.2rem; padding: 0 0.35rem; border-radius: 999px; background: var(--line); color: var(--muted); font-size: 0.7rem; font-weight: 600; text-align: center; }
-.ts-chip b.has { background: var(--accent); color: var(--on-accent, #fff); }
-@media (max-width: 720px) {
-  .ts-grp:not(:first-child) { padding-left: 0; border-left: 0; padding-top: 0.9rem; border-top: 1px solid var(--line); width: 100%; }
-}
+.ts-chip[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: var(--on-accent, #fff); font-weight: 600; }
+.ts-chip b { min-width: 1.25rem; padding: 0.05rem 0.4rem; border-radius: 999px; background: var(--accent); color: var(--on-accent, #fff); font-size: 0.7rem; font-weight: 700; text-align: center; }
+.ts-chip[aria-pressed="true"] b { background: rgba(255, 255, 255, 0.25); color: inherit; }
