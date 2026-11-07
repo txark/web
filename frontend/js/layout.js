@@ -6,7 +6,6 @@
 
   const here = location.pathname;
   const ic = (n) => `<i class="ic" data-icon="${n}" aria-hidden="true"></i>`;
-  const onHome = here === '/' || here === '/index.html';
   const cur = (cond) => (cond ? ' aria-current="page"' : '');
 
   // ผู้เยี่ยมชม/แก๊ง/ครอบครัว
@@ -117,7 +116,7 @@
         <a href="/rules.html" :href="user && can('member') ? '/index.html' : '/rules.html'" class="brand" aria-label="WAVEVY COUNCIL"><span class="brand-main">WAVEVY.</span><span class="brand-sub">COUNCIL</span></a>
 
         <!-- มือถือ: เมนูลงมาแถวที่สอง -->
-        <nav class="order-3 flex w-full items-center gap-1 overflow-x-auto sm:order-none sm:mr-auto sm:w-auto" x-show="${onHome ? "user && (user.role === 'gang' || user.role === 'family')" : 'true'}">${nav}
+        <nav class="order-3 flex w-full items-center gap-1 overflow-x-auto sm:order-none sm:mr-auto sm:w-auto">${nav}
         </nav>
 
         <div class="flex items-center gap-2 text-sm">
