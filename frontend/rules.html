@@ -104,8 +104,8 @@
                             :aria-current="!searching && s.key === current"
                             :class="searching && matchCount(s) === 0 ? 'opacity-40' : ''"
                             @click="choose(s.key)">
-                      <span class="toc-no" x-text="pad(s.no)"></span>
-                      <span class="toc-label" x-text="s.label"></span>
+                      <span class="toc-no" x-text="s.key.toUpperCase()"></span>
+                      <span class="toc-label" x-text="shortLabel(s)"></span>
                       <span class="toc-count" :class="searching && matchCount(s) > 0 ? 'toc-count-hit' : ''"
                             x-text="searching ? matchCount(s) : count(s)"></span>
                     </button>

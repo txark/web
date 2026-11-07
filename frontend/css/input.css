@@ -8389,3 +8389,14 @@ body {
 .pub-hero-page .pub-hero-num b {
   font-size: 3.4rem;
 }
+
+/* สารบัญกฎ: ป้ายรหัสหมวด (CC, VISIT, SUMMON ...) แทนเลขลำดับ */
+.toc-item .toc-no {
+  flex: none;
+  width: 3.9rem;
+  height: 1.65rem;
+  border-radius: 0.4rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}

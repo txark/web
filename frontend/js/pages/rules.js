@@ -289,6 +289,11 @@ function rulesPage() {
       return this.currentSection?.cats.find((k) => k.anchor === this.activeCat)?.title || '';
     },
 
+    /** ชื่อหมวดไม่รวมรหัสนำหน้า (รหัสอยู่ในป้ายแล้ว): "CC · เกี่ยวกับสภา" → "เกี่ยวกับสภา" */
+    shortLabel(s) {
+      return String(s.label).includes(' · ') ? String(s.label).split(' · ').slice(1).join(' · ') : s.label;
+    },
+
     pad(n) {
       return String(n).padStart(2, '0');
     },
