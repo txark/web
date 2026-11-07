@@ -3,6 +3,12 @@
 namespace App\Http\Resources;
 
 use App\Enums\GroupStatus;
+use App\Models\Announcement;
+use App\Models\CouncilEntry;
+use App\Models\CouncilLoanPayment;
+use App\Models\CouncilPayRound;
+use App\Models\CouncilSummon;
+use App\Models\CouncilTrade;
 use App\Models\Group;
 use App\Models\GroupMember;
 use App\Models\Rule;
@@ -52,6 +58,12 @@ class ActivityResource extends JsonResource
         GroupMember::class => 'สมาชิกแก๊ง',
         Transaction::class => 'ธุรกรรม',
         Rule::class => 'กฎ',
+        CouncilEntry::class => 'รายรับ/รายจ่าย',
+        CouncilTrade::class => 'ซื้อ-ขาย',
+        CouncilPayRound::class => 'รอบโบนัสเวร',
+        CouncilLoanPayment::class => 'รับคืนเงินกู้',
+        CouncilSummon::class => 'ประกาศเรียก',
+        Announcement::class => 'ประกาศ',
     ];
 
     /** บันทึกจากโมเดล (created/updated/deleted) เป็นภาษาอังกฤษ จึงแปลเป็นไทยตอนแสดง */
@@ -134,6 +146,36 @@ class ActivityResource extends JsonResource
         return $lines;
     }
 
+    /** รายการที่มีรหัส (การเงิน/ซื้อ-ขาย/โบนัส/รับคืนเงินกู้/ประกาศ): แสดงรหัสและสาระสำคัญของรายการ */
+    private function docDetails(): array
+    {
+        $m = $this->subject;
+        if (! $m || ! isset(self::SUBJECT_LABELS[$this->subject_type]) || empty($m->number)) {
+            return [];
+        }
+
+        $baht = fn ($v) => number_format((int) $v).' WVDL';
+        $lines = [['รหัสรายการ', $m->number], ['ชนิด', self::SUBJECT_LABELS[$this->subject_type]]];
+
+        if ($m instanceof CouncilEntry) {
+            $lines[] = ['รายการ', $m->title];
+            $lines[] = [$m->type === 'income' ? 'รายรับ' : 'รายจ่าย', $baht($m->amount)];
+        } elseif ($m instanceof CouncilTrade) {
+            $lines[] = ['รายการ', $m->item.' ×'.number_format($m->quantity)];
+            $lines[] = [$m->direction === 'sell' ? 'สภาขาย' : 'สภาซื้อ', $baht($m->amount)];
+        } elseif ($m instanceof CouncilLoanPayment) {
+            $lines[] = [$m->reversal_of ? 'ยกเลิกรับคืน' : 'รับคืน', $baht($m->amount)];
+        } elseif ($m instanceof CouncilPayRound) {
+            $lines[] = ['ถึงวันที่', $m->ended_at?->timezone(config('council.report_timezone'))->format('d/m/Y H:i')];
+        } elseif ($m instanceof CouncilSummon) {
+            $lines[] = ['เหตุผล', (string) $m->reason];
+        } elseif ($m instanceof Announcement) {
+            $lines[] = ['หัวข้อ', (string) $m->title];
+        }
+
+        return $lines;
+    }
+
     public function toArray(Request $request): array
     {
         $causer = $this->causer;
@@ -159,7 +201,7 @@ class ActivityResource extends JsonResource
                 'id' => $this->subject_id,
             ] : null,
             'summary' => $tx ? (new TransactionResource($tx))->toArray($request)['summary'] : null,
-            'details' => $tx ? TransactionResource::detailLines($tx) : $this->groupDetails(),
+            'details' => $tx ? TransactionResource::detailLines($tx) : ($this->groupDetails() ?: $this->docDetails()),
             'changes' => $this->attribute_changes,
             'properties' => $this->properties,
             'created_at' => $this->created_at?->toIso8601String(),

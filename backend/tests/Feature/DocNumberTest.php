@@ -30,4 +30,18 @@ class DocNumberTest extends TestCase
         $this->assertStringStartsWith('WC-FINE-', $fine->number);
         $this->assertStringStartsWith('WC-PEN-', $pen->number);
     }
+
+    public function test_activity_log_details_show_the_code_of_finance_records(): void
+    {
+        $admin = User::factory()->role(\App\Enums\Role::Admin)->loggedIn()->create();
+        \Laravel\Sanctum\Sanctum::actingAs($admin);
+        $e = CouncilEntry::create(['type' => 'expense', 'spent_at' => now(), 'amount' => 2500, 'category' => 'other', 'title' => 'ซื้อของ', 'created_by' => $admin->id]);
+
+        $rows = $this->getJson('/api/logs?per_page=100')->assertOk()->json('data');
+        $row = collect($rows)->first(fn ($r) => ($r['subject']['label'] ?? null) === 'รายรับ/รายจ่าย');
+
+        $this->assertNotNull($row);
+        $this->assertContains(['รหัสรายการ', $e->number], $row['details']);
+        $this->assertContains(['รายจ่าย', '2,500 WVDL'], $row['details']);
+    }
 }
