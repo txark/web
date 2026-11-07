@@ -251,7 +251,7 @@
                 >
                   <span
                     class="mr-auto text-xs text-muted"
-                    x-text="a.author ? 'โดย ' + a.author : ''"
+                    x-text="(a.number ? a.number + ' · ' : '') + (a.author ? 'โดย ' + a.author : '')"
                   ></span>
                   <button type="button" class="text-accent hover:underline" @click="copyAnnounce(a)" x-text="copiedKey === a.id ? 'คัดลอกแล้ว ✓' : 'คัดลอกประกาศ'"></button>
                   <button

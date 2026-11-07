@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use App\Models\Concerns\HasDocNumber;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -16,6 +17,10 @@ use Spatie\Activitylog\Support\LogOptions;
 #[Fillable(['loan_id', 'reversal_of', 'amount', 'paid_at', 'note', 'reason', 'created_by'])]
 class CouncilLoanPayment extends Model
 {
+    use HasDocNumber;
+
+    public const DOC_PREFIX = 'PAY';
+
     use LogsActivity, SoftDeletes;
 
     /**

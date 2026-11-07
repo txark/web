@@ -136,7 +136,7 @@ class TradeController extends Controller
         $g = $t->group;
 
         return [
-            'id' => $t->id, 'direction' => $t->direction, 'direction_label' => $t->direction === 'sell' ? 'สภาขาย' : 'สภาซื้อ',
+            'id' => $t->id, 'number' => $t->number, 'direction' => $t->direction, 'direction_label' => $t->direction === 'sell' ? 'สภาขาย' : 'สภาซื้อ',
             'group' => $g ? ['id' => $g->id, 'name' => $g->name, 'short_name' => $g->short_name, 'type' => $g->type->value, 'is_lady' => (bool) $g->is_lady, 'deleted' => $g->trashed()] : null,
             'item' => $t->item, 'quantity' => $t->quantity, 'unit_price' => $t->unit_price, 'amount' => $t->amount,
             'traded_at' => $t->traded_at->format('Y-m-d'), 'note' => (string) $t->note, 'by' => $this->nameOf($t->creator),

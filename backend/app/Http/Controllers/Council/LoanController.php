@@ -358,7 +358,7 @@ class LoanController extends Controller
             'schedule' => $withSchedule ? $schedule : null,
             // รายการรับคืนทั้งหมด (รวมรายการยกเลิก) ใหม่สุดก่อน: reversed = รายการนี้ถูกยกเลิกแล้ว · is_reversal = นี่คือรายการยกเลิก
             'payments' => $l->payments->sortByDesc(fn ($p) => $p->paid_at->format('Y-m-d').str_pad((string) $p->id, 10, '0', STR_PAD_LEFT))->values()->map(fn (CouncilLoanPayment $p) => [
-                'id' => $p->id, 'amount' => $p->amount, 'paid_at' => $p->paid_at->format('Y-m-d'), 'note' => (string) $p->note, 'by' => $this->nameOf($p->creator),
+                'id' => $p->id, 'number' => $p->number, 'amount' => $p->amount, 'paid_at' => $p->paid_at->format('Y-m-d'), 'note' => (string) $p->note, 'by' => $this->nameOf($p->creator),
                 'is_reversal' => $p->isReversal(), 'reversal_of' => $p->reversal_of, 'reversed' => in_array($p->id, $reversed, true), 'reason' => (string) $p->reason,
             ])->all(),
         ];

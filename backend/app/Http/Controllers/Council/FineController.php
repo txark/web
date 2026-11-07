@@ -120,6 +120,7 @@ class FineController extends Controller
 
         return [
             'id' => $r->id,
+            'number' => $r->number,
             'group' => $this->group($r->group),
             'penalty_type' => $d['penalty_type'] ?? 'fine',
             'amount' => $d['amount'] ?? null,

@@ -277,6 +277,7 @@ class GroupRecordController extends Controller
     {
         return [
             'id' => $r->id,
+            'number' => $r->number,
             'kind' => $r->kind,
             'data' => $r->data,
             'note' => $r->note,

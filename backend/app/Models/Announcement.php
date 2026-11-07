@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\AnnouncementType;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use App\Models\Concerns\HasDocNumber;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -13,6 +14,10 @@ use Spatie\Activitylog\Support\LogOptions;
 #[Fillable(['type', 'title', 'body', 'group_id', 'due_at', 'is_published', 'published_at', 'created_by'])]
 class Announcement extends Model
 {
+    use HasDocNumber;
+
+    public const DOC_PREFIX = 'ANN';
+
     use LogsActivity, SoftDeletes;
 
     /**

@@ -17,6 +17,7 @@ class AnnouncementResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'number' => $this->number,
             'type' => $this->type->value,
             'type_label' => $this->type->label(),
             'title' => $this->title,

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use App\Models\Concerns\HasDocNumber;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -14,6 +15,10 @@ use Spatie\Activitylog\Support\LogOptions;
 #[Fillable(['started_at', 'ended_at', 'formula', 'variables', 'note', 'created_by'])]
 class CouncilPayRound extends Model
 {
+    use HasDocNumber;
+
+    public const DOC_PREFIX = 'BON';
+
     use LogsActivity, SoftDeletes;
 
     /**

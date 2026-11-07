@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use App\Models\Concerns\HasDocNumber;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -13,6 +14,10 @@ use Spatie\Activitylog\Support\LogOptions;
 #[Fillable(['group_id', 'direction', 'item', 'quantity', 'unit_price', 'amount', 'traded_at', 'note', 'created_by'])]
 class CouncilTrade extends Model
 {
+    use HasDocNumber;
+
+    public const DOC_PREFIX = 'TRD';
+
     use LogsActivity, SoftDeletes;
 
     /**

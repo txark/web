@@ -230,7 +230,7 @@ class FinanceController extends Controller
                 'id' => 'f-'.$g->id, 'type' => 'income', 'date' => $g->created_at->copy()->utc()->toIso8601String(),
                 'title' => 'ค่าปรับ · '.($g->group?->name ?? '—'), 'category' => 'fine', 'category_label' => 'ค่าปรับ',
                 'amount' => (int) $g->data['amount'],
-                'ref' => 'บันทึกทะเบียน #'.$g->id, 'by' => $this->nameOf($g->recorder),
+                'ref' => $g->number, 'by' => $this->nameOf($g->recorder),
                 'note' => trim(($g->data['category_label'] ?? '').(isset($g->data['charge']) ? ' · '.mb_strimwidth((string) $g->data['charge'], 0, 120, '…') : '')),
                 'entry_id' => null, 'group_id' => $g->group_id,
             ])->values();
@@ -275,7 +275,7 @@ class FinanceController extends Controller
                 'date' => Carbon::parse($t->traded_at->format('Y-m-d').' 12:00', config('council.report_timezone'))->utc()->toIso8601String(),
                 'title' => ($direction === 'sell' ? 'สภาขาย' : 'สภาซื้อ').' · '.$t->item.' ×'.number_format($t->quantity).' · '.($t->group?->name ?? '—'),
                 'category' => 'trade', 'category_label' => 'ซื้อ-ขาย', 'amount' => (int) $t->amount,
-                'ref' => 'ซื้อ-ขาย #'.$t->id, 'by' => $this->nameOf($t->creator), 'note' => (string) $t->note, 'entry_id' => null, 'trade_id' => $t->id,
+                'ref' => $t->number, 'by' => $this->nameOf($t->creator), 'note' => (string) $t->note, 'entry_id' => null, 'trade_id' => $t->id,
             ]);
     }
 
@@ -293,7 +293,7 @@ class FinanceController extends Controller
                     'id' => 'b-'.$p->id, 'type' => 'expense', 'date' => $p->ended_at->copy()->utc()->toIso8601String(),
                     'title' => 'โบนัสเวร รอบ '.$fmt($p->started_at).' – '.$fmt($p->ended_at).' · '.$p->items->count().' คน',
                     'category' => 'bonus', 'category_label' => 'โบนัส', 'amount' => (int) $p->items->sum('amount'),
-                    'ref' => 'โบนัสเวร #'.$p->id, 'by' => $this->nameOf($p->creator), 'note' => (string) $p->note, 'entry_id' => null, 'bonus_id' => $p->id,
+                    'ref' => $p->number, 'by' => $this->nameOf($p->creator), 'note' => (string) $p->note, 'entry_id' => null, 'bonus_id' => $p->id,
                 ];
             })->filter(fn (array $e) => $e['amount'] > 0)->values();
     }
@@ -312,7 +312,7 @@ class FinanceController extends Controller
         return CouncilLoanPayment::query()->with(['loan.group', 'creator:id,name,character_name'])
             ->whereNull('reversal_of')->whereHas('loan')
             ->whereBetween('paid_at', [$r['from_date'], $r['to_date']])
-            ->get()->toBase()->map(fn (CouncilLoanPayment $p) => $this->loanRow('p-'.$p->id, 'income', 'รับคืนเงินกู้', $p->loan, $p->paid_at->format('Y-m-d'), $p->amount, $p->creator, (string) $p->note));
+            ->get()->toBase()->map(fn (CouncilLoanPayment $p) => $this->loanRow('p-'.$p->id, 'income', 'รับคืนเงินกู้', $p->loan, $p->paid_at->format('Y-m-d'), $p->amount, $p->creator, (string) $p->note, $p->number));
     }
 
     /** รายการยกเลิกรับคืนในช่วง = รายจ่ายหมวดเงินกู้ (หักล้างรายการรับคืนเดิม) */
@@ -321,7 +321,7 @@ class FinanceController extends Controller
         return CouncilLoanPayment::query()->with(['loan.group', 'creator:id,name,character_name'])
             ->whereNotNull('reversal_of')->whereHas('loan')
             ->whereBetween('paid_at', [$r['from_date'], $r['to_date']])
-            ->get()->toBase()->map(fn (CouncilLoanPayment $p) => $this->loanRow('x-'.$p->id, 'expense', 'ยกเลิกรับคืนเงินกู้', $p->loan, $p->paid_at->format('Y-m-d'), $p->amount, $p->creator, (string) $p->reason));
+            ->get()->toBase()->map(fn (CouncilLoanPayment $p) => $this->loanRow('x-'.$p->id, 'expense', 'ยกเลิกรับคืนเงินกู้', $p->loan, $p->paid_at->format('Y-m-d'), $p->amount, $p->creator, (string) $p->reason, $p->number));
     }
 
     /** สัญญาที่ยกเลิกในช่วง = รายรับหมวดเงินกู้ (ยอดกู้คืนเข้ากองทุน หักล้างรายจ่ายปล่อยกู้เดิม) */
@@ -336,13 +336,13 @@ class FinanceController extends Controller
     }
 
     /** @return array<string, mixed> */
-    private function loanRow(string $id, string $type, string $verb, CouncilLoan $loan, string $day, int $amount, ?User $by, string $note): array
+    private function loanRow(string $id, string $type, string $verb, CouncilLoan $loan, string $day, int $amount, ?User $by, string $note, ?string $ref = null): array
     {
         return [
             'id' => $id, 'type' => $type,
             'date' => Carbon::parse($day.' 12:00', config('council.report_timezone'))->utc()->toIso8601String(),
             'title' => $verb.' · '.($loan->group?->name ?? '—'), 'category' => 'loan', 'category_label' => 'เงินกู้',
-            'amount' => $amount, 'ref' => 'เงินกู้ #'.$loan->id, 'by' => $this->nameOf($by), 'note' => $note, 'entry_id' => null, 'loan_id' => $loan->id,
+            'amount' => $amount, 'ref' => $ref ?? 'WV-LN-'.str_pad((string) $loan->id, 6, '0', STR_PAD_LEFT), 'by' => $this->nameOf($by), 'note' => $note, 'entry_id' => null, 'loan_id' => $loan->id,
         ];
     }
 
@@ -365,7 +365,7 @@ class FinanceController extends Controller
             // วันที่เก็บเป็นวัน ไม่มีเวลา: ตีเป็นเที่ยงวันตามเวลาไทยให้เรียงลำดับและไม่เลื่อนวัน
             'date' => Carbon::parse($e->spent_at->format('Y-m-d').' 12:00', config('council.report_timezone'))->utc()->toIso8601String(),
             'title' => $e->title, 'category' => $e->category, 'category_label' => $cats[$e->category] ?? $e->category,
-            'amount' => (int) $e->amount, 'ref' => '', 'by' => $this->nameOf($e->creator), 'note' => (string) $e->note, 'entry_id' => $e->id,
+            'amount' => (int) $e->amount, 'ref' => $e->number, 'by' => $this->nameOf($e->creator), 'note' => (string) $e->note, 'entry_id' => $e->id,
             'spent_at' => $e->spent_at->format('Y-m-d'),
         ];
     }

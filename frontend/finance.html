@@ -359,6 +359,7 @@
                               <template x-for="p in l.payments" :key="p.id">
                                 <li :class="p.reversed ? 'is-reversed' : ''">
                                   <span x-text="dayLabel(p.paid_at)"></span>
+                                  <span class="fn-mute" x-text="p.number"></span>
                                   <b :class="p.is_reversal ? 'fn-negt' : 'fn-pos'" x-text="(p.is_reversal ? '− ยกเลิกรับคืน ' : '+ ') + money(p.amount)"></b>
                                   <span class="fn-mute" x-text="(p.by ? 'โดย ' + p.by : '') + (p.note ? ' · ' + p.note : '')"></span>
                                   <span class="fn-pill fn-pill-mute" x-show="p.reversed">ถูกยกเลิกแล้ว</span>
@@ -426,6 +427,7 @@
                     <div class="fn-loan-who">
                       <span class="fn-pill" :class="t.direction === 'sell' ? 'fn-pill-paid' : 'fn-pill-overdue'" x-text="t.direction_label"></span>
                       <b x-text="t.item"></b>
+                      <span class="fn-mute" x-text="t.number"></span>
                       <span class="fn-mute" x-text="'× ' + t.quantity.toLocaleString('th-TH') + ' @ ' + money(t.unit_price)"></span>
                     </div>
                     <p class="fn-loan-meta">
@@ -570,6 +572,7 @@
                   <div class="fn-loan-main">
                     <div class="fn-loan-who">
                       <b x-text="'รอบ ' + stamp(w.started_at) + ' – ' + stamp(w.ended_at)"></b>
+                      <span class="fn-mute" x-text="w.number"></span>
                       <span class="fn-pill fn-pill-paid">จ่ายแล้ว</span>
                       <span class="fn-pill fn-pill-open" x-show="w.is_latest">รอบล่าสุด</span>
                     </div>

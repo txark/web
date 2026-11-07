@@ -82,7 +82,7 @@
                           <button type="button" class="btn-outline" @click="copyAnnounce(r)" x-text="copiedId === r.id ? 'คัดลอกแล้ว ✓' : 'คัดลอกประกาศปรับ'"></button>
                         </div>
                         <p class="fn-hint mt-2" x-show="!r.amount">โทษบำเพ็ญอย่างเดียว ไม่มีค่าปรับ · คัดลอกประกาศได้ที่ <a class="sm-link" href="/penalties.html">ประกาศโทษ</a></p>
-                        <p class="sm-no" x-text="'บันทึกโดย ' + r.by"></p>
+                        <p class="sm-no" x-text="(r.number ? r.number + ' · ' : '') + 'บันทึกโดย ' + r.by"></p>
                       </article>
                     </template>
                   </div>

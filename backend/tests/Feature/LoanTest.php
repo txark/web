@@ -511,7 +511,7 @@ class LoanTest extends TestCase
         $titles = array_column($this->getJson(self::URL.'/entries?category=loan&from=2026-11-01&to=2026-11-15')->json('data'), 'title');
         $this->assertContains('ยกเลิกสัญญาเงินกู้ · AAA Gang', $titles);
         $this->assertContains('ยกเลิกรับคืนเงินกู้ · AAA Gang', $titles);
-        $this->assertStringContainsString('เงินกู้ #'.$id, $this->get(self::URL.'/export?from=2026-11-01&to=2026-11-15')->streamedContent());
+        $this->assertStringContainsString('WV-LN-'.str_pad((string) $id, 6, '0', STR_PAD_LEFT), $this->get(self::URL.'/export?from=2026-11-01&to=2026-11-15')->streamedContent());
     }
 
     public function test_the_fund_balance_reflects_income_and_loans(): void

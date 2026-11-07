@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use App\Models\Concerns\HasDocNumber;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -10,6 +11,20 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['group_id', 'kind', 'data', 'note', 'recorded_by'])]
 class GroupRecord extends Model
 {
+    use HasDocNumber;
+
+    /** ตัวย่อตามชนิดบันทึก: ค่าปรับ FINE · โทษบำเพ็ญ PEN · รายงานตัว RPT · Protect PRT · ชุด OUT */
+    public function docPrefix(): string
+    {
+        return match ($this->kind) {
+            'fine' => ($this->data['penalty_type'] ?? 'fine') === 'penance' ? 'PEN' : 'FINE',
+            'report' => 'RPT',
+            'protect' => 'PRT',
+            'outfit' => 'OUT',
+            default => 'REC',
+        };
+    }
+
     /**
      * @return array<string, string>
      */

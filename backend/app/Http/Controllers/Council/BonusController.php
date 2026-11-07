@@ -328,7 +328,7 @@ class BonusController extends Controller
         ])->sortByDesc('amount')->values();
 
         return [
-            'id' => $r->id, 'started_at' => $r->started_at->copy()->utc()->toIso8601String(), 'ended_at' => $r->ended_at->copy()->utc()->toIso8601String(),
+            'id' => $r->id, 'number' => $r->number, 'started_at' => $r->started_at->copy()->utc()->toIso8601String(), 'ended_at' => $r->ended_at->copy()->utc()->toIso8601String(),
             'formula' => (string) $r->formula, 'variables' => $r->variables ?? [],
             'note' => (string) $r->note, 'by' => $this->nameOf($r->creator), 'members' => $items->count(), 'total' => (int) $items->sum('amount'),
             'is_latest' => $latest, 'items' => $items,
