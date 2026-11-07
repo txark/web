@@ -7,7 +7,7 @@ function summonsPage() {
   const DISCORD_ROLE_ID ='1561416124157919274';   // บทบาทใน Discord ที่แท็กตอนประกาศมาตรการที่ 3
   const todayBkk = () => new Intl.DateTimeFormat('en-CA', { timeZone: BKK }).format(new Date());   // YYYY-MM-DD เวลาไทย
   const COUNCIL = { id: 'council', council: true, name: 'สภา', short_name: '' };   // ผู้แจ้งเรียกเป็นสภาเอง (ไม่ใช่กลุ่มในทะเบียน)
-  const blank = () => ({ reason: '', place: '', dimension: '' });
+  const blank = () => ({ reason: '', place: '', dimension: '0' });   // ค่าเริ่มต้น = มิติหลัก
 
   return {
     ready: false,
