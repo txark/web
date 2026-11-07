@@ -7,6 +7,7 @@ function rulesPage() {
     activeCat: '', // anchor ของหมวดย่อยที่กำลังอ่าน (ติดตามตามการเลื่อน)
     spyRetries: 0,
     spyLock: false, // ระหว่างเลื่อนอัตโนมัติ ไม่อัปเดตตามการเลื่อน กันตัวเน้นกระพริบผ่านหมวดย่อยระหว่างทาง
+    meta: null, // ฉบับ/วันมีผลของกฎ
     q: '',
     filter: '', // '' = ทั้งหมด · penalty = มีบทลงโทษ · note = มีหมายเหตุ
     copiedId: null,
@@ -50,6 +51,7 @@ function rulesPage() {
         // เลขหมวด (no) นับใหม่ทุกกลุ่มเริ่มที่ 1
         // เลขข้อ (n) ใส่เฉพาะข้อกฎ และ "นับใหม่ทุกครั้งที่เจอหัวข้อหมวดย่อย" (heading)
         const perGroup = {};
+        this.meta = res.meta || null;
         this.sections = res.data.map((s) => {
           perGroup[s.group] = (perGroup[s.group] || 0) + 1;
           return { ...s, no: perGroup[s.group], ...this.numberRules(s) };

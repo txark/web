@@ -26,6 +26,11 @@
         <p class="pub-hero-eyebrow">THE COUNCIL RULEBOOK</p>
         <h1 class="pub-hero-title">กฎและข้อปฏิบัติ<span>Wavevy Council<i>.</i></span></h1>
         <p class="pub-hero-sub">แนวทางเดียวกัน สำหรับทุกคนในเมืองคลื่น<br>อ่านข้อกำหนด เงื่อนไข และบทลงโทษให้ชัดเจน ก่อนเริ่มดำเนินการ</p>
+        <p class="pub-hero-meta" x-show="meta && meta.version" x-cloak>
+          <i aria-hidden="true"></i>
+          <span x-text="'ฉบับ ' + (meta ? meta.version : '')"></span>
+          <span x-show="meta && meta.effective" x-text="'มีผลตั้งแต่ ' + (meta ? meta.effective : '')"></span>
+        </p>
       </div>
       <div class="pub-hero-stats" x-show="!loading && !error" x-cloak>
         <p class="pub-hero-tag">CLEAR RULES.<br>SHARED RESPECT.</p>

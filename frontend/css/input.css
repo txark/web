@@ -8262,3 +8262,98 @@ body {
   width: 0.95rem;
   height: 0.95rem;
 }
+
+/* ───────── ตกแต่งส่วนหัวหน้ากฎ ───────── */
+.pub-hero {
+  position: relative;
+  isolation: isolate;
+  margin-inline: -0.5rem;
+  padding-inline: 0.5rem;
+  border-bottom: 1px solid var(--line);
+}
+/* ลายเส้นเรขาคณิตจาง ๆ ด้านหลังฝั่งขวา ไล่จางเข้าหาเนื้อหา */
+.pub-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 0 38%;
+  z-index: -1;
+  background: no-repeat right center / auto 125% url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 400' fill='none' stroke='%238fb4ea' stroke-width='1.2'%3E%3Cpath d='M300 20 540 160v240L300 540 60 400V160z' opacity='.5'/%3E%3Cpath d='M300 80 480 184v208L300 496 120 392V184z' opacity='.38'/%3E%3Cpath d='M300 140 420 208v176L300 452 180 384V208z' opacity='.28'/%3E%3Cpath d='M0 300 600 -20M0 360 600 20M0 420 600 80' opacity='.3'/%3E%3Ccircle cx='300' cy='290' r='150' opacity='.2'/%3E%3Ccircle cx='300' cy='290' r='210' opacity='.14'/%3E%3C/svg%3E");
+  opacity: 0.16;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 45%, #000 70%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 45%, #000 70%, transparent);
+  pointer-events: none;
+}
+/* แสงนุ่มด้านหลังโลโก้ */
+.pub-hero::after {
+  content: '';
+  position: absolute;
+  left: -4%;
+  top: 50%;
+  width: 26rem;
+  height: 26rem;
+  transform: translateY(-50%);
+  z-index: -1;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 16%, transparent), transparent);
+  pointer-events: none;
+}
+.pub-hero-logo {
+  filter: drop-shadow(0 10px 30px color-mix(in srgb, var(--accent) 20%, transparent));
+}
+.pub-hero-meta {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.9rem;
+  margin-top: 1rem;
+  padding: 0.3rem 0.8rem 0.3rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel) 70%, transparent);
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+.pub-hero-meta i {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.pub-hero-meta span + span {
+  padding-left: 0.9rem;
+  border-left: 1px solid var(--line);
+}
+/* ตัวเลขสถิติ: ไล่สี + เส้นแนวตั้งนำ */
+.pub-hero-stats {
+  padding-left: 2rem;
+  border-left: 1px solid var(--line);
+}
+.pub-hero-num b {
+  background: linear-gradient(180deg, var(--fg) 30%, color-mix(in srgb, var(--accent) 70%, var(--fg)));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.pub-hero-tag {
+  position: relative;
+}
+.pub-hero-tag::after {
+  content: '';
+  display: block;
+  width: 2.2rem;
+  height: 2px;
+  margin: 0.7rem 0 0 auto;
+  background: var(--accent);
+}
+@media (max-width: 1023px) {
+  .pub-hero-stats {
+    padding-left: 0;
+    border-left: 0;
+  }
+  .pub-hero-tag::after {
+    margin-left: 0;
+  }
+  .pub-hero::before {
+    inset: 0;
+    opacity: 0.1;
+  }
+}

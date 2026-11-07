@@ -35,6 +35,12 @@ class RuleController extends Controller
             ])
             ->values();
 
-        return response()->json(['data' => $sections]);
+        $snap = \App\Services\OfficialRulesImporter::snapshot();
+
+        return response()->json(['data' => $sections, 'meta' => [
+            'version' => $snap['version'] ?? null,
+            'effective' => $snap['effective'] ?? null,
+            'checked_at' => $checked->max()?->toDateString(),
+        ]]);
     }
 }
