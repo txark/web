@@ -292,10 +292,7 @@
           >
             ก่อนหน้า
           </button>
-          <span class="text-muted"
-            >หน้า <span x-text="page"></span> /
-            <span x-text="meta ? meta.last_page : 1"></span
-          ></span>
+          <span class="text-muted">หน้า <select class="input !inline-block !w-auto !py-1 !pl-2 !pr-7" aria-label="เลือกหน้า" @change="go(+$event.target.value)"><template x-for="n in Array.from({ length: meta ? meta.last_page : 1 }, (_, i) => i + 1)" :key="n"><option :value="n" :selected="n === page" x-text="n"></option></template></select> / <span x-text="meta ? meta.last_page : 1"></span></span>
           <button
             class="btn-outline disabled:opacity-40"
             :disabled="!meta || page >= meta.last_page"
