@@ -132,15 +132,17 @@
 
               <section x-show="diff(r).length">
                 <h4 class="log-h" x-text="r.event === 'created' ? 'ข้อมูลที่สร้าง' : 'รายละเอียดการแก้ไข'"></h4>
-                <div class="log-items">
+                <dl class="log-dl">
                   <template x-for="d in diff(r)" :key="d.field">
-                    <div class="log-item">
-                      <p class="log-item-t" x-text="d.field"></p>
-                      <p x-show="d.from !== null"><span class="log-k">ข้อมูลเดิม :</span> <span class="text-muted" x-text="d.from"></span></p>
-                      <p><span class="log-k" x-text="d.from !== null ? 'ข้อมูลแก้ไข :' : 'ข้อมูล :'"></span> <b x-text="d.to"></b></p>
+                    <div>
+                      <dt x-text="d.field"></dt>
+                      <dd>
+                        <span x-show="d.from !== null" class="block"><span class="log-k">เดิม</span> <span class="text-muted" x-text="d.from"></span></span>
+                        <span class="block"><span class="log-k" x-text="d.from !== null ? 'แก้ไข' : ''"></span> <b x-text="d.to"></b></span>
+                      </dd>
                     </div>
                   </template>
-                </div>
+                </dl>
               </section>
             </div>
           </li>
