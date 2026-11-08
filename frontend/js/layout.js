@@ -231,6 +231,13 @@
     paint();
   }));
   paint();
+  // วิธีใช้งานแต่ละหน้า (ปุ่มใต้หัวข้อ)
+  if (!document.querySelector('script[data-help]')) {
+    const hp = document.createElement('script');
+    hp.src = '/js/help.js';
+    hp.dataset.help = '1';
+    document.head.appendChild(hp);
+  }
   // เตือนความจำของสภา: เด้งกลางจอพร้อมเสียงทุก 5 นาที (ทำงานเฉพาะสภา; สคริปต์ตรวจสิทธิ์เอง)
   if (!document.querySelector('script[data-reminder-popup]')) {
     const rp = document.createElement('script');

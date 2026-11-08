@@ -8612,3 +8612,10 @@ html.has-side .pub .pub-toolbar { margin-top: 1.25rem; }
 .pg-num:hover:not(:disabled):not(.is-on) { border-color: var(--accent); color: var(--accent); }
 .pg-num.is-on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; cursor: default; }
 .pg-num:disabled:not(.is-on) { border-color: transparent; cursor: default; color: var(--muted); }
+
+/* วิธีใช้งานหน้านี้ */
+.help-link { display: inline-flex; align-items: center; gap: 0.4rem; margin-top: 0.6rem; padding: 0; border: 0; background: none; color: var(--accent); font-size: 0.82rem; cursor: pointer; }
+.help-link:hover { text-decoration: underline; }
+.help-link > span { display: inline-grid; place-items: center; width: 1.15rem; height: 1.15rem; border: 1px solid currentColor; border-radius: 50%; font-size: 0.7rem; font-weight: 700; }
+.help-steps { margin: 0; padding-left: 1.3rem; display: grid; gap: 0.6rem; list-style: decimal; font-size: 0.92rem; line-height: 1.6; }
+.reg-backdrop[hidden] { display: none; }
