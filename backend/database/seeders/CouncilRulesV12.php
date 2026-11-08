@@ -152,7 +152,8 @@ class CouncilRulesV12
 
             RuleSection::Fees->value => [
                 ['kind' => 'heading', 'title' => 'สมาชิก'],
-                $p('ออกลอย', '500,000 WVDL'),
+                $p('ออกลอย', '250,000 WVDL'),
+                $p('ออกลอย (กรณีโดนใบแดง)', '100,000 WVDL'),
                 $p('แจ้งตัวเองออก', '300,000 WVDL'),
                 ['kind' => 'heading', 'title' => 'ชุด'],
                 $p('เพิ่มชุดแก๊งหรือครอบครัว', '500,000 WVDL'),

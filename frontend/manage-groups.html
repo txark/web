@@ -492,6 +492,10 @@
                     <textarea id="tx-member" x-model="txn.member_names" rows="3" autocomplete="off" class="input" :aria-invalid="!!txErr('member_names')"></textarea>
                     <p class="reg-err" x-show="txErr('member_names')" x-text="txErr('member_names')"></p>
                   </div>
+                  <label class="reg-wide flex items-center gap-2 text-sm" x-show="txn.kind === 'release_free'">
+                    <input type="checkbox" x-model="txn.red_card" class="h-4 w-4">
+                    <span>สมาชิกที่ออกโดนใบแดง <span class="reg-hint">(คิดค่าบริการ <span x-text="money(fees.release_free_red)"></span> WVDL ต่อคน แทน <span x-text="money(fees.release_free)"></span>)</span></span>
+                  </label>
                   <p class="gd-muted reg-wide" x-text="txn.kind === 'release_slot' ? 'ออกสล็อต: ผู้ที่จะออกมายืนยันตัวตนที่หน้าสภา · ทำไม่ได้ถ้าสล็อตถูกล็อก' : 'ออกลอย: นำสมาชิกออกโดยผู้ออกไม่ได้มายืนยันตัวตน'"></p>
                 </div>
 

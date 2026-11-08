@@ -225,6 +225,7 @@ class TransactionService
                 'member_names.*' => ['required', 'string', 'max:120', 'distinct:ignore_case'],
                 'reason' => ['nullable', 'string', 'max:2000'],
                 'slot' => ['nullable', Rule::in(['main', 'reserve'])],
+                'red_card' => ['nullable', 'boolean'], // ออกลอยกรณีโดนใบแดง: ค่าบริการอัตราพิเศษ
             ],
             TransactionKind::Dissolve => [
                 'reason' => ['required', 'string', 'max:2000'],
@@ -650,7 +651,9 @@ class TransactionService
             TransactionKind::Recolor => [$item('เปลี่ยนสี', $price('recolor'))],
             TransactionKind::ChangeLeader => [$item('เปลี่ยน Leader', $price('change_leader'))],
             TransactionKind::ReleaseSlot => [$item('ออกสล็อต (ต่อคน)', $price('release_slot'), count($d['member_names'] ?? []))],
-            TransactionKind::ReleaseFree => [$item('ออกลอย (ต่อคน)', $price('release_free'), count($d['member_names'] ?? []))],
+            TransactionKind::ReleaseFree => ! empty($d['red_card'])
+                ? [$item('ออกลอย กรณีโดนใบแดง (ต่อคน)', $price('release_free_red'), count($d['member_names'] ?? []))]
+                : [$item('ออกลอย (ต่อคน)', $price('release_free'), count($d['member_names'] ?? []))],
             TransactionKind::Dissolve => [$item('ยุบ', $price('dissolve'))],
             TransactionKind::RemoveProtect => [$item('ปลด Protect', $price('remove_protect'))],
             TransactionKind::ActivityReport => [$item('รายงานความเคลื่อนไหว', $price('activity_report'))],

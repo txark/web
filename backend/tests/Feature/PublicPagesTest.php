@@ -50,8 +50,7 @@ class PublicPagesTest extends TestCase
         // บทลงโทษหลายระดับอยู่ในช่องโทษ (บรรทัดละระดับ)
         $summon = $rulesOf('summon')->firstWhere('code', 'SUMMON-004');
         $this->assertStringContainsString("ครั้งที่ 1 ปรับ 500,000 WVDL", $summon['penalty']);
-        $this->assertStringContainsString("
-ครั้งที่ 4 ", $summon['penalty']);
+        $this->assertMatchesRegularExpression('/\Rครั้งที่ 4 /u', $summon['penalty']);
         // MATCH-016: ข้อกำหนดเพิ่มเติมเป็นการ์ดเดียว ข้อย่อยเป็นรายการ (•)
         $this->assertSame(8, substr_count($rulesOf('match')->firstWhere('code', 'MATCH-016')['body'], '•'));
     }
@@ -177,9 +176,11 @@ class PublicPagesTest extends TestCase
         $data->each(fn ($s) => $this->assertStringStartsWith('https://official.wavevycity.com/rules', $s['source_url']));
 
         $fees = collect($data->firstWhere('key', 'fees')['rules'])->where('kind', 'price')->values();
-        $this->assertCount(10, $fees);
+        $this->assertCount(11, $fees);
         $this->assertSame('ออกลอย', $fees[0]['title']);
-        $this->assertSame('500,000 WVDL', $fees[0]['body']);
+        $this->assertSame('250,000 WVDL', $fees[0]['body']);
+        $this->assertSame('ออกลอย (กรณีโดนใบแดง)', $fees[1]['title']);
+        $this->assertSame('100,000 WVDL', $fees[1]['body']);
     }
 
     // ---------- ทำเนียบ ----------

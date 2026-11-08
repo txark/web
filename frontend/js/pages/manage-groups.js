@@ -148,7 +148,7 @@ const OUTFITS = [
 const FAMILY_OUTFITS = ['hoodie', 'tshirt', 'polo', 'accessories']; // ครอบครัวลงได้เฉพาะ ฮูด เสื้อยืด เสื้อโปโล และ accessories
 const LOGO_HOST = 'images.wavevycity.com';   // โลโก้รับเฉพาะลิงก์จากเว็บนี้ (ฝั่งเซิร์ฟเวอร์ตรวจซ้ำ)
 const logoOk = (u) => { try { const x = new URL(String(u || '').trim()); return x.protocol === 'https:' && x.hostname.toLowerCase() === LOGO_HOST && !x.username && !x.password && !x.port && x.pathname.length > 1; } catch (e) { return false; } };
-const blankTxn = () => ({ kind: 'rename', name: '', short_name: '', logo_url: '', color_hex: '', color_name: '', color_auto: true, outfit_zip: null, leader_name: '', leader_phone: '', leader_discord: '', member_names: '', reason: '' });
+const blankTxn = () => ({ kind: 'rename', name: '', short_name: '', logo_url: '', color_hex: '', color_name: '', color_auto: true, outfit_zip: null, leader_name: '', leader_phone: '', leader_discord: '', member_names: '', red_card: false, reason: '' });
 
 /** วันเวลาปัจจุบันแบบไทย เช่น 29 ต.ค. 69 22:08 · เวลาไทย (UTC+7) */
 const nowThai = () => {
@@ -237,7 +237,7 @@ function manageGroupsPage() {
     storiesError: '',
     histError: '',
     // อัตราค่าบริการของแต่ละธุรกรรม (โหลดจากเซิร์ฟเวอร์ ค่าตั้งต้นนี้ใช้ก่อนโหลดเสร็จ)
-    fees: { currency: 'WVDL', register: 0, rename: 1000000, rename_logo: 2000000, recolor: 1000000, change_leader: 0, release_slot: 300000, release_free: 500000, dissolve: 0, remove_protect: 1000000 },
+    fees: { currency: 'WVDL', register: 0, rename: 1000000, rename_logo: 2000000, recolor: 1000000, change_leader: 0, release_slot: 300000, release_free: 250000, release_free_red: 100000, dissolve: 0, remove_protect: 1000000 },
     txnKinds: [
       { value: 'rename', label: 'เปลี่ยนชื่อ' },
       { value: 'recolor', label: 'เปลี่ยนสี' },
@@ -836,7 +836,7 @@ function manageGroupsPage() {
       if (tx.kind === 'recolor') return ['แนบไฟล์ชุดใหม่ (.ZIP) เป็นไฟล์ชุดล่าสุด (ไฟล์เดิมยังเก็บไว้)'];
       const b = tx.before;
       const a = tx.after;
-      if (tx.kind === 'release_slot' || tx.kind === 'release_free') return [`ออก: ${(tx.payload.member_names || []).join(', ')}`];
+      if (tx.kind === 'release_slot' || tx.kind === 'release_free') return [`ออก: ${(tx.payload.member_names || []).join(', ')}`, ...(tx.payload.red_card ? ['โดนใบแดง (ค่าบริการอัตราพิเศษ)'] : [])];
       if (tx.kind === 'remove_protect') return ['ปลด Protect (Protect เดิมสิ้นสุดทันที)'];
       if (tx.kind === 'register') return a ? [`ชื่อเต็ม: ${a.name}`, `สมาชิก: ${a.members_count} คน`] : [tx.summary];
       if (!b || !a) return [tx.summary];
@@ -1192,8 +1192,9 @@ function manageGroupsPage() {
         case 'release_slot':
         case 'release_free': {
           const n = this.releaseNames.length;
-          const unit = Number(f[this.txn.kind] || 0);
-          return [{ label: `${this.txn.kind === 'release_slot' ? 'ออกสล็อต' : 'ออกลอย'} ${this.money(unit)} × ${n} คน`, amount: unit * n }];
+          const red = this.txn.kind === 'release_free' && this.txn.red_card;
+          const unit = Number(f[red ? 'release_free_red' : this.txn.kind] || 0);
+          return [{ label: `${this.txn.kind === 'release_slot' ? 'ออกสล็อต' : 'ออกลอย' + (red ? ' (โดนใบแดง)' : '')} ${this.money(unit)} × ${n} คน`, amount: unit * n }];
         }
         default:
           return [];
@@ -1256,6 +1257,7 @@ function manageGroupsPage() {
         put('discord_id', t.leader_discord.trim());
       } else if (t.kind === 'release_slot' || t.kind === 'release_free') {
         this.releaseNames.forEach((n) => fd.append('payload[member_names][]', n));
+        if (t.kind === 'release_free' && t.red_card) fd.append('payload[red_card]', '1');
       } else {
         put('reason', t.reason.trim());
       }
