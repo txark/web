@@ -39,9 +39,9 @@ class LogDutyDetailsTest extends TestCase
         $lines = collect($end['details'])->pluck(1, 0);
 
         $this->assertSame('ติดธุระด่วน', $lines['สาเหตุที่ออกก่อนเวลา']);
-        $this->assertSame('45 นาที 0 วินาที', $lines['ระยะเวลาที่เข้าเวร']);
-        $this->assertStringContainsString('น.', $lines['เข้าเวรเมื่อ']);
-        $this->assertStringContainsString('น.', $lines['ออกเวรเมื่อ']);
+        $this->assertSame('45 นาที 0 วินาที', $lines['ระยะเวลาเข้าเวร']);
+        $this->assertStringContainsString('น.', $lines['เวลาเข้าเวร']);
+        $this->assertStringContainsString('น.', $lines['เวลาออกเวร']);
         $this->assertSame([], $rows->firstWhere('event', 'start')['details']);
     }
 
@@ -62,7 +62,7 @@ class LogDutyDetailsTest extends TestCase
         $lines = collect($end['details'])->pluck(1, 0);
 
         $this->assertArrayNotHasKey('สาเหตุที่ออกก่อนเวลา', $lines->all());
-        $this->assertSame('3 ชม. 10 นาที 0 วินาที', $lines['ระยะเวลาที่เข้าเวร']);
+        $this->assertSame('3 ชม. 10 นาที 0 วินาที', $lines['ระยะเวลาเข้าเวร']);
     }
 
     public function test_system_end_shows_range_and_duration_up_to_the_last_signal(): void
@@ -80,9 +80,36 @@ class LogDutyDetailsTest extends TestCase
         $row = collect($this->rows())->firstWhere('event', 'system_end');
         $lines = collect($row['details'])->pluck(1, 0);
 
-        $this->assertArrayHasKey('เข้าเวรเมื่อ', $lines->all());
-        $this->assertArrayHasKey('สัญญาณล่าสุดเมื่อ', $lines->all());
-        $this->assertArrayHasKey('ระยะเวลาที่เข้าเวร', $lines->all());
+        $this->assertArrayHasKey('เวลาเข้าเวร', $lines->all());
+        $this->assertArrayHasKey('เวลาออกเวร (สัญญาณล่าสุด)', $lines->all());
+        $this->assertArrayHasKey('ระยะเวลาเข้าเวร', $lines->all());
         $this->assertArrayNotHasKey('สาเหตุที่ออกก่อนเวลา', $lines->all());
+    }
+
+    public function test_logout_while_on_duty_shows_the_shift_but_plain_logout_has_none(): void
+    {
+        config(['council.duty.enforced' => true, 'council.duty.exempt_roles' => []]);
+        $u = User::factory()->role(Role::Member)->loggedIn()->create();
+
+        // ออกจากระบบโดยไม่ได้เข้าเวร: ไม่มีรายละเอียด
+        activity('auth')->event('logout')->causedBy($u)->log('ออกจากระบบ');
+
+        // ออกจากระบบขณะเข้าเวร: เวรปิดพร้อมกัน
+        $this->travelTo(now()->setTime(12, 0));
+        app(DutyService::class)->start($u);
+        $this->travelTo(now()->addMinutes(20));
+        \App\Models\DutyShift::query()->update(['last_seen_at' => now()]);
+        app(DutyService::class)->endOnLogout($u);
+        activity('auth')->event('logout')->causedBy($u)->log('ออกจากระบบ');
+        $this->travelBack();
+
+        $logouts = collect($this->rows())->where('event', 'logout')->values();
+        $this->assertCount(2, $logouts);
+        $withDuty = $logouts->first(fn ($r) => $r['details'] !== []);
+        $plain = $logouts->first(fn ($r) => $r['details'] === []);
+
+        $this->assertNotNull($withDuty);
+        $this->assertNotNull($plain);
+        $this->assertContains(['ระยะเวลาเข้าเวร', '20 นาที 0 วินาที'], $withDuty['details']);
     }
 }

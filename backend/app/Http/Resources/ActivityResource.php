@@ -185,33 +185,54 @@ class ActivityResource extends JsonResource
         return $lines;
     }
 
-    /** ออกเวร / ระบบปิดเวร: ช่วงเวลาที่เข้าเวร ระยะเวลา และสาเหตุเมื่อออกก่อนเวลา (เข้าเวร/ออกจากระบบ/เข้าสู่ระบบ ไม่มีรายละเอียด) */
+    /**
+     * ออกเวร / ระบบปิดเวร / ออกจากระบบขณะเข้าเวร: ช่วงเวลาที่เข้าเวร ระยะเวลา และสาเหตุเมื่อออกก่อนเวลา
+     * (เข้าเวร / เข้าสู่ระบบ / ออกจากระบบตอนไม่ได้เข้าเวร ไม่มีรายละเอียด)
+     */
     private function dutyDetails(): array
     {
         $shift = $this->subject;
-        if ($this->log_name !== 'duty' || ! in_array($this->event, ['end', 'system_end'], true) || ! $shift instanceof DutyShift || ! $shift->ended_at) {
+        $viaLogout = false;
+
+        if ($this->log_name === 'auth' && $this->event === 'logout' && $this->causer_id) {
+            // ออกจากระบบแล้วเวรปิดตามไปด้วย: หาเวรที่ปิดด้วยการออกจากระบบของผู้ใช้นี้ในช่วงเวลาเดียวกัน
+            $shift = DutyShift::query()->where('user_id', $this->causer_id)->where('note', 'ออกจากระบบ')
+                ->whereBetween('ended_at', [$this->created_at->copy()->subSeconds(10), $this->created_at->copy()->addSeconds(10)])
+                ->latest('id')->first();
+            $viaLogout = true;
+        } elseif ($this->log_name !== 'duty' || ! in_array($this->event, ['end', 'system_end'], true)) {
+            return [];
+        }
+
+        if (! $shift instanceof DutyShift || ! $shift->ended_at) {
             return [];
         }
 
         $tz = config('council.report_timezone');
         $from = $shift->started_at->copy()->timezone($tz);
         $to = $shift->ended_at->copy()->timezone($tz);
-        // วันที่แบบไทย (พ.ศ.) เช่น 7 พ.ย. 2569 เวลา 23:23 น. — แยกเป็นเวลาเข้า/ออกคนละแถว อ่านง่าย
+        // วันที่แบบไทย (พ.ศ.) เช่น 7 พ.ย. 2569 เวลา 23:23:00 น. — แยกเป็นเวลาเข้า/ออกคนละแถว อ่านง่าย
         $months = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
-        $thai = fn ($d) => $d->day.' '.$months[$d->month - 1].' '.($d->year + 543).' เวลา '.$d->format('H:i:s').' น.';
+        $date = fn ($d) => $d->day.' '.$months[$d->month - 1].' '.($d->year + 543);
+        $time = fn ($d) => $d->format('H:i:s').' น.';
 
         $secs = (int) $shift->started_at->diffInSeconds($shift->ended_at);
         $dur = (intdiv($secs, 3600) > 0 ? intdiv($secs, 3600).' ชม. ' : '').intdiv($secs % 3600, 60).' นาที '.($secs % 60).' วินาที';
 
         $lines = [];
         $p = $this->properties?->toArray() ?? [];
+        if ($viaLogout) {
+            $lines[] = ['หมายเหตุ', 'ออกจากระบบขณะอยู่ในเวร ระบบออกเวรให้โดยอัตโนมัติ'];
+        }
         // ออกก่อนเวลาขั้นต่ำ (ไม่นับกรณีออกจากระบบ): แจ้งสาเหตุที่ผู้ใช้ระบุ
         if ($this->event === 'end' && ! empty($p['short']) && empty($p['logout']) && ! empty($p['note'])) {
             $lines[] = ['สาเหตุที่ออกก่อนเวลา', $p['note']];
         }
-        $lines[] = ['เข้าเวรเมื่อ', $thai($from)];
-        $lines[] = [$this->event === 'system_end' ? 'สัญญาณล่าสุดเมื่อ' : 'ออกเวรเมื่อ', $thai($to)];
-        $lines[] = ['ระยะเวลาที่เข้าเวร', $dur];
+        // วันที่ · เวลาเข้าเวร · เวลาออกเวร · ระยะเวลา (กะที่ข้ามวันแสดงวันที่เริ่ม – วันที่จบ)
+        $lines[] = ['วันที่', $from->isSameDay($to) ? $date($from) : $date($from).' – '.$date($to)];
+        $lines[] = ['เวลาเข้าเวร', $time($from)];
+        $lines[] = [$this->event === 'system_end' ? 'เวลาออกเวร (สัญญาณล่าสุด)' : 'เวลาออกเวร', $time($to)];
+        $lines[] = ['ระยะเวลาเข้าเวร', $dur];
 
         return $lines;
     }
