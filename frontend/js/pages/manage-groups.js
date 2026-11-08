@@ -712,7 +712,8 @@ function manageGroupsPage() {
           API.get(`/api/council/transactions?group_id=${this.g.id}&per_page=50`),
           API.get(`/api/council/groups/${this.g.id}/records`),
           API.get(`/api/council/groups/${this.g.id}/summons`).catch(() => ({ data: [] })),   // ประกาศเรียก: โหลดไม่ได้ไม่ให้ประวัติอื่นพัง
-          API.get(`/api/council/groups/${this.g.id}/loans`).catch(() => ({ data: [] })),     // เงินกู้: เห็นได้เฉพาะรองประธานขึ้นไป (คนอื่นได้ว่าง)
+          // เงินกู้: เรียกเฉพาะรองประธานขึ้นไป (คนอื่นไม่เรียก จะได้ไม่ถูกบันทึกว่าพยายามเข้าส่วนที่ไม่มีสิทธิ์)
+          authState().can('vice_president') ? API.get(`/api/council/groups/${this.g.id}/loans`).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
         ]);
         this.summons = sm.data;
         this.loans = ln.data;
