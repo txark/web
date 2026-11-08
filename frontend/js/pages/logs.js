@@ -180,7 +180,7 @@ function logsPage() {
         .filter((k) => !HIDE.includes(k))
         .filter((k) => !created || !(ch.attributes[k] === null || ch.attributes[k] === ''))
         .map((k) => ({
-          field: FIELD[k] || k,
+          field: (row.labels && row.labels[k]) || FIELD[k] || k,
           from: ch.old && k in ch.old ? this.val(k, ch.old[k]) : null,
           to: this.val(k, ch.attributes[k]),
         }));

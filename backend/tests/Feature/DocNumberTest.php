@@ -44,4 +44,20 @@ class DocNumberTest extends TestCase
         $this->assertContains(['รหัสรายการ', $e->number], $row['details']);
         $this->assertContains(['รายจ่าย', '2,500 WVDL'], $row['details']);
     }
+
+    public function test_rule_edit_logs_say_which_rule_was_changed(): void
+    {
+        $admin = User::factory()->role(\App\Enums\Role::Admin)->loggedIn()->create();
+        \Laravel\Sanctum\Sanctum::actingAs($admin);
+        $rule = \App\Models\Rule::create(['section' => 'fees', 'code' => null, 'sort_order' => 10, 'kind' => 'price', 'title' => 'ออกลอย', 'body' => '500,000 WVDL', 'is_published' => true]);
+        $rule->update(['body' => '250,000 WVDL']);
+
+        $rows = $this->getJson('/api/logs?per_page=100')->assertOk()->json('data');
+        $row = collect($rows)->first(fn ($r) => $r['event'] === 'updated' && ($r['subject']['label'] ?? null) === 'กฎ');
+
+        $this->assertNotNull($row);
+        $this->assertContains(['ข้อกฎ', 'ออกลอย'], $row['details']);
+        $this->assertContains(['หมวด', 'อัตราค่าบริการ'], $row['details']);
+        $this->assertSame('ค่าบริการ', $row['labels']['body']);
+    }
 }

@@ -155,10 +155,31 @@ class ActivityResource extends JsonResource
         return $lines;
     }
 
+    /** ชื่อช่องที่เปลี่ยนให้เข้ากับบริบทของรายการ (เช่น แถวค่าบริการ: ช่อง body = อัตรา ไม่ใช่ "เนื้อหา") */
+    private function fieldLabels(): array
+    {
+        $m = $this->subject;
+        if ($m instanceof Rule && $m->kind === 'price') {
+            return ['title' => 'รายการ', 'body' => 'ค่าบริการ', 'note' => 'หมายเหตุ'];
+        }
+
+        return [];
+    }
+
     /** รายการที่มีรหัส (การเงิน/ซื้อ-ขาย/โบนัส/รับคืนเงินกู้/ประกาศ): แสดงรหัสและสาระสำคัญของรายการ */
     private function docDetails(): array
     {
         $m = $this->subject;
+
+        // กฎ: บอกว่าแก้ข้อไหน (รหัส + หัวข้อ + หมวด) ให้ตรงกับช่อง "เนื้อหา" ที่เปลี่ยน
+        if ($m instanceof Rule) {
+            $where = $m->kind === 'price' ? 'อัตราค่าบริการ' : ($m->section?->label() ?? '');
+
+            return array_values(array_filter([
+                ['ข้อกฎ', trim(($m->code ? $m->code.' · ' : '').($m->title ?: ($m->kind === 'price' ? 'รายการค่าบริการ' : '')))],
+                $where !== '' ? ['หมวด', $where] : null,
+            ]));
+        }
         if (! $m || ! isset(self::SUBJECT_LABELS[$this->subject_type]) || empty($m->number)) {
             return [];
         }
@@ -263,6 +284,7 @@ class ActivityResource extends JsonResource
             ] : null,
             'summary' => $tx ? (new TransactionResource($tx))->toArray($request)['summary'] : null,
             'details' => $tx ? TransactionResource::detailLines($tx) : ($this->groupDetails() ?: $this->docDetails() ?: $this->dutyDetails()),
+            'labels' => $this->fieldLabels(),
             'changes' => $this->attribute_changes,
             'properties' => $this->properties,
             'created_at' => $this->created_at?->toIso8601String(),
