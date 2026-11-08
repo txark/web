@@ -114,46 +114,33 @@
             <div x-show="open[r.id]" x-cloak class="log-detail">
               <section x-show="txLines(r).length || techLines(r).length">
                 <h4 class="log-h" x-text="r.log === 'transactions' ? 'รายละเอียดธุรกรรม' : 'รายละเอียด'"></h4>
-                <table class="log-table">
-                  <tbody>
-                    <template x-for="([k, v], i) in [...txLines(r), ...techLines(r)]" :key="i">
-                      <tr><th scope="row" x-text="k"></th><td x-text="v"></td></tr>
-                    </template>
-                  </tbody>
-                </table>
+                <dl class="log-dl">
+                  <template x-for="([k, v], i) in [...txLines(r), ...techLines(r)]" :key="i">
+                    <div><dt x-text="k"></dt><dd x-text="v"></dd></div>
+                  </template>
+                </dl>
               </section>
 
               <section x-show="swatch(r)" x-cloak>
-                <h4 class="log-h">สีที่เปลี่ยน</h4>
-                <table class="log-table">
-                  <thead><tr><th>รายการ</th><th>ข้อมูลเดิม</th><th>ข้อมูลแก้ไข</th></tr></thead>
-                  <tbody>
-                    <tr>
-                      <th scope="row">สีประจำกลุ่ม</th>
-                      <td><span class="rg-dot" :style="swatch(r) ? 'background:' + swatch(r).from.hex : ''"></span> <span x-text="swatch(r) ? ((swatch(r).from.name || '') + ' ' + swatch(r).from.hex).trim() : ''"></span></td>
-                      <td><span class="rg-dot" :style="swatch(r) ? 'background:' + swatch(r).to.hex : ''"></span> <b x-text="swatch(r) ? ((swatch(r).to.name || '') + ' ' + swatch(r).to.hex).trim() : ''"></b></td>
-                    </tr>
-                  </tbody>
-                </table>
+                <h4 class="log-h">รายละเอียดการแก้ไข</h4>
+                <dl class="log-dl">
+                  <div><dt>รายการ</dt><dd>สีประจำกลุ่ม</dd></div>
+                  <div><dt>ข้อมูลเดิม</dt><dd><span class="rg-dot" :style="swatch(r) ? 'background:' + swatch(r).from.hex : ''"></span> <span x-text="swatch(r) ? ((swatch(r).from.name || '') + ' ' + swatch(r).from.hex).trim() : ''"></span></dd></div>
+                  <div><dt>ข้อมูลแก้ไข</dt><dd><span class="rg-dot" :style="swatch(r) ? 'background:' + swatch(r).to.hex : ''"></span> <b x-text="swatch(r) ? ((swatch(r).to.name || '') + ' ' + swatch(r).to.hex).trim() : ''"></b></dd></div>
+                </dl>
               </section>
 
               <section x-show="diff(r).length">
                 <h4 class="log-h" x-text="r.event === 'created' ? 'ข้อมูลที่สร้าง' : 'รายละเอียดการแก้ไข'"></h4>
-                <table class="log-table">
-                  <thead>
-                    <tr x-show="r.event !== 'created'"><th>รายการ</th><th>ข้อมูลเดิม</th><th>ข้อมูลแก้ไข</th></tr>
-                    <tr x-show="r.event === 'created'"><th>รายการ</th><th>ข้อมูล</th></tr>
-                  </thead>
-                  <tbody>
-                    <template x-for="d in diff(r)" :key="d.field">
-                      <tr>
-                        <th scope="row" x-text="d.field"></th>
-                        <td x-show="d.from !== null" class="text-muted" x-text="d.from"></td>
-                        <td><b x-text="d.to"></b></td>
-                      </tr>
-                    </template>
-                  </tbody>
-                </table>
+                <div class="log-items">
+                  <template x-for="d in diff(r)" :key="d.field">
+                    <div class="log-item">
+                      <p class="log-item-t" x-text="d.field"></p>
+                      <p x-show="d.from !== null"><span class="log-k">ข้อมูลเดิม :</span> <span class="text-muted" x-text="d.from"></span></p>
+                      <p><span class="log-k" x-text="d.from !== null ? 'ข้อมูลแก้ไข :' : 'ข้อมูล :'"></span> <b x-text="d.to"></b></p>
+                    </div>
+                  </template>
+                </div>
               </section>
             </div>
           </li>
