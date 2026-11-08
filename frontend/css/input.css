@@ -8536,3 +8536,36 @@ html.has-side .side-top { view-transition-name: sidetop; }
 .ts-chip[aria-pressed="true"] b { background: rgba(255, 255, 255, 0.25); color: inherit; }
 .ts-sub { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
 .ts-sub .ts-chip { padding: 0.35rem 0.8rem; font-size: 0.82rem; }
+
+/* หน้ากฎในส่วนของสภา (มีแถบเมนูซ้าย): หัวเรื่องแบบกะทัดรัดเหมือนหน้าอื่นของสภา */
+html.has-side .pub .pub-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  min-height: 0;
+  padding: 0 0 1.25rem;
+  margin-bottom: 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+html.has-side .pub .pub-hero::before,
+html.has-side .pub .pub-hero::after,
+html.has-side .pub .pub-hero-logo,
+html.has-side .pub .pub-hero-tag,
+html.has-side .pub .pub-hero-cap { display: none; }
+html.has-side .pub .pub-hero-eyebrow { margin: 0; font-size: 0.72rem; }
+html.has-side .pub .pub-hero-title { margin: 0.3rem 0 0; font-size: 2rem; line-height: 1.2; }
+html.has-side .pub .pub-hero-title span { margin-left: 0.5rem; font-size: 1rem; font-weight: 500; color: var(--muted); }
+html.has-side .pub .pub-hero-sub { margin: 0.4rem 0 0; font-size: 0.85rem; }
+html.has-side .pub .pub-hero-sub br { display: none; }
+html.has-side .pub .pub-hero-meta { margin-top: 0.75rem; }
+html.has-side .pub .pub-hero-stats { margin: 0; padding: 0; border: 0; min-width: 0; }
+html.has-side .pub .pub-hero-num { margin: 0; font-size: 1.6rem; }
+html.has-side .pub .pub-toolbar { margin-top: 1.25rem; }
+@media (min-width: 1024px) {
+  html.has-side .pub #rules-bar { top: calc(var(--header-h, 0px) + 1rem); }
+}
