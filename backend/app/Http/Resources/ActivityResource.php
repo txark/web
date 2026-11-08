@@ -76,6 +76,14 @@ class ActivityResource extends JsonResource
             return self::EVENT_LABELS[$this->description].($subject ? ' '.$subject : '');
         }
 
+        // ออกเวร/ระบบปิดเวร: ตัดส่วนอธิบายท้ายข้อความออก (ช่วงเวลา ระยะเวลา สาเหตุ อยู่ในรายละเอียดแล้ว)
+        if ($this->log_name === 'duty' && $this->event === 'end') {
+            return 'ออกเวร';
+        }
+        if ($this->log_name === 'duty' && $this->event === 'system_end') {
+            return 'ระบบปิดเวร';
+        }
+
         return (string) $this->description;
     }
 
@@ -192,7 +200,7 @@ class ActivityResource extends JsonResource
         $range = $from->format('H:i').' – '.$to->format($sameDay ? 'H:i' : 'd/m H:i').' น.';
 
         $secs = (int) $shift->started_at->diffInSeconds($shift->ended_at);
-        $dur = intdiv($secs, 3600) > 0 ? intdiv($secs, 3600).' ชม. '.intdiv($secs % 3600, 60).' นาที' : intdiv($secs, 60).' นาที';
+        $dur = (intdiv($secs, 3600) > 0 ? intdiv($secs, 3600).' ชม. ' : '').intdiv($secs % 3600, 60).' นาที '.($secs % 60).' วินาที';
 
         $lines = [];
         $p = $this->properties?->toArray() ?? [];

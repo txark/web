@@ -102,7 +102,7 @@
               <div class="flex min-w-0 flex-wrap items-center gap-2">
                 <span :class="badge(r.event)" x-text="r.event_label || r.log_label"></span>
                 <span class="min-w-0 break-words text-sm" x-text="r.description"></span>
-                <span x-show="r.subject" class="text-xs text-muted" x-text="r.subject ? r.subject.label + ' #' + r.subject.id : ''"></span>
+                <span x-show="r.subject && r.log !== 'duty'" class="text-xs text-muted" x-text="r.subject ? r.subject.label + ' #' + r.subject.id : ''"></span>
                 <span x-show="r.summary" class="basis-full break-words text-xs text-muted" x-text="r.summary"></span>
               </div>
 
@@ -111,47 +111,50 @@
             </div>
 
             <!-- รายละเอียด -->
-            <div x-show="open[r.id]" x-cloak class="mt-3 grid gap-3 border-t border-line pt-3 text-sm md:grid-cols-2">
-              <div class="space-y-4" x-show="extras(r).length">
-                <section x-show="txLines(r).length">
-                  <p class="mb-1.5 text-xs font-semibold tracking-wide text-accent" x-text="r.log === 'transactions' ? 'รายละเอียดธุรกรรม' : 'รายละเอียด'"></p>
-                  <dl class="space-y-1">
-                    <template x-for="([k, v], i) in txLines(r)" :key="i">
-                      <div class="flex gap-3"><dt class="w-28 shrink-0 text-muted" x-text="k"></dt><dd class="min-w-0 break-words" x-text="v"></dd></div>
+            <div x-show="open[r.id]" x-cloak class="log-detail">
+              <section x-show="txLines(r).length || techLines(r).length">
+                <h4 class="log-h" x-text="r.log === 'transactions' ? 'รายละเอียดธุรกรรม' : 'รายละเอียด'"></h4>
+                <table class="log-table">
+                  <tbody>
+                    <template x-for="([k, v], i) in [...txLines(r), ...techLines(r)]" :key="i">
+                      <tr><th scope="row" x-text="k"></th><td x-text="v"></td></tr>
                     </template>
-                  </dl>
-                </section>
-                <section x-show="techLines(r).length">
-                  <p class="mb-1.5 text-xs font-semibold tracking-wide text-muted" x-text="txLines(r).length ? 'ข้อมูลเพิ่มเติม' : 'รายละเอียด'"></p>
-                  <dl class="space-y-1">
-                    <template x-for="([k, v], i) in techLines(r)" :key="i">
-                      <div class="flex gap-3"><dt class="w-28 shrink-0 text-muted" x-text="k"></dt><dd class="min-w-0 break-words" x-text="v"></dd></div>
+                  </tbody>
+                </table>
+              </section>
+
+              <section x-show="swatch(r)" x-cloak>
+                <h4 class="log-h">สีที่เปลี่ยน</h4>
+                <table class="log-table">
+                  <thead><tr><th>รายการ</th><th>ข้อมูลเดิม</th><th>ข้อมูลแก้ไข</th></tr></thead>
+                  <tbody>
+                    <tr>
+                      <th scope="row">สีประจำกลุ่ม</th>
+                      <td><span class="rg-dot" :style="swatch(r) ? 'background:' + swatch(r).from.hex : ''"></span> <span x-text="swatch(r) ? ((swatch(r).from.name || '') + ' ' + swatch(r).from.hex).trim() : ''"></span></td>
+                      <td><span class="rg-dot" :style="swatch(r) ? 'background:' + swatch(r).to.hex : ''"></span> <b x-text="swatch(r) ? ((swatch(r).to.name || '') + ' ' + swatch(r).to.hex).trim() : ''"></b></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </section>
+
+              <section x-show="diff(r).length">
+                <h4 class="log-h" x-text="r.event === 'created' ? 'ข้อมูลที่สร้าง' : 'รายละเอียดการแก้ไข'"></h4>
+                <table class="log-table">
+                  <thead>
+                    <tr x-show="r.event !== 'created'"><th>รายการ</th><th>ข้อมูลเดิม</th><th>ข้อมูลแก้ไข</th></tr>
+                    <tr x-show="r.event === 'created'"><th>รายการ</th><th>ข้อมูล</th></tr>
+                  </thead>
+                  <tbody>
+                    <template x-for="d in diff(r)" :key="d.field">
+                      <tr>
+                        <th scope="row" x-text="d.field"></th>
+                        <td x-show="d.from !== null" class="text-muted" x-text="d.from"></td>
+                        <td><b x-text="d.to"></b></td>
+                      </tr>
                     </template>
-                  </dl>
-                </section>
-              </div>
-              <div x-show="swatch(r)" x-cloak>
-                <p class="mb-1 text-muted">สีที่เปลี่ยน</p>
-                <p class="flex flex-wrap items-center gap-2">
-                  <span class="rg-dot" :style="swatch(r) ? 'background:' + swatch(r).from.hex : ''"></span>
-                  <span class="text-muted" x-text="swatch(r) ? ((swatch(r).from.name || '') + ' ' + swatch(r).from.hex).trim() : ''"></span>
-                  <span aria-hidden="true">→</span>
-                  <span class="rg-dot" :style="swatch(r) ? 'background:' + swatch(r).to.hex : ''"></span>
-                  <b class="text-accent" x-text="swatch(r) ? ((swatch(r).to.name || '') + ' ' + swatch(r).to.hex).trim() : ''"></b>
-                </p>
-              </div>
-              <div x-show="diff(r).length">
-                <p class="mb-1.5 text-xs font-semibold tracking-wide text-accent" x-text="r.event === 'created' ? 'ข้อมูลที่สร้าง' : 'รายละเอียดการแก้ไข'"></p>
-                <ul class="space-y-3">
-                  <template x-for="d in diff(r)" :key="d.field">
-                    <li>
-                      <p class="font-medium" x-text="d.field"></p>
-                      <p class="mt-0.5 flex gap-2" x-show="d.from !== null"><span class="shrink-0 text-muted">ข้อมูลเดิม :</span><span class="min-w-0 break-words" x-text="d.from"></span></p>
-                      <p class="mt-0.5 flex gap-2"><span class="shrink-0 text-muted" x-text="d.from !== null ? 'ข้อมูลแก้ไข :' : 'ข้อมูล :'"></span><b class="min-w-0 break-words text-accent" x-text="d.to"></b></p>
-                    </li>
-                  </template>
-                </ul>
-              </div>
+                  </tbody>
+                </table>
+              </section>
             </div>
           </li>
         </template>

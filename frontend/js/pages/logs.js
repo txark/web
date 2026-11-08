@@ -2,6 +2,10 @@ function logsPage() {
   const MONTHS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
   const ROLE = { gang: 'Gang', family: 'Family', trainee: 'Trainee', member: 'Council', operations: 'Operations', senior: 'Senior', secretary: 'Secretary', vice_president: 'Sub-CC', president: 'Head-CC', admin: 'Admin' };
   const FIELD = { name: 'ชื่อ', character_name: 'ชื่อตัวละคร', role: 'บทบาท', status: 'สถานะ', type: 'ประเภท', description: 'คำอธิบาย', body: 'เนื้อหา', note: 'หมายเหตุ', penalty: 'โทษ', is_published: 'เผยแพร่', slots_locked: 'ล็อก Slot', position: 'ตำแหน่ง', section: 'หมวด', sort_order: 'ลำดับ', kind: 'ชนิด', title: 'หัวข้อ', note_label: 'ป้ายหมายเหตุ', status_reason: 'เหตุผลสถานะ', logo_url: 'โลโก้' };
+  // ช่องที่เป็นรายละเอียดภายใน ไม่แสดงในหน้าบันทึกกิจกรรม · ค่าที่เป็นรหัสแปลงเป็นข้อความอ่านง่าย
+  const HIDE = ['sort_order', 'is_local', 'note_label'];
+  const SECTION = { cc: 'เกี่ยวกับสภา (CC)', visit: 'กฎสภา (VISIT)', evid: 'หลักฐานที่ส่งสภา (EVID)', fees: 'อัตราค่าบริการ', summon: 'ประกาศเรียก (SUMMON)', reg: 'ขึ้นทะเบียน (REG)', gang: 'สมาชิกและสัญลักษณ์แก๊ง (GANG)', buy: 'ซื้อเรื่องและเปิดสตอรี่ (BUY)', deal: 'สัญญาสตอรี่ (DEAL)', match: 'ระหว่างเล่นสตอรี่ (MATCH)', prot: 'Protect และการจบสตอรี่ (PROT)', max: 'มาตรการและบทลงโทษ (MAX)', duty: 'หน้าที่เจ้าหน้าที่ (DUTY)' };
+  const KIND = { rule: 'ข้อกฎ', price: 'รายการค่าบริการ', heading: 'หัวข้อ', text: 'ข้อความ', highlight: 'กล่องเน้น' };
   const EVENT_BADGE = {
     login: 'badge badge-normal', logout: 'badge badge-muted', login_failed: 'badge badge-sanction',
     view: 'badge badge-info', denied: 'badge badge-sanction',
@@ -173,6 +177,7 @@ function logsPage() {
       const created = row.event === 'created';
       return Object.keys(ch.attributes)
         // สร้างใหม่: โชว์เฉพาะช่องที่มีค่าจริง ไม่เอาช่องว่างมาเป็นเสียงรบกวน
+        .filter((k) => !HIDE.includes(k))
         .filter((k) => !created || !(ch.attributes[k] === null || ch.attributes[k] === ''))
         .map((k) => ({
           field: FIELD[k] || k,
@@ -184,6 +189,9 @@ function logsPage() {
     val(key, v) {
       if (v === undefined || v === null || v === '') return '—';
       if (key === 'role') return ROLE[v] || v;
+      if (key === 'section') return SECTION[v] || v;
+      if (key === 'kind' && KIND[v]) return KIND[v];
+      if (key === 'is_published') return v ? 'เผยแพร่' : 'ไม่เผยแพร่';
       if (v === true) return 'ใช่';
       if (v === false) return 'ไม่';
       const s = String(v);

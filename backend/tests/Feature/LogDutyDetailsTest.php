@@ -39,7 +39,7 @@ class LogDutyDetailsTest extends TestCase
         $lines = collect($end['details'])->pluck(1, 0);
 
         $this->assertSame('ติดธุระด่วน', $lines['สาเหตุที่ออกก่อนเวลา']);
-        $this->assertSame('45 นาที', $lines['ระยะเวลาที่เข้าเวร']);
+        $this->assertSame('45 นาที 0 วินาที', $lines['ระยะเวลาที่เข้าเวร']);
         $this->assertStringContainsString('น.', $lines['ช่วงเวลาที่เข้าเวร']);
         $this->assertSame([], $rows->firstWhere('event', 'start')['details']);
     }
@@ -61,7 +61,7 @@ class LogDutyDetailsTest extends TestCase
         $lines = collect($end['details'])->pluck(1, 0);
 
         $this->assertArrayNotHasKey('สาเหตุที่ออกก่อนเวลา', $lines->all());
-        $this->assertSame('3 ชม. 10 นาที', $lines['ระยะเวลาที่เข้าเวร']);
+        $this->assertSame('3 ชม. 10 นาที 0 วินาที', $lines['ระยะเวลาที่เข้าเวร']);
     }
 
     public function test_system_end_shows_range_and_duration_up_to_the_last_signal(): void
