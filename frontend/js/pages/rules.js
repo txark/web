@@ -333,6 +333,17 @@ function rulesPage() {
       return out;
     },
 
+    // ── สารบัญแบบแท็บกลุ่ม (สภา): รวมจำนวนข้อของกลุ่ม + ชิปหมวดของกลุ่มที่อ่านอยู่ (ตอนค้นหา = ทุกหมวดที่พบ) ──
+    groupCount(g) {
+      return g.items.reduce((n, s) => n + (this.searching ? this.matchCount(s) : this.count(s)), 0);
+    },
+
+    get navItems() {
+      if (this.searching) return this.sections.filter((s) => this.matchCount(s) > 0);
+      const g = this.groups.find((x) => x.items.some((s) => s.key === this.current));
+      return g ? g.items : [];
+    },
+
     // ── ย่อ/ขยายกลุ่มในสารบัญ ──
     // ตอนค้นหาแสดงทุกกลุ่มเสมอ เพื่อให้เห็นจำนวนที่พบในแต่ละหมวด
     isOpen(g) {
