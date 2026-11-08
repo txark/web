@@ -8593,3 +8593,6 @@ html.has-side .pub .pub-toolbar { margin-top: 1.25rem; }
 .rl-nav .ts-chip .code { padding: 0 0.4rem; border-radius: 0.35rem; background: color-mix(in srgb, var(--line) 70%, transparent); font-size: 0.65rem; font-weight: 700; letter-spacing: 0.06em; }
 .rl-nav .ts-chip[aria-pressed="true"] .code { background: rgba(255, 255, 255, 0.25); }
 .rl-nav .ts-chip b { background: transparent; color: inherit; opacity: 0.7; font-weight: 500; }
+
+/* จัดการกฎ: ป้ายรหัสข้อ */
+.rule-code-chip { display: inline-block; min-width: 5.2rem; padding: 0.15rem 0.55rem; border-radius: 0.4rem; background: var(--accent-soft); color: var(--accent); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-align: center; }

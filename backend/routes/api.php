@@ -60,6 +60,17 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     });
 
     // สรุปชั่วโมงเวรของสภาแต่ละคน: รองประธานขึ้นไป
+    // จัดการกฎ (แก้/เพิ่ม/ซ่อน): รองประธานขึ้นไป
+    Route::prefix('council/rules')->middleware(['role:vice_president', 'duty', 'log.access:จัดการกฎ'])->group(function () {
+        $c = \App\Http\Controllers\Council\RuleAdminController::class;
+        Route::get('/', [$c, 'index']);
+        Route::post('/', [$c, 'store']);
+        Route::put('settings', [$c, 'settings']);
+        Route::put('{rule}', [$c, 'update']);
+        Route::delete('{rule}', [$c, 'destroy']);
+        Route::post('{rule}/restore', [$c, 'restore']);
+    });
+
     // ภาพรวมหน้าแรกของสภา: สภา (Council) ขึ้นไป
     Route::get('council/overview', [\App\Http\Controllers\Council\OverviewController::class, 'show'])
         ->middleware(['role:member']);

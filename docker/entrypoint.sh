@@ -25,7 +25,7 @@ runuser -u www-data -- php artisan schedule:work >/dev/null &
 
 # ซิงก์กฎจากเว็บทางการหนึ่งครั้งตอนเริ่ม (เบื้องหลัง ไม่หน่วงการเปิดเว็บ) — แผนฟรีที่หลับอยู่จะได้กฎล่าสุดทุกครั้งที่ตื่น
 if [ "${RULES_AUTO_SYNC:-true}" != "false" ]; then
-  (timeout 90 runuser -u www-data -- php artisan rules:pull-official --apply || true) &
+  (timeout 90 runuser -u www-data -- php artisan rules:pull-official --apply --auto || true) &
 fi
 
 exec apache2-foreground

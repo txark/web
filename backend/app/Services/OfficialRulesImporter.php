@@ -91,12 +91,12 @@ class OfficialRulesImporter
     {
         $out = [];
         foreach ($sections as $key => $cards) {
-            $current = Rule::where('section', $key)->where('kind', 'rule')->get()->keyBy('code');
+            $current = Rule::where('section', $key)->where('kind', 'rule')->where('is_local', false)->get()->keyBy('code');
             $codes = array_column($cards, 'code');
             $changed = [];
             foreach ($cards as $c) {
                 $row = $current->get($c['code']);
-                if ($row && ($row->title !== $c['title'] || $row->body !== $c['body'] || $row->penalty !== $c['penalty'] || $row->note !== $c['note'])) {
+                if ($row && (($c['hidden'] ?? false) === $row->is_published || $row->title !== $c['title'] || $row->body !== $c['body'] || $row->penalty !== $c['penalty'] || $row->note !== $c['note'])) {
                     $changed[] = $c['code'];
                 }
             }
@@ -124,7 +124,9 @@ class OfficialRulesImporter
         DB::transaction(function () use ($sections, &$total) {
             Rule::withoutEvents(function () use ($sections, &$total) {
                 foreach ($sections as $key => $cards) {
-                    Rule::where('section', $key)->delete();
+                    // ข้อที่เพิ่มเองในหน้าเว็บ (is_local) ไม่ถูกลบ: ต่อท้ายข้อของเว็บทางการ
+                    $locals = Rule::where('section', $key)->where('is_local', true)->orderBy('sort_order')->orderBy('id')->get();
+                    Rule::where('section', $key)->where('is_local', false)->delete();
                     foreach ($cards as $i => $c) {
                         Rule::create([
                             'section' => $key,
@@ -136,7 +138,13 @@ class OfficialRulesImporter
                             'note_label' => $c['note'] ? $c['note_label'] : null,
                             'note' => $c['note'],
                             'penalty' => $c['penalty'],
+                            'is_published' => ! ($c['hidden'] ?? false),
                         ]);
+                        $total++;
+                    }
+                    foreach ($locals as $j => $l) {
+                        $l->sort_order = (count($cards) + $j + 1) * 10;
+                        $l->saveQuietly();
                         $total++;
                     }
                 }
@@ -179,6 +187,39 @@ class OfficialRulesImporter
 
     /** กฎที่สภาประกาศแล้วแต่เว็บทางการยังไม่อัปเดต (ผสมให้ตอนซิงก์) */
     public const PENDING = 'database/data/council-rules-pending.json';
+
+    /**
+     * ผสมข้อที่ประธาน/รองแก้ทับในหน้าเว็บ (rule_overrides) ลงกฎของเว็บทางการ ตามรหัสข้อ
+     *
+     * @param  array<string, list<array<string, mixed>>>  $sections
+     * @return array<string, list<array<string, mixed>>>
+     */
+    public static function withOverrides(array $sections): array
+    {
+        if (! \Illuminate\Support\Facades\Schema::hasTable('rule_overrides')) {
+            return $sections;
+        }
+        $over = \App\Models\RuleOverride::query()->get()->keyBy('code');
+        if ($over->isEmpty()) {
+            return $sections;
+        }
+
+        foreach ($sections as $key => $cards) {
+            foreach ($cards as $i => $c) {
+                $o = $over->get($c['code'] ?? '');
+                if (! $o) {
+                    continue;
+                }
+                $c = array_merge($c, array_intersect_key($o->fields ?? [], array_flip(\App\Models\RuleOverride::FIELDS)));
+                if ($o->hidden) {
+                    $c['hidden'] = true;
+                }
+                $sections[$key][$i] = $c;
+            }
+        }
+
+        return $sections;
+    }
 
     /** @param  array<string, mixed>  $data */
     public function save(array $data, string $path): void

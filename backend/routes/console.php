@@ -21,7 +21,7 @@ Schedule::command('stories:sync-locks')->everyMinute();
 
 // ซิงก์กฎหมวดสภาจากเว็บทางการ (https://official.wavevycity.com/rules) ทุกชั่วโมง
 // อัปเดตเมื่อดึงมาได้ครบและมีส่วนที่เปลี่ยนเท่านั้น · ปิดด้วย RULES_AUTO_SYNC=false
-Schedule::command('rules:pull-official --apply')
+Schedule::command('rules:pull-official --apply --auto')
     ->hourly()
     ->withoutOverlapping()
-    ->when(fn () => (bool) config('council.rules_sync.enabled'));
+    ->when(fn () => \App\Models\AppSetting::rulesAutoSync());

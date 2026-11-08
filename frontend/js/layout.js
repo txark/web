@@ -22,6 +22,7 @@
   // เมนู "จัดการ" (ดรอปดาวน์): เฉพาะรองประธานขึ้นไป
   const manage = [
     ['/dashboard.html', 'แดชบอร์ด', 'layout-dashboard'],
+    ['/rules-admin.html', 'จัดการกฎ', 'book-open'],
     ['/users.html', 'จัดการผู้ใช้', 'users'],
     ['/duty-report.html', 'สรุปชั่วโมงเวร', 'clock'],
     ['/logs.html', 'บันทึกกิจกรรม', 'file-text'],

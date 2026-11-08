@@ -10,7 +10,7 @@ use Spatie\Activitylog\Support\LogOptions;
 
 #[Fillable([
     'section', 'code', 'sort_order', 'kind', 'title', 'body',
-    'note_label', 'note', 'penalty', 'is_published',
+    'note_label', 'note', 'penalty', 'is_published', 'is_local',
 ])]
 class Rule extends Model
 {
@@ -27,6 +27,7 @@ class Rule extends Model
         return [
             'section' => RuleSection::class,
             'is_published' => 'boolean',
+            'is_local' => 'boolean',
         ];
     }
 

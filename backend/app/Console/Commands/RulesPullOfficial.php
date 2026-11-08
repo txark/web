@@ -11,12 +11,19 @@ class RulesPullOfficial extends Command
     protected $signature = 'rules:pull-official
         {--apply : แทนที่กฎหมวดสภาในระบบด้วยที่ดึงมา (ไม่ใส่ = แสดงผลเปรียบเทียบเฉยๆ)}
         {--url= : ที่อยู่หน้ากฎ (ค่าเริ่มต้น https://official.wavevycity.com/rules)}
-        {--save= : บันทึกข้อมูลที่ดึงมาเป็นไฟล์ JSON (ใช้เป็นข้อมูลตั้งต้นของระบบ)}';
+        {--save= : บันทึกข้อมูลที่ดึงมาเป็นไฟล์ JSON (ใช้เป็นข้อมูลตั้งต้นของระบบ)}
+        {--auto : เรียกโดยระบบอัตโนมัติ: ข้ามถ้าปิดซิงก์อัตโนมัติไว้ในหน้าจัดการกฎ}';
 
     protected $description = 'ดึงกฎหมวดสภาล่าสุดจากเว็บทางการ เปรียบเทียบ และอัปเดตลงระบบ';
 
     public function handle(OfficialRulesImporter $importer): int
     {
+        if ($this->option('auto') && ! \App\Models\AppSetting::rulesAutoSync()) {
+            $this->info('ปิดซิงก์กฎอัตโนมัติไว้ (ตั้งค่าที่หน้าจัดการกฎ) — ข้าม');
+
+            return self::SUCCESS;
+        }
+
         try {
             $data = $importer->fetch($this->option('url') ?: null);
         } catch (Throwable $e) {
@@ -25,6 +32,7 @@ class RulesPullOfficial extends Command
             return self::FAILURE;
         }
 
+        $data['sections'] = OfficialRulesImporter::withOverrides($data['sections']); // ข้อที่แก้ในหน้าเว็บไม่ถูกทับ
         $total = array_sum(array_map('count', $data['sections']));
         if ($total === 0) {
             $this->error('ไม่พบกฎในหน้าที่ดึงมา (โครงหน้าเว็บอาจเปลี่ยน) — ไม่ได้แก้ไขอะไร');

@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="th" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>จัดการกฎ | WAVEVY COUNCIL</title>
+  <link rel="icon" href="/img/favicon.png">
+  <script src="/js/theme.js"></script>
+  <script src="/js/icons.js"></script>
+  <link rel="stylesheet" href="/css/output.css">
+  <script src="/js/config.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/pages/rules-admin.js"></script>
+  <script defer src="/js/layout.js"></script>
+  <script defer src="/js/vendor/alpine.min.js"></script>
+</head>
+<body>
+  <div id="site-header"></div>
+
+  <main class="container-app py-8" x-data="rulesAdminPage()">
+    <div x-show="!ready" class="py-24 text-center text-muted">กำลังตรวจสอบสิทธิ์...</div>
+
+    <div x-show="ready" x-cloak>
+      <header class="rg-head">
+        <div class="min-w-0">
+          <p class="rg-eyebrow">WAVEVY COUNCIL / RULES</p>
+          <h1 class="rg-title"><i class="ic rg-ic" data-icon="book-open" aria-hidden="true"></i>จัดการกฎ</h1>
+          <p class="rg-sub">แก้ไข เพิ่ม หรือซ่อนข้อกฎของสภา · การแก้ไขไม่ถูกทับตอนซิงก์จากเว็บทางการ · ประธานและรองประธานเท่านั้น</p>
+        </div>
+        <div class="rg-actions">
+          <button type="button" class="btn-outline" @click="load()" :disabled="loading" x-text="loading ? 'กำลังโหลด...' : 'รีเฟรช'"></button>
+          <button type="button" class="btn-solid" @click="openNew()"><i class="ic" data-icon="plus" aria-hidden="true"></i> เพิ่มข้อกฎ</button>
+        </div>
+      </header>
+
+      <p x-show="error" x-text="error" class="penalty-box mt-5"></p>
+
+      <!-- ซิงก์จากเว็บทางการ -->
+      <section class="card mt-6 flex flex-wrap items-center justify-between gap-4 px-5 py-4" x-show="meta" x-cloak>
+        <div class="min-w-0">
+          <p class="font-semibold">ซิงก์กฎจากเว็บทางการอัตโนมัติ</p>
+          <p class="mt-1 text-sm text-muted">
+            ฉบับ <span x-text="meta ? (meta.version || '—') : ''"></span> ·
+            แก้เองอยู่ <b x-text="meta ? meta.edited : 0"></b> ข้อ · ซ่อนอยู่ <b x-text="meta ? meta.hidden : 0"></b> ข้อ ·
+            <span x-text="meta && meta.auto_sync ? 'เปิดอยู่: ดึงกฎใหม่จากเว็บทางการทุกชั่วโมง ข้อที่แก้เองยังคงอยู่' : 'ปิดอยู่: กฎในหน้านี้เป็นแหล่งจริง ไม่ดึงจากเว็บทางการ'"></span>
+          </p>
+        </div>
+        <label class="flex items-center gap-2 text-sm font-medium">
+          <input type="checkbox" class="h-4 w-4" :checked="meta && meta.auto_sync" @change="toggleSync($event.target.checked)" :disabled="busy">
+          <span x-text="meta && meta.auto_sync ? 'เปิด' : 'ปิด'"></span>
+        </label>
+      </section>
+
+      <!-- ค้นหา / กรอง -->
+      <div class="mt-5 flex flex-wrap items-center gap-3">
+        <input type="search" class="input min-w-[14rem] flex-1" x-model.debounce.150ms="q" placeholder="ค้นหารหัส หัวข้อ หรือเนื้อหา" aria-label="ค้นหากฎ">
+        <select class="input w-auto" x-model="sec" aria-label="หมวด">
+          <option value="">ทุกหมวด</option>
+          <template x-for="s in sections" :key="s.key"><option :value="s.key" x-text="s.label"></option></template>
+        </select>
+        <select class="input w-auto" x-model="mark" aria-label="สถานะ">
+          <option value="">ทุกสถานะ</option>
+          <option value="edited">ที่แก้เอง</option>
+          <option value="local">ที่เพิ่มเอง</option>
+          <option value="hidden">ที่ซ่อนอยู่</option>
+        </select>
+        <span class="text-sm text-muted"><b x-text="shownCount"></b> ข้อ</span>
+      </div>
+
+      <p class="panel mt-5 p-6 text-center text-muted" x-show="!loading && shown.length === 0">ไม่พบกฎที่ตรงกัน</p>
+
+      <template x-for="s in shown" :key="s.key">
+        <section class="mt-8">
+          <h2 class="section-title" x-text="s.label"></h2>
+          <ul class="mt-3 space-y-2">
+            <template x-for="r in s.rules" :key="r.id">
+              <li class="card px-4 py-3" :class="r.hidden ? 'opacity-60' : ''">
+                <div class="flex flex-wrap items-start gap-3">
+                  <span class="rule-code-chip" x-text="r.code || '—'"></span>
+                  <div class="min-w-0 flex-1">
+                    <p class="font-semibold" x-text="r.title || '(ไม่มีหัวข้อ)'"></p>
+                    <p class="mt-1 line-clamp-2 whitespace-pre-line text-sm text-muted" x-text="r.body"></p>
+                    <p class="mt-1 text-xs text-muted" x-show="r.penalty" x-text="'บทลงโทษ: ' + r.penalty"></p>
+                    <p class="mt-2 flex flex-wrap gap-1.5">
+                      <span class="badge badge-info" x-show="r.edited">แก้เอง</span>
+                      <span class="badge badge-muted" x-show="r.is_local">เพิ่มเอง</span>
+                      <span class="badge badge-sanction" x-show="r.hidden">ซ่อนอยู่</span>
+                    </p>
+                  </div>
+                  <div class="flex shrink-0 flex-wrap items-center gap-2 self-center">
+                    <button type="button" class="btn-outline !py-1.5 !text-sm" @click="openEdit(r)">แก้ไข</button>
+                    <button type="button" class="btn-outline !py-1.5 !text-sm" x-show="(r.edited || r.hidden) && !r.is_local" @click="restore(r)">คืนค่าตามเว็บทางการ</button>
+                    <button type="button" class="text-sm text-danger hover:underline" x-show="!r.hidden && r.kind === 'rule'" @click="remove(r)" x-text="r.is_local ? 'ลบ' : 'ซ่อน'"></button>
+                  </div>
+                </div>
+              </li>
+            </template>
+          </ul>
+        </section>
+      </template>
+    </div>
+
+    <!-- แก้ไข / เพิ่ม -->
+    <div x-show="form.show" x-cloak class="reg-backdrop" role="dialog" aria-modal="true" aria-labelledby="ra-title" @keydown.escape.window="form.show = false" @mousedown.self="form.show = false">
+      <form class="reg-modal" @submit.prevent="save()" novalidate>
+        <header class="reg-head">
+          <h2 id="ra-title" class="reg-title" x-text="form.id ? 'แก้ไขข้อกฎ ' + (form.code || '') : 'เพิ่มข้อกฎ'"></h2>
+          <button type="button" class="reg-close" aria-label="ปิด" @click="form.show = false">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+        </header>
+        <div class="reg-body">
+          <p class="penalty-box" x-show="form.err" x-text="form.err" role="alert"></p>
+
+          <div class="reg-field" x-show="!form.id">
+            <label class="reg-label" for="ra-sec">หมวด <span class="text-accent">*</span></label>
+            <select id="ra-sec" class="input" x-model="form.section">
+              <template x-for="s in sections.filter((x) => x.key !== 'fees')" :key="s.key"><option :value="s.key" x-text="s.label"></option></template>
+            </select>
+          </div>
+          <div class="reg-field">
+            <label class="reg-label" for="ra-title-i">หัวข้อ <span class="text-accent">*</span></label>
+            <input id="ra-title-i" class="input" x-model="form.title" maxlength="250" autocomplete="off">
+          </div>
+          <div class="reg-field">
+            <label class="reg-label" for="ra-body">เนื้อหา <span class="reg-hint">(ขึ้นบรรทัดใหม่ได้)</span></label>
+            <textarea id="ra-body" rows="6" class="input" x-model="form.body" maxlength="6000"></textarea>
+          </div>
+          <div class="reg-field">
+            <label class="reg-label" for="ra-note">หมายเหตุ <span class="reg-hint">(ไม่บังคับ)</span></label>
+            <textarea id="ra-note" rows="2" class="input" x-model="form.note" maxlength="3000"></textarea>
+          </div>
+          <div class="reg-field">
+            <label class="reg-label" for="ra-pen">บทลงโทษ <span class="reg-hint">(ไม่บังคับ เช่น ปรับ 500,000 WVDL หรือบำเพ็ญ 200 ไม้)</span></label>
+            <input id="ra-pen" class="input" x-model="form.penalty" maxlength="1000" autocomplete="off">
+          </div>
+          <p class="gd-muted text-sm" x-show="form.id && !form.is_local && form.code">ข้อนี้เป็นของเว็บทางการ การแก้ไขจะถูกจำไว้และไม่ถูกทับตอนซิงก์ · กด "คืนค่าตามเว็บทางการ" เมื่อต้องการยกเลิกการแก้</p>
+        </div>
+        <footer class="reg-foot">
+          <button type="button" class="btn-outline" @click="form.show = false">ยกเลิก</button>
+          <button type="submit" class="btn-solid" :disabled="busy || !form.title.trim()" x-text="busy ? 'กำลังบันทึก...' : 'บันทึก'"></button>
+        </footer>
+      </form>
+    </div>
+  </main>
+</body>
+</html>
