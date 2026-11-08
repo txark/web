@@ -39,6 +39,7 @@
       </div>
     </header>
 
+    <div class="rl-sticky">
     <div class="pub-toolbar hidden lg:flex" x-show="!loading && !error">
       <label class="pub-search">
         <i class="ic" data-icon="search" aria-hidden="true"></i>
@@ -56,31 +57,32 @@
       <span class="pub-toolbar-count"><b x-text="shownRules"></b> / <span x-text="totalRules"></span> รายการ</span>
     </div>
 
+    <!-- สารบัญของสภา: แท็บกลุ่ม + ชิปหมวด (แสดงเฉพาะจอใหญ่ในเมนูซ้ายของสภา) -->
+    <nav class="rl-nav" aria-label="สารบัญกฎ" x-show="!loading && !error" x-cloak>
+      <div class="fn-tabs" role="tablist">
+        <template x-for="g in groups" :key="g.label">
+          <button type="button" class="fn-tab" role="tab" :aria-selected="!searching && hasCurrent(g)" @click="choose(g.items[0].key)">
+            <span x-text="g.label"></span>
+            <span class="badge badge-muted" x-text="groupCount(g)"></span>
+          </button>
+        </template>
+      </div>
+      <div class="ts-sub">
+        <template x-for="s in navItems" :key="s.key">
+          <button type="button" class="ts-chip" :aria-pressed="!searching && s.key === current" @click="choose(s.key)">
+            <span class="code" x-text="s.key.toUpperCase()"></span>
+            <span x-text="shortLabel(s)"></span>
+            <b x-text="searching ? matchCount(s) : count(s)"></b>
+          </button>
+        </template>
+      </div>
+    </nav>
+    </div>
+
     <p x-show="loading" class="mt-12 text-center text-muted">กำลังโหลด...</p>
     <p x-show="error" x-text="error" class="penalty-box mt-12 text-center"></p>
 
     <div class="rules-grid mt-4 flex flex-col gap-4 lg:mt-6 lg:grid lg:gap-6 lg:grid-cols-[16rem_minmax(0,1fr)] xl:grid-cols-[18rem_minmax(0,1fr)] 2xl:grid-cols-[20rem_minmax(0,1fr)]" x-show="!loading && !error" x-cloak>
-      <!-- สารบัญของสภา: แท็บกลุ่ม + ชิปหมวด (แสดงเฉพาะจอใหญ่ในเมนูซ้ายของสภา) -->
-      <nav class="rl-nav" aria-label="สารบัญกฎ">
-        <div class="fn-tabs" role="tablist">
-          <template x-for="g in groups" :key="g.label">
-            <button type="button" class="fn-tab" role="tab" :aria-selected="!searching && hasCurrent(g)" @click="choose(g.items[0].key)">
-              <span x-text="g.label"></span>
-              <span class="badge badge-muted" x-text="groupCount(g)"></span>
-            </button>
-          </template>
-        </div>
-        <div class="ts-sub">
-          <template x-for="s in navItems" :key="s.key">
-            <button type="button" class="ts-chip" :aria-pressed="!searching && s.key === current" @click="choose(s.key)">
-              <span class="code" x-text="s.key.toUpperCase()"></span>
-              <span x-text="shortLabel(s)"></span>
-              <b x-text="searching ? matchCount(s) : count(s)"></b>
-            </button>
-          </template>
-        </div>
-      </nav>
-
       <!-- สารบัญ -->
       <aside id="rules-bar"
              class="sticky top-[var(--header-h,0px)] z-20 -mx-4 border-b border-line bg-[var(--header-bg)] px-4 py-2 sm:-mx-6 sm:px-6 sm:py-2.5 lg:top-20 lg:z-auto lg:mx-0 lg:self-start lg:border-0 lg:bg-transparent lg:p-0"

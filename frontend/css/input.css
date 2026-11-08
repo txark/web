@@ -8573,6 +8573,17 @@ html.has-side .pub .pub-toolbar { margin-top: 1.25rem; }
 /* ───── หน้ากฎของสภา: สารบัญเป็นแท็บกลุ่ม + ชิปหมวด (จอ ≥1024px) ───── */
 .rl-nav { display: none; }
 @media (min-width: 1024px) {
+  /* ค้นหา + แท็บกลุ่ม + ชิปหมวด ตรึงติดใต้แถบบนตอนเลื่อน */
+  html.has-side .pub .rl-sticky {
+    position: sticky;
+    top: var(--header-h, 0px);
+    z-index: 20;
+    margin: 0 -0.5rem;
+    padding: 0.75rem 0.5rem 0.5rem;
+    background: var(--bg);
+  }
+  html.has-side .pub .rl-sticky .pub-toolbar { margin-top: 0; }
+  html.has-side .pub .rl-sticky .rl-nav { margin-top: 0.75rem; }
   html.has-side .pub .rl-nav { display: block; }
   html.has-side .pub #rules-bar { display: none; }
   html.has-side .pub .rules-grid { display: block; }
