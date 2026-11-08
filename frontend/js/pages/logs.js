@@ -75,9 +75,9 @@ function logsPage() {
       this.reload();
     },
 
-    /** สถานะให้เลือกตามหมวดที่เลือก (ยังไม่เลือกหมวด = ทุกสถานะ) */
+    /** สถานะให้เลือกตามหมวดที่เลือก (ยังไม่เลือกหมวด = ไม่แสดง ไม่งั้นรายการยาวและชื่อซ้ำกัน) */
     get events() {
-      const list = this.type ? EVENTS[this.type] || [] : Object.values(EVENTS).flat();
+      const list = this.type ? EVENTS[this.type] || [] : [];
       return list.map(([value, label]) => ({ value, label }));
     },
 

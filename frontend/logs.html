@@ -32,33 +32,32 @@
         </header>
 
       <!-- ตัวกรอง -->
-      <div class="panel mt-6 space-y-3 p-4">
-        <div class="space-y-1">
-          <p class="text-xs text-muted">หมวดหมู่</p>
-          <div class="flex flex-wrap gap-2" role="group" aria-label="หมวดหมู่">
+      <div class="panel mt-6 space-y-4 p-4">
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <p class="w-16 shrink-0 text-xs text-muted">หมวดหมู่</p>
+          <div class="flex flex-1 flex-wrap gap-2" role="group" aria-label="หมวดหมู่">
             <template x-for="t in types" :key="t.value">
               <button type="button" class="chip" :aria-pressed="type === t.value" @click="setType(t.value)" x-text="t.label"></button>
             </template>
           </div>
         </div>
 
-        <div class="space-y-1" x-show="events.length">
-          <p class="text-xs text-muted">สถานะ</p>
-          <div class="flex flex-wrap gap-2" role="group" aria-label="สถานะ">
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-2" x-show="events.length" x-cloak>
+          <p class="w-16 shrink-0 text-xs text-muted">สถานะ</p>
+          <div class="flex flex-1 flex-wrap gap-2" role="group" aria-label="สถานะ">
             <template x-for="e in events" :key="e.value">
               <button type="button" class="chip" :aria-pressed="event === e.value" @click="setEvent(e.value)" x-text="e.label"></button>
             </template>
           </div>
         </div>
 
-        <div class="grid gap-3 md:grid-cols-[1fr_auto_auto]">
-          <input type="search" x-model.debounce.300ms="q" class="input" placeholder="ค้นหาจากชื่อผู้กระทำหรือข้อความ" aria-label="ค้นหา">
-          <label class="flex items-center gap-2 text-sm text-muted">ตั้งแต่
+        <div class="flex flex-wrap items-center gap-3 border-t border-line pt-4">
+          <input type="search" x-model.debounce.300ms="q" class="input min-w-[14rem] flex-1" placeholder="ค้นหาจากชื่อผู้กระทำหรือข้อความ" aria-label="ค้นหา">
+          <div class="flex flex-wrap items-center gap-2 text-sm text-muted">
             <input type="date" x-model="from" :max="to || undefined" class="input w-auto" aria-label="ตั้งแต่วันที่">
-          </label>
-          <label class="flex items-center gap-2 text-sm text-muted">ถึง
+            <span>ถึง</span>
             <input type="date" x-model="to" :min="from || undefined" class="input w-auto" aria-label="ถึงวันที่">
-          </label>
+          </div>
         </div>
 
         <div class="flex flex-wrap items-center gap-2 text-sm" x-show="hasFilter">
