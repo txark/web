@@ -175,7 +175,7 @@
 
           <div class="fn-pager" x-show="meta.last_page > 1">
             <button type="button" class="gd-ghost" :disabled="page <= 1 || loading" @click="go(page - 1)">‹ ก่อนหน้า</button>
-            <span class="text-sm text-muted">หน้า <select class="input !inline-block !w-auto !py-1 !pl-2 !pr-7" aria-label="เลือกหน้า" @change="go(+$event.target.value)"><template x-for="n in Array.from({ length: meta.last_page }, (_, i) => i + 1)" :key="n"><option :value="n" :selected="n === page" x-text="n"></option></template></select> / <span x-text="meta.last_page"></span> · ทั้งหมด <span x-text="meta.total"></span> รายการ</span>
+            <span class="text-sm text-muted"><span class="pg-nums"><template x-for="(n, i) in pageList(page, meta.last_page)" :key="i"><button type="button" class="pg-num" :class="n === page ? 'is-on' : ''" :disabled="n === '…'" @click="go(n)" x-text="n"></button></template></span> · ทั้งหมด <span x-text="meta.total"></span> รายการ</span>
             <button type="button" class="gd-ghost" :disabled="page >= meta.last_page || loading" @click="go(page + 1)">ถัดไป ›</button>
           </div>
         </section>
@@ -379,7 +379,7 @@
 
               <div class="fn-pager" x-show="loanMeta.last_page > 1">
                 <button type="button" class="gd-ghost" :disabled="loanPage <= 1 || loanLoading" @click="goLoans(loanPage - 1)">‹ ก่อนหน้า</button>
-                <span class="text-sm text-muted">หน้า <select class="input !inline-block !w-auto !py-1 !pl-2 !pr-7" aria-label="เลือกหน้า" @change="goLoans(+$event.target.value)"><template x-for="n in Array.from({ length: loanMeta.last_page }, (_, i) => i + 1)" :key="n"><option :value="n" :selected="n === loanPage" x-text="n"></option></template></select> / <span x-text="loanMeta.last_page"></span> · ทั้งหมด <span x-text="loanMeta.total"></span> สัญญา</span>
+                <span class="text-sm text-muted"><span class="pg-nums"><template x-for="(n, i) in pageList(loanPage, loanMeta.last_page)" :key="i"><button type="button" class="pg-num" :class="n === loanPage ? 'is-on' : ''" :disabled="n === '…'" @click="goLoans(n)" x-text="n"></button></template></span> · ทั้งหมด <span x-text="loanMeta.total"></span> สัญญา</span>
                 <button type="button" class="gd-ghost" :disabled="loanPage >= loanMeta.last_page || loanLoading" @click="goLoans(loanPage + 1)">ถัดไป ›</button>
               </div>
               <p class="fn-note-box">ใกล้ครบกำหนดหรือเกินกำหนดจะขึ้นในหน้า <a href="/tasks.html" class="fn-link">แจ้งเตือนงานค้าง</a> พร้อมปุ่ม "คัดลอกข้อความทวง" (ไม่ใช้ Discord bot)</p>
@@ -452,7 +452,7 @@
 
             <div class="fn-pager" x-show="tradeMeta.last_page > 1">
               <button type="button" class="gd-ghost" :disabled="tradePage <= 1 || tradeLoading" @click="goTrades(tradePage - 1)">‹ ก่อนหน้า</button>
-              <span class="text-sm text-muted">หน้า <select class="input !inline-block !w-auto !py-1 !pl-2 !pr-7" aria-label="เลือกหน้า" @change="goTrades(+$event.target.value)"><template x-for="n in Array.from({ length: tradeMeta.last_page }, (_, i) => i + 1)" :key="n"><option :value="n" :selected="n === tradePage" x-text="n"></option></template></select> / <span x-text="tradeMeta.last_page"></span> · ทั้งหมด <span x-text="tradeMeta.total"></span> รายการ</span>
+              <span class="text-sm text-muted"><span class="pg-nums"><template x-for="(n, i) in pageList(tradePage, tradeMeta.last_page)" :key="i"><button type="button" class="pg-num" :class="n === tradePage ? 'is-on' : ''" :disabled="n === '…'" @click="goTrades(n)" x-text="n"></button></template></span> · ทั้งหมด <span x-text="tradeMeta.total"></span> รายการ</span>
               <button type="button" class="gd-ghost" :disabled="tradePage >= tradeMeta.last_page || tradeLoading" @click="goTrades(tradePage + 1)">ถัดไป ›</button>
             </div>
           </section>
@@ -607,7 +607,7 @@
             </ul>
             <div class="fn-pager" x-show="bonusMeta.last_page > 1">
               <button type="button" class="gd-ghost" :disabled="bonusPage <= 1 || bonusLoading" @click="goBonus(bonusPage - 1)">‹ ก่อนหน้า</button>
-              <span class="text-sm text-muted">หน้า <select class="input !inline-block !w-auto !py-1 !pl-2 !pr-7" aria-label="เลือกหน้า" @change="goBonus(+$event.target.value)"><template x-for="n in Array.from({ length: bonusMeta.last_page }, (_, i) => i + 1)" :key="n"><option :value="n" :selected="n === bonusPage" x-text="n"></option></template></select> / <span x-text="bonusMeta.last_page"></span></span>
+              <span class="text-sm text-muted"><span class="pg-nums"><template x-for="(n, i) in pageList(bonusPage, bonusMeta.last_page)" :key="i"><button type="button" class="pg-num" :class="n === bonusPage ? 'is-on' : ''" :disabled="n === '…'" @click="goBonus(n)" x-text="n"></button></template></span></span>
               <button type="button" class="gd-ghost" :disabled="bonusPage >= bonusMeta.last_page || bonusLoading" @click="goBonus(bonusPage + 1)">ถัดไป ›</button>
             </div>
           </section>

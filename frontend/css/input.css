@@ -8605,3 +8605,10 @@ html.has-side .pub .pub-toolbar { margin-top: 1.25rem; }
 .log-dl dd { min-width: 0; overflow-wrap: anywhere; }
 .log-k { display: inline-block; min-width: 2.6rem; color: var(--muted); font-size: 0.75rem; }
 @media (max-width: 640px) { .log-dl dt { width: 6.5rem; } }
+
+/* ปุ่มเลขหน้า */
+.pg-nums { display: inline-flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0.35rem; }
+.pg-num { min-width: 2.1rem; height: 2.1rem; padding: 0 0.55rem; border: 1px solid var(--line); border-radius: 0.5rem; background: transparent; color: var(--fg); font-size: 0.85rem; cursor: pointer; }
+.pg-num:hover:not(:disabled):not(.is-on) { border-color: var(--accent); color: var(--accent); }
+.pg-num.is-on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; cursor: default; }
+.pg-num:disabled:not(.is-on) { border-color: transparent; cursor: default; color: var(--muted); }

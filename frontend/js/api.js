@@ -74,3 +74,18 @@ const API = (() => {
     loginUrl: () => `${base()}/auth/discord/redirect`,
   };
 })();
+
+// รายการเลขหน้าสำหรับปุ่มแบ่งหน้า: [1, '…', 4, 5, 6, '…', 20]
+function pageList(page, last) {
+  last = Math.max(1, Number(last) || 1);
+  const keep = new Set([1, last, page - 1, page, page + 1]);
+  const out = [];
+  let prev = 0;
+  for (let n = 1; n <= last; n++) {
+    if (!keep.has(n)) continue;
+    if (n - prev > 1) out.push('…');
+    out.push(n);
+    prev = n;
+  }
+  return out;
+}
