@@ -60,6 +60,24 @@
           </a>
         </section>
 
+        <!-- งานค้างที่ควรทำก่อน -->
+        <section class="card px-4 py-4" x-show="d.alerts.top && d.alerts.top.length">
+          <div class="flex items-baseline justify-between gap-3">
+            <h2 class="font-semibold">งานค้างที่ควรทำก่อน</h2>
+            <a href="/tasks.html" class="text-sm text-accent hover:underline">ดูทั้งหมด</a>
+          </div>
+          <ul class="mt-3 divide-y divide-[var(--line)]">
+            <template x-for="(a, i) in (d.alerts.top || [])" :key="i">
+              <li>
+                <a :href="a.link || '/tasks.html'" class="flex items-start gap-3 py-2.5 hover:opacity-90">
+                  <span class="badge mt-0.5 shrink-0" :class="a.severity === 'high' ? 'badge-sanction' : a.severity === 'medium' ? 'badge-blacklist' : 'badge-muted'" x-text="a.severity === 'high' ? 'เร่งด่วน' : a.severity === 'medium' ? 'ควรทำ' : 'ทบทวน'"></span>
+                  <span class="min-w-0 flex-1"><span class="block text-sm font-medium" x-text="a.title"></span><span class="block text-xs text-muted" x-text="a.detail"></span></span>
+                </a>
+              </li>
+            </template>
+          </ul>
+        </section>
+
         <div class="grid gap-6 lg:grid-cols-2">
           <!-- ทะเบียน -->
           <section class="card px-4 py-4">
@@ -70,6 +88,14 @@
               <div><p class="text-xs text-muted">ครอบครัว</p><p class="text-xl font-semibold" x-text="d.groups.families"></p></div>
             </div>
             <p class="mt-2 text-xs text-muted" x-text="'ขึ้นทะเบียนใหม่เดือนนี้ ' + d.groups.new_this_month"></p>
+            <div class="mt-3" x-show="d.groups.recent && d.groups.recent.length">
+              <p class="text-xs text-muted">ขึ้นทะเบียนล่าสุด</p>
+              <ul class="mt-1 space-y-1">
+                <template x-for="g in d.groups.recent" :key="g.id">
+                  <li class="flex justify-between gap-3 text-sm"><a :href="'/manage-groups.html?id=' + g.id" class="min-w-0 truncate hover:underline"><span x-text="g.name"></span> <span class="text-xs text-muted" x-text="g.kind"></span></a><span class="shrink-0 text-xs text-muted" x-text="stamp(g.registered_at)"></span></li>
+                </template>
+              </ul>
+            </div>
             <ul class="mt-3 space-y-2">
               <template x-for="s in d.groups.by_status" :key="s.key">
                 <li>
@@ -95,6 +121,14 @@
               </template>
               <li x-show="!d.requests.by_kind.length" class="text-sm text-muted">ไม่มีคำขอค้าง</li>
             </ul>
+            <div class="mt-3" x-show="d.requests.pending_list && d.requests.pending_list.length">
+              <p class="text-xs text-muted">คำขอที่รออยู่ (เก่าสุดก่อน)</p>
+              <ul class="mt-1 space-y-1.5">
+                <template x-for="t in d.requests.pending_list" :key="t.id">
+                  <li><a :href="'/requests.html?id=' + t.id" class="flex justify-between gap-3 text-sm hover:underline"><span class="min-w-0 truncate"><b x-text="t.kind"></b> · <span x-text="t.group"></span> <span class="text-xs text-muted" x-text="'· ' + t.number + ' · ' + t.by"></span></span><span class="shrink-0 text-xs text-muted" x-text="stamp(t.created_at)"></span></a></li>
+                </template>
+              </ul>
+            </div>
           </section>
 
           <!-- การเงิน -->
@@ -131,6 +165,14 @@
               <div><p class="text-xs text-muted">เกินกำหนด</p><p class="text-xl font-semibold" x-text="d.loans.overdue"></p></div>
               <div><p class="text-xs text-muted">ยอดค้างรับคืน</p><p class="text-lg font-semibold" x-text="money(d.loans.outstanding)"></p></div>
               <div><p class="text-xs text-muted">ปล่อยกู้สะสม (ต้นเงิน)</p><p class="text-lg font-semibold" x-text="money(d.loans.lent_total)"></p></div>
+            </div>
+            <div class="mt-3" x-show="d.loans.overdue_list && d.loans.overdue_list.length">
+              <p class="text-xs text-muted">สัญญาที่เกินกำหนด</p>
+              <ul class="mt-1 space-y-1">
+                <template x-for="l in d.loans.overdue_list" :key="l.id">
+                  <li class="flex justify-between gap-3 text-sm"><span class="min-w-0 truncate" x-text="l.group"></span><span class="shrink-0 text-muted" x-text="money(l.outstanding) + ' WVDL'"></span></li>
+                </template>
+              </ul>
             </div>
             <a href="/finance.html" class="btn-outline mt-4 inline-block">ไปหน้าการเงิน</a>
           </section>

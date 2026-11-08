@@ -35,8 +35,19 @@ class DashboardController extends Controller
             'finance' => $this->finance($request),
             'loans' => $this->loans(),
             'duty' => $this->dutyData($weekStart),
-            'alerts' => app(AlertController::class)->index($request)->getData(true)['meta'] ?? [],
+            'alerts' => $this->alerts($request),
         ]]);
+    }
+
+    /** งานค้างแจ้งเตือน: ตัวเลข + รายการเด่น 6 อันดับแรก (เร่งด่วนก่อน) */
+    private function alerts(Request $request): array
+    {
+        $res = app(AlertController::class)->index($request)->getData(true);
+        $rank = ['high' => 0, 'medium' => 1, 'low' => 2];
+        $top = collect($res['data'] ?? [])->sortBy(fn ($a) => $rank[$a['severity'] ?? 'low'] ?? 3)->take(6)
+            ->map(fn ($a) => ['title' => $a['title'], 'detail' => $a['detail'] ?? '', 'severity' => $a['severity'] ?? 'low', 'link' => $a['link'] ?? null])->values()->all();
+
+        return ($res['meta'] ?? []) + ['top' => $top];
     }
 
     private function groups($monthStart): array
@@ -48,6 +59,8 @@ class DashboardController extends Controller
             'gangs' => $all->where('type', GroupType::Gang)->count(),
             'families' => $all->where('type', GroupType::Family)->count(),
             'new_this_month' => $all->filter(fn ($g) => $g->registered_at && $g->registered_at->gte($monthStart->copy()->utc()))->count(),
+            'recent' => Group::query()->whereNotNull('registered_at')->latest('registered_at')->limit(5)->get(['id', 'name', 'type', 'is_lady', 'registered_at'])
+                ->map(fn (Group $g) => ['id' => $g->id, 'name' => $g->name, 'kind' => $g->is_lady ? 'แก๊งหญิง' : $g->type->label(), 'registered_at' => $g->registered_at->toIso8601String()])->values(),
             'by_status' => collect(GroupStatus::cases())->map(fn (GroupStatus $s) => [
                 'key' => $s->value, 'label' => $s->label(), 'count' => $all->where('status', $s)->count(),
             ])->values(),
@@ -67,6 +80,11 @@ class DashboardController extends Controller
             'by_kind' => $pending->groupBy(fn ($t) => $t->kind->value)->map(fn ($g, $k) => [
                 'key' => $k, 'label' => TransactionKind::from($k)->label(), 'count' => $g->count(),
             ])->sortByDesc('count')->values(),
+            'pending_list' => Transaction::query()->with(['group:id,name', 'requester:id,name,character_name'])->where('status', TransactionStatus::Pending->value)->orderBy('id')->limit(8)->get()
+                ->map(fn (Transaction $t) => [
+                    'id' => $t->id, 'number' => $t->number, 'kind' => $t->kind->label(), 'group' => $t->group?->name ?? ($t->payload['name'] ?? '—'),
+                    'by' => $t->requester ? ($t->requester->character_name ?: $t->requester->name) : '—', 'created_at' => $t->created_at->toIso8601String(),
+                ])->values(),
             'approved_this_week' => Transaction::where('status', TransactionStatus::Approved->value)->where('reviewed_at', '>=', $since)->count(),
             'rejected_this_week' => Transaction::where('status', TransactionStatus::Rejected->value)->where('reviewed_at', '>=', $since)->count(),
         ];
@@ -99,6 +117,9 @@ class DashboardController extends Controller
             'overdue' => $open->filter(fn (CouncilLoan $l) => $l->status() === 'overdue')->count(),
             'outstanding' => (int) $open->sum(fn (CouncilLoan $l) => $l->outstanding()),
             'lent_total' => (int) $rows->sum('principal'),
+            'overdue_list' => $open->filter(fn (CouncilLoan $l) => $l->status() === 'overdue')->take(5)->map(fn (CouncilLoan $l) => [
+                'id' => $l->id, 'group' => $l->group?->name ?? $l->borrower_name, 'outstanding' => $l->outstanding(),
+            ])->values(),
         ];
     }
 
