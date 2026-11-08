@@ -40,7 +40,8 @@ class LogDutyDetailsTest extends TestCase
 
         $this->assertSame('ติดธุระด่วน', $lines['สาเหตุที่ออกก่อนเวลา']);
         $this->assertSame('45 นาที 0 วินาที', $lines['ระยะเวลาที่เข้าเวร']);
-        $this->assertStringContainsString('น.', $lines['ช่วงเวลาที่เข้าเวร']);
+        $this->assertStringContainsString('น.', $lines['เข้าเวรเมื่อ']);
+        $this->assertStringContainsString('น.', $lines['ออกเวรเมื่อ']);
         $this->assertSame([], $rows->firstWhere('event', 'start')['details']);
     }
 
@@ -79,7 +80,8 @@ class LogDutyDetailsTest extends TestCase
         $row = collect($this->rows())->firstWhere('event', 'system_end');
         $lines = collect($row['details'])->pluck(1, 0);
 
-        $this->assertArrayHasKey('ช่วงเวลาที่เข้าเวร', $lines->all());
+        $this->assertArrayHasKey('เข้าเวรเมื่อ', $lines->all());
+        $this->assertArrayHasKey('สัญญาณล่าสุดเมื่อ', $lines->all());
         $this->assertArrayHasKey('ระยะเวลาที่เข้าเวร', $lines->all());
         $this->assertArrayNotHasKey('สาเหตุที่ออกก่อนเวลา', $lines->all());
     }

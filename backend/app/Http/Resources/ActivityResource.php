@@ -196,8 +196,9 @@ class ActivityResource extends JsonResource
         $tz = config('council.report_timezone');
         $from = $shift->started_at->copy()->timezone($tz);
         $to = $shift->ended_at->copy()->timezone($tz);
-        $sameDay = $from->isSameDay($to);
-        $range = $from->format('H:i').' – '.$to->format($sameDay ? 'H:i' : 'd/m H:i').' น.';
+        // วันที่แบบไทย (พ.ศ.) เช่น 7 พ.ย. 2569 เวลา 23:23 น. — แยกเป็นเวลาเข้า/ออกคนละแถว อ่านง่าย
+        $months = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+        $thai = fn ($d) => $d->day.' '.$months[$d->month - 1].' '.($d->year + 543).' เวลา '.$d->format('H:i:s').' น.';
 
         $secs = (int) $shift->started_at->diffInSeconds($shift->ended_at);
         $dur = (intdiv($secs, 3600) > 0 ? intdiv($secs, 3600).' ชม. ' : '').intdiv($secs % 3600, 60).' นาที '.($secs % 60).' วินาที';
@@ -208,7 +209,8 @@ class ActivityResource extends JsonResource
         if ($this->event === 'end' && ! empty($p['short']) && empty($p['logout']) && ! empty($p['note'])) {
             $lines[] = ['สาเหตุที่ออกก่อนเวลา', $p['note']];
         }
-        $lines[] = ['ช่วงเวลาที่เข้าเวร', $from->format('d/m/Y').' '.$range];
+        $lines[] = ['เข้าเวรเมื่อ', $thai($from)];
+        $lines[] = [$this->event === 'system_end' ? 'สัญญาณล่าสุดเมื่อ' : 'ออกเวรเมื่อ', $thai($to)];
         $lines[] = ['ระยะเวลาที่เข้าเวร', $dur];
 
         return $lines;
