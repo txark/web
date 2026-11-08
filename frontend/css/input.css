@@ -8619,3 +8619,30 @@ html.has-side .pub .pub-toolbar { margin-top: 1.25rem; }
 .help-link > span { display: inline-grid; place-items: center; width: 1.15rem; height: 1.15rem; border: 1px solid currentColor; border-radius: 50%; font-size: 0.7rem; font-weight: 700; }
 .help-steps { margin: 0; padding-left: 1.3rem; display: grid; gap: 0.6rem; list-style: decimal; font-size: 0.92rem; line-height: 1.6; }
 .reg-backdrop[hidden] { display: none; }
+
+/* ระบบบันทึกข้อพิพาท */
+.ds-grid { display: grid; gap: 1rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 720px) { .ds-grid { grid-template-columns: minmax(0, 1fr); } }
+.ds-modal { max-width: 56rem; }
+.ds-pick { min-width: 0; padding: 0.9rem 1rem 1rem; border: 1px solid var(--line); border-radius: 0.9rem; }
+.ds-pick legend { padding: 0 0.5rem; font-size: 0.9rem; font-weight: 600; }
+.ds-pick legend small { color: var(--muted); font-weight: 400; }
+.ds-list { margin-top: 0.7rem; max-height: 15rem; overflow-y: auto; display: grid; gap: 0.15rem; }
+.ds-opt { display: flex; align-items: center; gap: 0.7rem; padding: 0.5rem 0.4rem; border-radius: 0.6rem; cursor: pointer; }
+.ds-opt:hover { background: var(--accent-soft); }
+.ds-opt input { width: 1.05rem; height: 1.05rem; flex-shrink: 0; }
+.ds-opt b { display: block; font-size: 0.92rem; }
+.ds-opt small { display: block; color: var(--muted); font-size: 0.78rem; }
+.ds-meta { margin-top: 0.9rem; display: grid; gap: 0.5rem; font-size: 0.82rem; }
+.ds-meta > div { display: flex; flex-wrap: wrap; gap: 0.4rem 0.6rem; align-items: baseline; }
+.ds-meta dt { color: var(--muted); min-width: 10rem; }
+.ds-meta dd { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.ds-chip { padding: 0.15rem 0.6rem; border: 1px solid var(--line); border-radius: 999px; background: var(--panel-2, transparent); }
+.ds-files { margin-top: 0.9rem; display: flex; flex-wrap: wrap; gap: 0.6rem; }
+.ds-file { position: relative; }
+.ds-thumb { display: grid; place-items: center; width: 5.5rem; height: 5.5rem; overflow: hidden; border: 1px solid var(--line); border-radius: 0.7rem; background: var(--panel-2, transparent); }
+.ds-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.ds-vid { color: var(--accent); }
+.ds-vid .ic { width: 1.8rem; height: 1.8rem; }
+.ds-x { position: absolute; top: -0.4rem; right: -0.4rem; width: 1.2rem; height: 1.2rem; border-radius: 50%; border: 1px solid var(--line); background: var(--panel); color: var(--muted); font-size: 0.6rem; cursor: pointer; }
+.ds-x:hover { color: var(--danger); }

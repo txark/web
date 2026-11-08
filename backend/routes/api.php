@@ -24,6 +24,7 @@ use App\Http\Controllers\Council\FineController;
 use App\Http\Controllers\Council\ReminderController;
 use App\Http\Controllers\MyGroupController;
 use App\Http\Controllers\Council\StoryController;
+use App\Http\Controllers\Council\DisputeController;
 use App\Http\Controllers\Council\SummonController;
 use App\Http\Controllers\Council\TransactionController;
 use Illuminate\Http\Request;
@@ -215,6 +216,21 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::post('{story}/cancel', [StoryController::class, 'cancel']);
         Route::post('{story}/share', [StoryController::class, 'share']);
         Route::delete('{story}/share', [StoryController::class, 'unshare']);
+    });
+
+    // ระบบบันทึกข้อพิพาท: สภาทุกยศและ Admin ดูได้ (ไม่ต้องเข้าเวร) · บันทึก/แก้ไขต้องเข้าเวร · ลบเฉพาะประธานสภา
+    Route::prefix('council/disputes')->middleware(['log.access:ข้อพิพาท'])->group(function () {
+        Route::middleware('role:trainee,admin')->group(function () {
+            Route::get('options', [DisputeController::class, 'options']);
+            Route::get('/', [DisputeController::class, 'index']);
+            Route::get('{dispute}/files/{file}', [DisputeController::class, 'file']);
+        });
+        Route::middleware(['role:trainee', 'duty'])->group(function () {
+            Route::post('/', [DisputeController::class, 'store']);
+            Route::match(['put', 'patch', 'post'], '{dispute}', [DisputeController::class, 'update']);
+            Route::delete('{dispute}/files/{file}', [DisputeController::class, 'destroyFile']);
+        });
+        Route::delete('{dispute}', [DisputeController::class, 'destroy'])->middleware(['role:president', 'duty']);
     });
 
     // บันทึกกิจกรรมทั้งหมด: รองประธานขึ้นไป (และการเปิดดูก็ถูกบันทึกด้วย)

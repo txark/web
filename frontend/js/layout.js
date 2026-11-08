@@ -162,6 +162,7 @@
     sideLink('/transactions.html', 'ธุรกรรมสภา', 'arrow-left-right', ['/transactions.html', '/requests.html', '/manage-groups.html', '/outfits.html'].includes(here), true),
     sideLink('/summons.html', 'ประกาศ', 'megaphone', ['/summons.html', '/fines.html', '/penalties.html', '/announcements.html'].includes(here), true),
     sideLink('/activity-rounds.html', 'รายงานความเคลื่อนไหว', 'activity', here === '/activity-rounds.html', true),
+    sideLink('/disputes.html', 'ระบบบันทึกข้อพิพาท', 'video', here === '/disputes.html', false),
     `<template x-if="dutyOk"><a href="/tasks.html" class="side-link" x-data="alertBadge()"${cur(here === '/tasks.html')}>${ic('bell')}<span>แจ้งเตือนงานค้าง</span><b x-show="count > 0" x-text="count > 99 ? '99+' : count" class="nav-badge"></b></a></template><template x-if="!dutyOk"><span class="side-link is-locked" title="ต้องเข้าเวรก่อน" aria-disabled="true">${ic('lock')}<span>แจ้งเตือนงานค้าง</span></span></template>`,
   ].join('');
   const sideManage = (list) => list.map(([href, label, icon]) => sideLink(href, label, icon, href === here, false)).join('');

@@ -150,6 +150,7 @@ function authState() {
     // สภาที่ยังไม่เข้าเวรจะถูกส่งกลับหน้าแรก (หน้าแรกและหน้ากฎไม่เรียกฟังก์ชันนี้)
     // เมื่อสั่งเปลี่ยนหน้าแล้ว จะไม่ resolve อีก เพื่อให้โค้ดโหลดข้อมูลของหน้านั้นไม่ทำงานต่อระหว่างรอเปลี่ยนหน้า
     // opts.also = บทบาทที่ผ่านด้วยแม้ไม่ถึงระดับขั้นต่ำ (เช่น ['admin'] สำหรับหน้าจัดการผู้ใช้)
+    // opts.offDutyOk = ยังไม่เข้าเวรก็เปิดหน้าได้ (หน้าที่ดูได้อย่างเดียวเมื่อไม่ได้อยู่ในเวร)
     async require(minRole = 'gang', opts = {}) {
       await this.init();
       const go = (url) => {
@@ -158,7 +159,7 @@ function authState() {
       };
       if (!this.user) return go('/login.html');
       if (!this.can(minRole) && !(opts.also || []).includes(this.user.role)) return go('/index.html');
-      if (this.duty && this.duty.required && !this.duty.on_duty) return go('/index.html?duty=required');
+      if (!opts.offDutyOk && this.duty && this.duty.required && !this.duty.on_duty) return go('/index.html?duty=required');
     },
 
     async logout() {

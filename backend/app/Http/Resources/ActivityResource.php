@@ -9,6 +9,7 @@ use App\Models\CouncilLoanPayment;
 use App\Models\CouncilPayRound;
 use App\Models\CouncilSummon;
 use App\Models\CouncilTrade;
+use App\Models\Dispute;
 use App\Models\DutyShift;
 use App\Models\Group;
 use App\Models\GroupMember;
@@ -65,6 +66,7 @@ class ActivityResource extends JsonResource
         CouncilLoanPayment::class => 'รับคืนเงินกู้',
         CouncilSummon::class => 'ประกาศเรียก',
         Announcement::class => 'ประกาศ',
+        Dispute::class => 'ข้อพิพาท',
     ];
 
     /** บันทึกจากโมเดล (created/updated/deleted) เป็นภาษาอังกฤษ จึงแปลเป็นไทยตอนแสดง */
