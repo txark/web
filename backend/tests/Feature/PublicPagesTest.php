@@ -28,23 +28,23 @@ class PublicPagesTest extends TestCase
 
         $this->assertSame(['cc', 'visit', 'evid', 'fees', 'summon', 'reg', 'gang', 'buy', 'deal', 'match', 'prot', 'max', 'duty'], collect($response->json('data'))->pluck('key')->all());
 
-        // กฎหมวดสภา (เว็บทางการ ฉบับ 1.10): 140 ข้อหลัก ย้ายตารางราคา CC-004 ไปหมวดค่าบริการ = 139 การ์ด
+        // กฎหมวดสภา (เว็บทางการ ฉบับ 1.12 = 139 การ์ด + กฎรอเว็บทางการอัปเดต 1 ข้อ ดู database/data/council-rules-pending.json)
         $all = collect($response->json('data'))->flatMap(fn ($s) => $s['rules']);
         $rules = $all->where('kind', 'rule');
-        $this->assertSame(139, $rules->count());
+        $this->assertSame(140, $rules->count());
         // ทุกการ์ดข้อกฎมีรหัสข้อตามเว็บทางการและชื่อเรื่อง
         $this->assertSame(0, $rules->filter(fn ($r) => empty($r['code']) || empty($r['title']))->count());
         $this->assertSame('CC-001', $rules->first()['code']);
         $this->assertSame('BE ON DUTY', $rules->first()['title']);
-        $this->assertSame(139, $rules->pluck('code')->unique()->count());
+        $this->assertSame(140, $rules->pluck('code')->unique()->count());
         // หมวดย่อยมีเฉพาะอัตราค่าบริการ (จัดกลุ่มรายการ)
         $this->assertSame(['สมาชิก', 'ชุด', 'แก้ไขข้อมูล', 'คูลดาวน์และ Protect'], $all->where('kind', 'heading')->pluck('title')->all());
 
         $rulesOf = fn (string $key) => collect(collect($response->json('data'))->firstWhere('key', $key)['rules']);
         $this->assertCount(3, $rulesOf('cc')->where('kind', 'rule'));
         $this->assertCount(23, $rulesOf('duty')->where('kind', 'rule'));
-        $this->assertCount(15, $rulesOf('visit')->where('kind', 'rule'));
-        $this->assertSame('VISIT-015', $rulesOf('visit')->last()['code']);
+        $this->assertCount(16, $rulesOf('visit')->where('kind', 'rule'));
+        $this->assertSame('VISIT-016', $rulesOf('visit')->last()['code']);
         $this->assertStringStartsWith('หากทั้งสองฝ่าย', $rulesOf('evid')->first()['body']);
 
         // บทลงโทษหลายระดับอยู่ในช่องโทษ (บรรทัดละระดับ)

@@ -78,7 +78,7 @@ class OfficialRulesImporter
             $sections[$key][] = $this->card($xp, $article, $code);
         }
 
-        return ['version' => $m[1] ?? null, 'effective' => isset($m[2]) ? trim($m[2]) : null, 'sections' => $sections, 'fees' => $fees];
+        return ['version' => $m[1] ?? null, 'effective' => isset($m[2]) ? trim($m[2]) : null, 'sections' => self::withPending($sections), 'fees' => $fees];
     }
 
     /**
@@ -177,6 +177,9 @@ class OfficialRulesImporter
     /** ไฟล์ข้อมูลตั้งต้นของกฎหมวดสภา (ได้จาก php artisan rules:pull-official --save=...) */
     public const SNAPSHOT = 'database/data/council-rules.json';
 
+    /** กฎที่สภาประกาศแล้วแต่เว็บทางการยังไม่อัปเดต (ผสมให้ตอนซิงก์) */
+    public const PENDING = 'database/data/council-rules-pending.json';
+
     /** @param  array<string, mixed>  $data */
     public function save(array $data, string $path): void
     {
@@ -195,7 +198,51 @@ class OfficialRulesImporter
     {
         $file = base_path(self::SNAPSHOT);
 
-        return is_file($file) ? json_decode(file_get_contents($file), true) : null;
+        $data = is_file($file) ? json_decode(file_get_contents($file), true) : null;
+        if ($data && isset($data['sections'])) {
+            $data['sections'] = self::withPending($data['sections']);
+        }
+
+        return $data;
+    }
+
+    /**
+     * ผสมกฎที่สภาประกาศแล้วแต่เว็บทางการยังไม่มี (database/data/council-rules-pending.json) ไว้ท้ายหมวด
+     * ข้อใดที่เว็บทางการมีข้อความ 'match' แล้ว (ในกฎใดก็ได้) จะไม่ผสมซ้ำ = หมดหน้าที่
+     *
+     * @param  array<string, list<array<string, mixed>>>  $sections
+     * @return array<string, list<array<string, mixed>>>
+     */
+    public static function withPending(array $sections): array
+    {
+        $file = base_path(self::PENDING);
+        $pending = is_file($file) ? (json_decode(file_get_contents($file), true)['rules'] ?? []) : [];
+        if (! $pending) {
+            return $sections;
+        }
+
+        $haystack = mb_strtolower(json_encode($sections, JSON_UNESCAPED_UNICODE));
+
+        foreach ($pending as $p) {
+            $official = collect($p['match'] ?? [])->contains(fn ($m) => str_contains($haystack, mb_strtolower(trim((string) $m))));
+            if ($official || ! isset($p['section'])) {
+                continue;
+            }
+
+            $key = $p['section'];
+            // รหัสต่อจากข้อสุดท้ายของหมวด (เช่น VISIT-016) ให้แสดงผลเหมือนข้ออื่น
+            $max = collect($sections[$key] ?? [])->map(fn ($c) => (int) preg_replace('/\D+/', '', (string) ($c['code'] ?? '')))->max() ?? 0;
+            $sections[$key][] = [
+                'code' => strtoupper($key).'-'.str_pad((string) ($max + 1), 3, '0', STR_PAD_LEFT),
+                'title' => $p['title'] ?? null,
+                'body' => $p['body'] ?? null,
+                'penalty' => $p['penalty'] ?? null,
+                'note' => $p['note'] ?? null,
+                'note_label' => $p['note_label'] ?? 'หมายเหตุ',
+            ];
+        }
+
+        return $sections;
     }
 
     // ───────────────────────── แปลง HTML → ข้อมูลกฎ ─────────────────────────

@@ -72,4 +72,18 @@ class RulesSyncTest extends TestCase
         $this->artisan('rules:pull-official', ['--apply' => true])->assertSuccessful();
         $this->assertSame($id, Rule::where('code', 'CC-001')->value('id'));
     }
+
+    public function test_pending_rules_are_merged_until_the_official_site_has_them(): void
+    {
+        $official = ['visit' => [['code' => 'VISIT-001', 'title' => 'ข้อแรก', 'body' => 'เนื้อหา', 'penalty' => null, 'note' => null, 'note_label' => 'หมายเหตุ']]];
+
+        $merged = \App\Services\OfficialRulesImporter::withPending($official);
+        $this->assertCount(2, $merged['visit']);
+        $this->assertSame('VISIT-002', $merged['visit'][1]['code']);
+        $this->assertStringContainsString('ครบ 30 วัน', $merged['visit'][1]['title']);
+
+        // เว็บทางการมีข้อความนี้แล้ว: ไม่ผสมซ้ำ
+        $official['visit'][] = ['code' => 'VISIT-002', 'title' => 'แก๊งและครอบครัวที่ขึ้นทะเบียนใหม่ ไม่อนุญาตให้ยุบจนกว่าจะครบ 30 วัน', 'body' => '', 'penalty' => null, 'note' => null, 'note_label' => 'หมายเหตุ'];
+        $this->assertCount(2, \App\Services\OfficialRulesImporter::withPending($official)['visit']);
+    }
 }
