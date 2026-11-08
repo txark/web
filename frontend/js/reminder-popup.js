@@ -153,10 +153,19 @@
     try { await auth.init(); } catch (e) { return; }
     if (!auth.user || !auth.can('member')) return;
     me = auth.user;
-    check();
-    pollAlerts();
-    setInterval(check, TICK_MS);
-    setInterval(pollAlerts, TICK_MS);
+    // งานค้างอ่านได้เฉพาะตอนอยู่ในเวร (ไม่งั้นเซิร์ฟเวอร์ตอบ off_duty แล้วหน้าถูกเด้งกลับหน้าแรก): รอจนเข้าเวรค่อยเริ่ม
+    let begun = false;
+    const begin = () => {
+      if (begun) return;
+      begun = true;
+      check();
+      pollAlerts();
+      setInterval(check, TICK_MS);
+      setInterval(pollAlerts, TICK_MS);
+    };
+    const ok = (d) => !!d && (!d.required || d.on_duty);
+    try { if (ok(await Duty.load())) begin(); } catch (e) { return; }
+    Duty.onChange((d) => { if (ok(d)) begin(); });
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);

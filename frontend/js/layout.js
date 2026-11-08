@@ -193,7 +193,7 @@
       <button type="button" class="side-burger btn-outline" aria-label="เมนู" @click="document.documentElement.classList.toggle('side-open')">☰</button>
       <p class="side-crumb"><span>ศูนย์จัดการสภา</span><b>/ ${sideTitle === 'WAVEVY COUNCIL' ? 'ภาพรวมการทำงาน' : sideTitle}</b></p>
       <span class="side-top-r">
-        <a href="/tasks.html" class="btn-outline side-bell" x-show="dutyOk" x-data="alertBadge()">${ic('bell')}<span class="hidden sm:inline">งานค้าง</span><b class="nav-badge" x-text="count"></b></a>
+        <template x-if="dutyOk"><a href="/tasks.html" class="btn-outline side-bell" x-data="alertBadge()">${ic('bell')}<span class="hidden sm:inline">งานค้าง</span><b class="nav-badge" x-text="count"></b></a></template>
         <button type="button" class="btn-outline theme-btn"></button>
       </span>
     </div>`;
