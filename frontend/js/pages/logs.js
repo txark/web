@@ -200,18 +200,19 @@ function logsPage() {
       return row.details || [];
     },
 
-    // ข้อมูลการเข้าใช้: IP อุปกรณ์ หน้า สาเหตุ ฯลฯ
+    // รายละเอียดเฉพาะเหตุการณ์ที่ต้องแจ้ง: เข้าสู่ระบบไม่สำเร็จ (Discord ID ชื่อ สาเหตุ) · ถูกปฏิเสธสิทธิ์ (พยายามเข้าหน้าไหน)
+    // เปิดดู / เข้า-ออกระบบ / เข้าเวร ไม่มีรายละเอียด · ออกเวร/ระบบปิดเวร มาจาก row.details (ช่วงเวลา ระยะเวลา สาเหตุ)
     techLines(row) {
       const p = row.properties || {};
       const out = [];
-      if (p.ip) out.push(['IP', p.ip]);
-      if (p.user_agent) out.push(['อุปกรณ์', this.device(p.user_agent)]);
-      if (p.via === 'console') out.push(['ที่มา', 'คำสั่งบนเซิร์ฟเวอร์ (artisan)']);
-      if (p.path) out.push(['หน้า', p.path]);
-      if (p.discord_id) out.push(['Discord ID', p.discord_id]);
-      if (p.required_role) out.push(['สิทธิ์ที่ต้องมี', ROLE[p.required_role] || p.required_role]);
-      if (p.reason) out.push(['สาเหตุ', { discord_failed: 'Discord ตอบกลับผิดพลาด', not_in_guild: 'ไม่ได้อยู่ในเซิร์ฟเวอร์ Discord ของสภา' }[p.reason] || p.reason]);
-      if (p.first_login) out.push(['หมายเหตุ', 'เข้าสู่ระบบครั้งแรก (สร้างบัญชีใหม่)']);
+      if (row.event === 'login_failed') {
+        if (p.discord_id) out.push(['Discord ID', p.discord_id]);
+        if (p.name) out.push(['ชื่อ', p.name]);
+        out.push(['สาเหตุ', { discord_failed: 'Discord ตอบกลับผิดพลาด', not_in_guild: 'ไม่ได้อยู่ในเซิร์ฟเวอร์ Discord ของสภา', not_registered: 'Discord ID นี้ยังไม่ได้ถูกเพิ่มเข้าระบบ', disabled: 'บัญชีนี้ถูกระงับสิทธิ์' }[p.reason] || p.reason || row.description]);
+      } else if (row.event === 'denied') {
+        if (p.path) out.push(['พยายามเข้า', p.path]);
+        if (p.required_role) out.push(['สิทธิ์ที่ต้องมี', ROLE[p.required_role] || p.required_role]);
+      }
       return out;
     },
 

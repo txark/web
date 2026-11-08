@@ -114,7 +114,7 @@
             <div x-show="open[r.id]" x-cloak class="mt-3 grid gap-3 border-t border-line pt-3 text-sm md:grid-cols-2">
               <div class="space-y-4" x-show="extras(r).length">
                 <section x-show="txLines(r).length">
-                  <p class="mb-1.5 text-xs font-semibold tracking-wide text-accent">รายละเอียดธุรกรรม</p>
+                  <p class="mb-1.5 text-xs font-semibold tracking-wide text-accent" x-text="r.log === 'transactions' ? 'รายละเอียดธุรกรรม' : 'รายละเอียด'"></p>
                   <dl class="space-y-1">
                     <template x-for="([k, v], i) in txLines(r)" :key="i">
                       <div class="flex gap-3"><dt class="w-28 shrink-0 text-muted" x-text="k"></dt><dd class="min-w-0 break-words" x-text="v"></dd></div>
@@ -122,7 +122,7 @@
                   </dl>
                 </section>
                 <section x-show="techLines(r).length">
-                  <p class="mb-1.5 text-xs font-semibold tracking-wide text-muted" x-text="txLines(r).length ? 'ข้อมูลการเข้าใช้' : 'รายละเอียด'"></p>
+                  <p class="mb-1.5 text-xs font-semibold tracking-wide text-muted" x-text="txLines(r).length ? 'ข้อมูลเพิ่มเติม' : 'รายละเอียด'"></p>
                   <dl class="space-y-1">
                     <template x-for="([k, v], i) in techLines(r)" :key="i">
                       <div class="flex gap-3"><dt class="w-28 shrink-0 text-muted" x-text="k"></dt><dd class="min-w-0 break-words" x-text="v"></dd></div>
@@ -141,14 +141,13 @@
                 </p>
               </div>
               <div x-show="diff(r).length">
-                <p class="mb-1 text-muted">ข้อมูลที่เปลี่ยน</p>
-                <ul class="space-y-1">
+                <p class="mb-1.5 text-xs font-semibold tracking-wide text-accent" x-text="r.event === 'created' ? 'ข้อมูลที่สร้าง' : 'รายละเอียดการแก้ไข'"></p>
+                <ul class="space-y-3">
                   <template x-for="d in diff(r)" :key="d.field">
-                    <li class="flex flex-wrap items-baseline gap-x-2">
-                      <span class="font-medium" x-text="d.field"></span>
-                      <span x-show="d.from !== null" class="text-muted line-through" x-text="d.from"></span>
-                      <span x-show="d.from !== null" aria-hidden="true">→</span>
-                      <b class="text-accent" x-text="d.to"></b>
+                    <li>
+                      <p class="font-medium" x-text="d.field"></p>
+                      <p class="mt-0.5 flex gap-2" x-show="d.from !== null"><span class="shrink-0 text-muted">ข้อมูลเดิม :</span><span class="min-w-0 break-words" x-text="d.from"></span></p>
+                      <p class="mt-0.5 flex gap-2"><span class="shrink-0 text-muted" x-text="d.from !== null ? 'ข้อมูลแก้ไข :' : 'ข้อมูล :'"></span><b class="min-w-0 break-words text-accent" x-text="d.to"></b></p>
                     </li>
                   </template>
                 </ul>

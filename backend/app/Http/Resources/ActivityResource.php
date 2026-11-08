@@ -9,6 +9,7 @@ use App\Models\CouncilLoanPayment;
 use App\Models\CouncilPayRound;
 use App\Models\CouncilSummon;
 use App\Models\CouncilTrade;
+use App\Models\DutyShift;
 use App\Models\Group;
 use App\Models\GroupMember;
 use App\Models\Rule;
@@ -176,6 +177,35 @@ class ActivityResource extends JsonResource
         return $lines;
     }
 
+    /** ออกเวร / ระบบปิดเวร: ช่วงเวลาที่เข้าเวร ระยะเวลา และสาเหตุเมื่อออกก่อนเวลา (เข้าเวร/ออกจากระบบ/เข้าสู่ระบบ ไม่มีรายละเอียด) */
+    private function dutyDetails(): array
+    {
+        $shift = $this->subject;
+        if ($this->log_name !== 'duty' || ! in_array($this->event, ['end', 'system_end'], true) || ! $shift instanceof DutyShift || ! $shift->ended_at) {
+            return [];
+        }
+
+        $tz = config('council.report_timezone');
+        $from = $shift->started_at->copy()->timezone($tz);
+        $to = $shift->ended_at->copy()->timezone($tz);
+        $sameDay = $from->isSameDay($to);
+        $range = $from->format('H:i').' – '.$to->format($sameDay ? 'H:i' : 'd/m H:i').' น.';
+
+        $secs = (int) $shift->started_at->diffInSeconds($shift->ended_at);
+        $dur = intdiv($secs, 3600) > 0 ? intdiv($secs, 3600).' ชม. '.intdiv($secs % 3600, 60).' นาที' : intdiv($secs, 60).' นาที';
+
+        $lines = [];
+        $p = $this->properties?->toArray() ?? [];
+        // ออกก่อนเวลาขั้นต่ำ (ไม่นับกรณีออกจากระบบ): แจ้งสาเหตุที่ผู้ใช้ระบุ
+        if ($this->event === 'end' && ! empty($p['short']) && empty($p['logout']) && ! empty($p['note'])) {
+            $lines[] = ['สาเหตุที่ออกก่อนเวลา', $p['note']];
+        }
+        $lines[] = ['ช่วงเวลาที่เข้าเวร', $from->format('d/m/Y').' '.$range];
+        $lines[] = ['ระยะเวลาที่เข้าเวร', $dur];
+
+        return $lines;
+    }
+
     public function toArray(Request $request): array
     {
         $causer = $this->causer;
@@ -201,7 +231,7 @@ class ActivityResource extends JsonResource
                 'id' => $this->subject_id,
             ] : null,
             'summary' => $tx ? (new TransactionResource($tx))->toArray($request)['summary'] : null,
-            'details' => $tx ? TransactionResource::detailLines($tx) : ($this->groupDetails() ?: $this->docDetails()),
+            'details' => $tx ? TransactionResource::detailLines($tx) : ($this->groupDetails() ?: $this->docDetails() ?: $this->dutyDetails()),
             'changes' => $this->attribute_changes,
             'properties' => $this->properties,
             'created_at' => $this->created_at?->toIso8601String(),
