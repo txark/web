@@ -8,11 +8,6 @@
       'ต้องเข้าเวรก่อนจึงจะใช้เมนูธุรกรรม ประกาศ รายงานความเคลื่อนไหว และแจ้งเตือนงานค้างได้ (ดูกฎได้เสมอ)',
       'กด "รีเฟรช" เพื่ออัปเดตตัวเลข',
     ]],
-    '/rules.html': ['กฎและข้อปฏิบัติ', [
-      'เลือกกลุ่มกฎที่แท็บด้านบน แล้วเลือกหมวดที่ต้องการอ่าน',
-      'อ่านเงื่อนไขและบทลงโทษในการ์ดของแต่ละข้อ',
-      'ใช้ช่องค้นหาเพื่อหาข้อกฎจากรหัสหรือคำสำคัญ (กด / เพื่อไปที่ช่องค้นหา)',
-    ]],
     '/transactions.html': ['ธุรกรรม', [
       'เลือกประเภทงานที่ต้องการจากการ์ด เช่น คำขอ ทะเบียนแก๊ง/ครอบครัว ชุด สตอรี่ และการเงิน',
       'ทุกธุรกรรมมีเลขธุรกรรมของตัวเอง ใช้อ้างอิงหรือค้นหาย้อนหลังได้',
@@ -70,7 +65,7 @@
   if (!entry) return;
 
   function mount() {
-    const sub = document.querySelector('.rg-head .rg-sub') || document.querySelector('.rg-head .rg-title') || document.querySelector('.pub-hero-sub');
+    const sub = document.querySelector('.rg-head .rg-sub') || document.querySelector('.rg-head .rg-title');
     if (!sub || document.getElementById('help-open')) return;
     const [title, steps] = entry;
 
