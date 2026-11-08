@@ -8569,3 +8569,28 @@ html.has-side .pub .pub-toolbar { margin-top: 1.25rem; }
 @media (min-width: 1024px) {
   html.has-side .pub #rules-bar { top: calc(var(--header-h, 0px) + 1rem); }
 }
+
+/* ───── หน้ากฎของสภา: สารบัญแบบเรียบ + การ์ดกฎโปร่งขึ้น ───── */
+html.has-side .pub .toc { padding: 0; border: 0; background: none; box-shadow: none; }
+html.has-side .pub .toc-head { padding: 0 0.5rem 0.6rem; border-bottom: 1px solid var(--line); font-size: 0.68rem; font-weight: 600; letter-spacing: 0.16em; color: var(--muted); }
+html.has-side .pub .toc-nav { padding-top: 0.5rem; }
+html.has-side .pub .toc-group { margin: 0 0 0.35rem; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+html.has-side .pub .toc-group-title { padding: 0.55rem 0.5rem 0.3rem; background: none; border: 0; color: var(--muted); font-size: 0.74rem; font-weight: 600; letter-spacing: 0.08em; }
+html.has-side .pub .toc-group-title:hover { color: var(--fg); }
+html.has-side .pub .toc-group[data-active="true"] .toc-group-title { color: var(--fg); }
+html.has-side .pub .toc-pill { background: none; border: 0; padding: 0; color: var(--muted); font-size: 0.7rem; }
+html.has-side .pub .toc-items { margin: 0; padding: 0 0 0 0.15rem; border: 0; background: none; }
+html.has-side .pub .toc-item { margin: 0.1rem 0; padding: 0.5rem 0.65rem; border: 1px solid transparent; border-radius: 0.55rem; background: none; box-shadow: none; }
+html.has-side .pub .toc-item:hover { background: var(--accent-soft); }
+html.has-side .pub .toc-item[aria-current="true"] { border-color: color-mix(in srgb, var(--accent) 40%, transparent); background: var(--accent-soft); box-shadow: none; }
+html.has-side .pub .toc-item[aria-current="true"] .toc-label { color: var(--accent); font-weight: 600; }
+html.has-side .pub .toc-no { border: 0; background: color-mix(in srgb, var(--line) 70%, transparent); color: var(--muted); }
+html.has-side .pub .toc-item[aria-current="true"] .toc-no { background: var(--accent); color: var(--on-accent, #fff); }
+html.has-side .pub .toc-foot { display: none; }
+
+html.has-side .pub .rule-card { padding: 1rem 1.25rem; border: 1px solid var(--line); border-radius: 0.75rem; background: var(--panel); box-shadow: none; }
+html.has-side .pub .rule-card:hover { border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); }
+html.has-side .pub .rule-no { min-width: 3.4rem; padding-right: 1rem; border-right: 1px solid var(--line); }
+html.has-side .pub .rule-title { font-size: 1.05rem; }
+html.has-side .pub .rule-share { opacity: 0.75; }
+html.has-side .pub .rule-card:hover .rule-share { opacity: 1; }
