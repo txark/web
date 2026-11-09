@@ -8681,3 +8681,13 @@ html.has-side .pub .pub-toolbar { margin-top: 1.25rem; }
 .ds-notes-h { color: var(--accent); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; margin-bottom: 0.5rem; }
 .ds-notes ul { display: grid; gap: 0.55rem; }
 .ds-notes li { padding-left: 0.8rem; border-left: 2px solid var(--line); }
+
+/* ฟอร์มข้อพิพาท: เว้นระยะระหว่างช่องให้อ่านง่าย */
+.ds-modal .reg-body { display: grid; align-content: start; gap: 1.4rem; padding: 1.5rem 1.7rem 1.7rem; }
+.ds-modal .reg-head, .ds-modal .reg-foot { padding-left: 1.7rem; padding-right: 1.7rem; }
+.ds-modal .ds-grid { gap: 1.4rem; }
+.ds-modal .reg-label { margin-bottom: 0.5rem; }
+.ds-modal .ds-chips { margin-bottom: 0.7rem; }
+.ds-modal .ds-drop { padding: 1rem 1.1rem; }
+.ds-modal .ds-hint { margin-top: 0.55rem; }
+@media (max-width: 640px) { .ds-modal .reg-body { padding: 1.2rem 1.1rem 1.4rem; gap: 1.2rem; } .ds-modal .reg-head, .ds-modal .reg-foot { padding-left: 1.1rem; padding-right: 1.1rem; } }
