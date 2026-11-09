@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Council;
 use App\Http\Controllers\Controller;
 use App\Models\Dispute;
 use App\Models\DisputeFile;
+use App\Models\DisputeNote;
+use App\Enums\Role;
 use App\Models\Group;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -46,7 +48,7 @@ class DisputeController extends Controller
         'videos.*.file' => 'ไฟล์วิดีโอไม่ถูกต้อง',
     ];
 
-    private const WITH = ['groups', 'council', 'creator:id,name,character_name', 'files'];
+    private const WITH = ['groups', 'council', 'creator:id,name,character_name', 'files', 'notes.user:id,name,character_name,role'];
 
     /** ตัวเลือกในฟอร์ม: ทะเบียนทั้งหมด และสภาทุกยศที่ยังใช้งานอยู่ */
     public function options(): JsonResponse
@@ -126,6 +128,36 @@ class DisputeController extends Controller
             $dispute->council()->sync($d['council_ids']);
         }
         $this->attach($request, $dispute);
+
+        return response()->json(['data' => $this->row($dispute->load(self::WITH))]);
+    }
+
+    /** เพิ่มภาพ/วิดีโอหลักฐานเพิ่มเติม: สภาทุกยศ (ลบไฟล์ที่แนบแล้วไม่ได้) */
+    public function addFiles(Request $request, Dispute $dispute): JsonResponse
+    {
+        $request->validate(array_intersect_key($this->rules(false), array_flip(['images', 'images.*', 'videos', 'videos.*'])), self::MESSAGES);
+        abort_unless($request->hasFile('images') || $request->hasFile('videos'), 422, 'กรุณาเลือกภาพหรือวิดีโอที่จะเพิ่ม');
+        $this->attach($request, $dispute);
+
+        return response()->json(['data' => $this->row($dispute->load(self::WITH))]);
+    }
+
+    /** บันทึกเพิ่มเติม: ต่อท้ายเรื่อง แก้/ลบไม่ได้ (สภาทุกยศ) */
+    public function addNote(Request $request, Dispute $dispute): JsonResponse
+    {
+        $d = $request->validate(['body' => ['required', 'string', 'max:2000']], ['body.required' => 'กรุณาพิมพ์บันทึกเพิ่มเติม', 'body.max' => 'บันทึกยาวเกินไป (ไม่เกิน 2,000 ตัวอักษร)']);
+        $dispute->notes()->create(['user_id' => $request->user()->id, 'body' => trim($d['body'])]);
+        activity()->causedBy($request->user())->performedOn($dispute)->event('updated')->log('เพิ่มบันทึกเพิ่มเติมในข้อพิพาท');
+
+        return response()->json(['data' => $this->row($dispute->load(self::WITH))], 201);
+    }
+
+    /** ปิด/เปิดเรื่อง: รองประธานขึ้นไปทำได้ทุกเรื่อง · ยศต่ำกว่าทำได้เฉพาะเรื่องที่ตัวเองบันทึก */
+    public function setStatus(Request $request, Dispute $dispute): JsonResponse
+    {
+        $d = $request->validate(['status' => ['required', Rule::in(array_keys(Dispute::STATUSES))]], ['status.required' => 'กรุณาเลือกสถานะ', 'status.in' => 'สถานะไม่ถูกต้อง']);
+        abort_unless($this->canClose($request->user(), $dispute), 403, 'ปิดหรือเปิดเรื่องของคนอื่นไม่ได้ ต้องให้รองประธานขึ้นไปดำเนินการ');
+        $dispute->update(['status' => $d['status']]);
 
         return response()->json(['data' => $this->row($dispute->load(self::WITH))]);
     }
@@ -214,10 +246,30 @@ class DisputeController extends Controller
         }
     }
 
+    private function isLead(?User $u): bool
+    {
+        return $u !== null && $u->role !== Role::Admin && $u->atLeast(Role::VicePresident);
+    }
+
+    private function canClose(User $u, Dispute $d): bool
+    {
+        return $this->isLead($u) || $d->created_by === $u->id;
+    }
+
     /** @return array<string, mixed> */
     private function row(Dispute $d): array
     {
+        $me = request()->user();
+
         return [
+            'can_edit' => $this->isLead($me),
+            'can_close' => $me ? $this->canClose($me, $d) && $me->role !== Role::Admin : false,
+            'notes' => $d->notes->map(fn (DisputeNote $n) => [
+                'id' => $n->id, 'body' => $n->body,
+                'by' => $n->user ? ($n->user->character_name ?: $n->user->name) : '',
+                'role_label' => $n->user?->role->thaiName(),
+                'created_at' => $n->created_at?->toIso8601String(),
+            ])->values(),
             'id' => $d->id, 'number' => $d->number,
             'title' => $d->title, 'details' => $d->details,
             'status' => $d->status, 'status_label' => Dispute::STATUSES[$d->status] ?? $d->status,

@@ -81,8 +81,9 @@
                 <p class="mt-1 text-xs text-muted"><span x-text="r.number"></span> · เกิดเหตุ <span x-text="stamp(r.occurred_at)"></span> · บันทึกโดย <span x-text="r.by || '—'"></span></p>
               </div>
               <div class="flex flex-wrap items-center gap-2" x-show="canWrite">
-                <button type="button" class="btn-outline !py-1.5 !text-sm" @click="openEdit(r)">แก้ไข</button>
-                <button type="button" class="btn-outline !py-1.5 !text-sm" @click="toggleStatus(r)" x-text="r.status === 'closed' ? 'เปิดเรื่องอีกครั้ง' : 'ปิดเรื่อง'"></button>
+                <button type="button" class="btn-outline !py-1.5 !text-sm" @click="openExtra(r)">เพิ่มหลักฐาน / บันทึกเพิ่มเติม</button>
+                <button type="button" class="btn-outline !py-1.5 !text-sm" x-show="r.can_edit" @click="openEdit(r)">แก้ไข</button>
+                <button type="button" class="btn-outline !py-1.5 !text-sm" x-show="r.can_close" @click="toggleStatus(r)" x-text="r.status === 'closed' ? 'เปิดเรื่องอีกครั้ง' : 'ปิดเรื่อง'"></button>
                 <button type="button" class="text-sm text-danger hover:underline" x-show="isPresident" @click="remove(r)">ลบ</button>
               </div>
             </div>
@@ -101,9 +102,18 @@
                     <img x-show="f.kind === 'image'" :src="fileUrl(f)" :alt="f.name" loading="lazy">
                     <span x-show="f.kind === 'video'" class="ds-vid"><i class="ic" data-icon="video" aria-hidden="true"></i></span>
                   </a>
-                  <button type="button" class="ds-x" x-show="canWrite" @click="removeFile(r, f)" :aria-label="'ลบไฟล์ ' + f.name">✕</button>
+                  <button type="button" class="ds-x" x-show="canWrite && r.can_edit" @click="removeFile(r, f)" :aria-label="'ลบไฟล์ ' + f.name">✕</button>
                 </span>
               </template>
+            </div>
+
+            <div class="ds-notes" x-show="r.notes.length">
+              <p class="ds-notes-h">บันทึกเพิ่มเติม</p>
+              <ul>
+                <template x-for="n in r.notes" :key="n.id">
+                  <li><p class="whitespace-pre-line" x-text="n.body"></p><small class="text-muted" x-text="n.by + (n.role_label ? ' · ' + n.role_label : '') + ' · ' + stamp(n.created_at)"></small></li>
+                </template>
+              </ul>
             </div>
           </li>
         </template>
@@ -199,9 +209,10 @@
               <p class="reg-label">ภาพหลักฐาน</p>
               <label class="ds-drop">
                 <i class="ic" data-icon="image" aria-hidden="true"></i>
-                <span><b>เลือกภาพ</b><small>PNG JPG GIF WEBP · ไม่เกิน 10 MB ต่อภาพ</small></span>
-                <input type="file" class="sr-only" accept="image/png,image/jpeg,image/gif,image/webp" multiple @change="addFiles('images', $event)">
+                <span><b>เลือกภาพ</b></span>
+                <input type="file" class="sr-only" accept="image/png,image/jpeg,image/gif,image/webp" multiple @change="addFiles('form', 'images', $event)">
               </label>
+              <p class="ds-hint">PNG JPG GIF WEBP · ไม่เกิน 10 MB ต่อภาพ</p>
               <ul class="ds-picked" x-show="form.images.length">
                 <template x-for="(f, i) in form.images" :key="f.name + i">
                   <li><span class="truncate" x-text="f.name"></span><small x-text="size(f.size)"></small><button type="button" @click="form.images.splice(i, 1)" :aria-label="'เอาออก ' + f.name">✕</button></li>
@@ -212,9 +223,10 @@
               <p class="reg-label">วิดีโอหลักฐาน</p>
               <label class="ds-drop">
                 <i class="ic" data-icon="video" aria-hidden="true"></i>
-                <span><b>เลือกวิดีโอ</b><small>MP4 MOV WEBM · ไม่เกิน 100 MB ต่อไฟล์</small></span>
-                <input type="file" class="sr-only" accept="video/mp4,video/quicktime,video/webm" multiple @change="addFiles('videos', $event)">
+                <span><b>เลือกวิดีโอ</b></span>
+                <input type="file" class="sr-only" accept="video/mp4,video/quicktime,video/webm" multiple @change="addFiles('form', 'videos', $event)">
               </label>
+              <p class="ds-hint">MP4 MOV WEBM · ไม่เกิน 100 MB ต่อไฟล์</p>
               <ul class="ds-picked" x-show="form.videos.length">
                 <template x-for="(f, i) in form.videos" :key="f.name + i">
                   <li><span class="truncate" x-text="f.name"></span><small x-text="size(f.size)"></small><button type="button" @click="form.videos.splice(i, 1)" :aria-label="'เอาออก ' + f.name">✕</button></li>
@@ -227,6 +239,63 @@
         <footer class="reg-foot">
           <button type="button" class="btn-outline" @click="form.show = false">ยกเลิก</button>
           <button type="submit" class="btn-solid" :disabled="busy" x-text="busy ? 'กำลังบันทึก...' : (form.id ? 'บันทึกการแก้ไข' : 'บันทึกข้อพิพาท')"></button>
+        </footer>
+      </form>
+    </div>
+
+    <!-- เพิ่มหลักฐาน / บันทึกเพิ่มเติม (ทุกยศที่เข้าเวร) -->
+    <div x-show="extra.show" x-cloak class="reg-backdrop" role="dialog" aria-modal="true" aria-labelledby="ds-x-title" @keydown.escape.window="extra.show = false" @mousedown.self="extra.show = false">
+      <form class="reg-modal ds-modal" @submit.prevent="saveExtra()" novalidate>
+        <header class="reg-head">
+          <h2 id="ds-x-title" class="reg-title">เพิ่มหลักฐาน / บันทึกเพิ่มเติม</h2>
+          <button type="button" class="reg-close" aria-label="ปิด" @click="extra.show = false">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+        </header>
+        <div class="reg-body">
+          <p class="note-box">เพิ่มได้อย่างเดียว · แก้ไขหรือลบสิ่งที่บันทึกไว้แล้วไม่ได้ (ต้องให้รองประธานขึ้นไปดำเนินการ)</p>
+          <p class="penalty-box" x-show="extra.err" x-text="extra.err" role="alert"></p>
+          <p class="text-sm text-muted" x-text="extra.title"></p>
+
+          <div class="reg-field">
+            <label class="reg-label" for="ds-x-note">บันทึกเพิ่มเติม</label>
+            <textarea id="ds-x-note" rows="4" class="input" x-model="extra.note" maxlength="2000"></textarea>
+          </div>
+
+          <div class="ds-grid">
+            <div class="reg-field">
+              <p class="reg-label">ภาพหลักฐาน</p>
+              <label class="ds-drop">
+                <i class="ic" data-icon="image" aria-hidden="true"></i>
+                <span><b>เลือกภาพ</b></span>
+                <input type="file" class="sr-only" accept="image/png,image/jpeg,image/gif,image/webp" multiple @change="addFiles('extra', 'images', $event)">
+              </label>
+              <p class="ds-hint">PNG JPG GIF WEBP · ไม่เกิน 10 MB ต่อภาพ</p>
+              <ul class="ds-picked" x-show="extra.images.length">
+                <template x-for="(f, i) in extra.images" :key="f.name + i">
+                  <li><span class="truncate" x-text="f.name"></span><small x-text="size(f.size)"></small><button type="button" @click="extra.images.splice(i, 1)" :aria-label="'เอาออก ' + f.name">✕</button></li>
+                </template>
+              </ul>
+            </div>
+            <div class="reg-field">
+              <p class="reg-label">วิดีโอหลักฐาน</p>
+              <label class="ds-drop">
+                <i class="ic" data-icon="video" aria-hidden="true"></i>
+                <span><b>เลือกวิดีโอ</b></span>
+                <input type="file" class="sr-only" accept="video/mp4,video/quicktime,video/webm" multiple @change="addFiles('extra', 'videos', $event)">
+              </label>
+              <p class="ds-hint">MP4 MOV WEBM · ไม่เกิน 100 MB ต่อไฟล์</p>
+              <ul class="ds-picked" x-show="extra.videos.length">
+                <template x-for="(f, i) in extra.videos" :key="f.name + i">
+                  <li><span class="truncate" x-text="f.name"></span><small x-text="size(f.size)"></small><button type="button" @click="extra.videos.splice(i, 1)" :aria-label="'เอาออก ' + f.name">✕</button></li>
+                </template>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <footer class="reg-foot">
+          <button type="button" class="btn-outline" @click="extra.show = false">ยกเลิก</button>
+          <button type="submit" class="btn-solid" :disabled="busy" x-text="busy ? 'กำลังบันทึก...' : 'บันทึก'"></button>
         </footer>
       </form>
     </div>

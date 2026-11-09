@@ -8674,3 +8674,10 @@ html.has-side .pub .pub-toolbar { margin-top: 1.25rem; }
 .ds-picked small { color: var(--muted); }
 .ds-picked button { width: 1.3rem; height: 1.3rem; border: 0; border-radius: 50%; background: transparent; color: var(--muted); font-size: 0.65rem; cursor: pointer; }
 .ds-picked button:hover { color: var(--danger); }
+
+.ds-hint { margin-top: 0.4rem; color: var(--muted); font-size: 0.76rem; }
+.ds-drop b { margin: 0; }
+.ds-notes { margin-top: 1rem; padding-top: 0.8rem; border-top: 1px solid var(--line); font-size: 0.86rem; }
+.ds-notes-h { color: var(--accent); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; margin-bottom: 0.5rem; }
+.ds-notes ul { display: grid; gap: 0.55rem; }
+.ds-notes li { padding-left: 0.8rem; border-left: 2px solid var(--line); }

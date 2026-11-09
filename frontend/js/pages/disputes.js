@@ -31,6 +31,7 @@ function disputesPage() {
     gq: '',
     cq: '',
     form: blank(),
+    extra: { show: false, id: null, title: '', note: '', images: [], videos: [], err: '' },
 
     async init() {
       this.auth = authState();
@@ -113,10 +114,10 @@ function disputesPage() {
       return this.council.filter((c) => !this.form.council_ids.includes(c.id) && (!q || (c.name + ' ' + c.role_label).toLowerCase().includes(q)));
     },
 
-    // เลือกไฟล์เพิ่มได้หลายครั้ง (ต่อท้ายของเดิม) · ตรวจขนาดก่อนส่งเพื่อบอกผู้ใช้ทันที
-    addFiles(field, ev) {
+    // เลือกไฟล์เพิ่มได้หลายครั้ง (ต่อท้ายของเดิม) · ตรวจขนาดก่อนส่งเพื่อบอกผู้ใช้ทันที · target = 'form' | 'extra'
+    addFiles(target, field, ev) {
       const max = field === 'images' ? 10 : 100;
-      const f = this.form;
+      const f = this[target];
       f.err = '';
       for (const file of ev.target.files) {
         if (file.size > max * 1024 * 1024) {
@@ -190,9 +191,40 @@ function disputesPage() {
       }
     },
 
+    openExtra(r) {
+      this.extra = { show: true, id: r.id, title: r.number + ' · ' + r.title, note: '', images: [], videos: [], err: '' };
+    },
+
+    // บันทึกเพิ่มเติม (ถ้ามี) และไฟล์ที่เลือก (ถ้ามี) — เพิ่มอย่างเดียว
+    async saveExtra() {
+      if (this.busy) return;
+      const x = this.extra;
+      x.err = '';
+      const note = x.note.trim();
+      if (!note && x.images.length + x.videos.length === 0) return (x.err = 'กรุณาพิมพ์บันทึกเพิ่มเติมหรือเลือกภาพ/วิดีโอ');
+
+      this.busy = true;
+      try {
+        if (note) await API.post(`/api/council/disputes/${x.id}/notes`, { body: note });
+        if (x.images.length + x.videos.length > 0) {
+          const fd = new FormData();
+          x.images.forEach((file) => fd.append('images[]', file));
+          x.videos.forEach((file) => fd.append('videos[]', file));
+          await API.post(`/api/council/disputes/${x.id}/files`, fd);
+        }
+        x.show = false;
+        await this.load();
+      } catch (e) {
+        x.err = (e.errors && Object.values(e.errors)[0][0]) || API.describe(e, 'บันทึกไม่สำเร็จ');
+        await this.load();
+      } finally {
+        this.busy = false;
+      }
+    },
+
     async toggleStatus(r) {
       try {
-        await API.put('/api/council/disputes/' + r.id, { status: r.status === 'closed' ? 'open' : 'closed' });
+        await API.post(`/api/council/disputes/${r.id}/status`, { status: r.status === 'closed' ? 'open' : 'closed' });
         await this.load();
       } catch (e) {
         await UI.alert({ kind: 'warn', title: 'ทำไม่สำเร็จ', message: API.describe(e, 'กรุณาลองใหม่อีกครั้ง') });

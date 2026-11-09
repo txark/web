@@ -42,6 +42,11 @@ class Dispute extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function notes(): HasMany
+    {
+        return $this->hasMany(DisputeNote::class)->orderBy('id');
+    }
+
     public function files(): HasMany
     {
         return $this->hasMany(DisputeFile::class)->orderBy('id');

@@ -225,8 +225,15 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
             Route::get('/', [DisputeController::class, 'index']);
             Route::get('{dispute}/files/{file}', [DisputeController::class, 'file']);
         });
+        // สภาทุกยศ (ต้องเข้าเวร): บันทึกเรื่อง · เพิ่มภาพ/วิดีโอ · เพิ่มบันทึกเพิ่มเติม · ปิดเรื่อง (ของตัวเองเท่านั้น; รองประธานขึ้นไปปิดได้ทุกเรื่อง)
         Route::middleware(['role:trainee', 'duty'])->group(function () {
             Route::post('/', [DisputeController::class, 'store']);
+            Route::post('{dispute}/files', [DisputeController::class, 'addFiles']);
+            Route::post('{dispute}/notes', [DisputeController::class, 'addNote']);
+            Route::post('{dispute}/status', [DisputeController::class, 'setStatus']);
+        });
+        // รองประธานขึ้นไป (ต้องเข้าเวร): แก้ไขรายละเอียดเรื่อง · ลบไฟล์หลักฐาน
+        Route::middleware(['role:vice_president', 'duty'])->group(function () {
             Route::match(['put', 'patch', 'post'], '{dispute}', [DisputeController::class, 'update']);
             Route::delete('{dispute}/files/{file}', [DisputeController::class, 'destroyFile']);
         });
