@@ -147,7 +147,7 @@ const OUTFITS = [
 ];
 const FAMILY_OUTFITS = ['hoodie', 'tshirt', 'polo', 'accessories']; // ครอบครัวลงได้เฉพาะ ฮูด เสื้อยืด เสื้อโปโล และ accessories
 const LOGO_HOST = 'images.wavevycity.com';   // โลโก้รับเฉพาะลิงก์จากเว็บนี้ (ฝั่งเซิร์ฟเวอร์ตรวจซ้ำ)
-const blankImport = () => ({ type: 'gang', is_lady: false, name: '', registered_at: '', source: '', short_name: '', logo_url: '', color_hex: '', color_name: '', leader: { ic_name: '', discord_id: '' }, co_leaders: '', members: '', reserves: '', err: '' });
+const blankImport = () => ({ kind: 'gang', name: '', registered_at: '', source: '', short_name: '', logo_url: '', color_hex: '', color_name: '', color_auto: true, leader: blankPerson(), co: [], members: [], reserves: [], err: '' });
 const logoOk = (u) => { try { const x = new URL(String(u || '').trim()); return x.protocol === 'https:' && x.hostname.toLowerCase() === LOGO_HOST && !x.username && !x.password && !x.port && x.pathname.length > 1; } catch (e) { return false; } };
 const blankTxn = () => ({ kind: 'rename', name: '', short_name: '', logo_url: '', color_hex: '', color_name: '', color_auto: true, outfit_zip: null, leader_name: '', leader_phone: '', leader_discord: '', member_names: '', red_card: false, reason: '' });
 
@@ -216,6 +216,7 @@ function manageGroupsPage() {
     showImport: false,
     importing: false,
     imp: blankImport(),
+    impErrors: {},
 
     // รายละเอียด
     g: null, // กลุ่มที่เปิดอยู่
@@ -304,6 +305,7 @@ function manageGroupsPage() {
       for (const k of ['q', 'kind', 'scope', 'status']) this.$watch(k, () => this.reload());
       // กรอกโค้ดสีครบแล้วเติมชื่อสีให้อัตโนมัติ (ถ้ายังว่างหรือเป็นชื่อที่ระบบเติมเอง)
       this.$watch('f.color_hex', (v) => this.autoColorName(this.f, v));
+      this.$watch('imp.color_hex', (v) => this.autoColorName(this.imp, v));
       this.$watch('txn.color_hex', (v) => this.autoColorName(this.txn, v));
     },
 
@@ -433,8 +435,32 @@ function manageGroupsPage() {
     },
 
     // ── นำเข้าทะเบียนเดิม (ขึ้นทะเบียนแบบสภา) ──
+    ie(key) {
+      return this.impErrors[key] || '';
+    },
+
+    /** จำนวนช่องตามประเภท: ตัวจริง/ตัวสำรอง (ตรงกับ config ฝั่งเซิร์ฟเวอร์) */
+    get impSlots() {
+      return { gang: { main: 20, reserve: 5 }, lady: { main: 25, reserve: 5 }, family: { main: 10, reserve: 0 } }[this.imp.kind];
+    },
+
+    get impLists() {
+      const s = this.impSlots;
+      const lists = [
+        { key: 'co', server: 'co_leaders', title: 'ข้อมูลรอง', noun: 'รอง', max: 2 },
+        { key: 'members', server: 'members', title: 'สมาชิกตัวจริง', noun: 'สมาชิก', max: Math.max(0, s.main - 1 - this.imp.co.length) },
+      ];
+      if (s.reserve > 0) lists.push({ key: 'reserves', server: 'reserves', title: 'ตัวสำรอง', noun: 'ตัวสำรอง', max: s.reserve });
+      return lists;
+    },
+
+    addImpPerson(list) {
+      this.imp[list].push(blankPerson());
+    },
+
     openImport() {
       this.imp = blankImport();
+      this.impErrors = {};
       this.showImport = true;
       document.documentElement.classList.add('ui-locked');
     },
@@ -448,26 +474,32 @@ function manageGroupsPage() {
       if (this.importing) return;
       const m = this.imp;
       m.err = '';
-      if (!m.name.trim()) return (m.err = 'กรุณากรอกชื่อ');
-      if (!m.registered_at) return (m.err = 'กรุณาระบุวันที่ขึ้นทะเบียนเดิม');
-      if (!m.source.trim()) return (m.err = 'กรุณาระบุที่มาของข้อมูล');
-      if (!m.leader.ic_name.trim()) return (m.err = 'กรุณากรอกชื่อ IC หัวหน้า');
+      this.impErrors = {};
+      const need = (cond, key, msg) => { if (cond) this.impErrors[key] = msg; };
+      need(!m.registered_at, 'registered_at', 'กรุณาระบุวันที่ขึ้นทะเบียนเดิม');
+      need(!m.source.trim(), 'source', 'กรุณาระบุที่มาของข้อมูล');
+      need(!m.name.trim(), 'name', 'กรุณากรอกชื่อ');
+      need(!m.leader.ic_name.trim(), 'leader.ic_name', 'กรุณากรอกชื่อ IC หัวหน้า');
+      if (Object.keys(this.impErrors).length) return this.scrollToError();
 
-      // บรรทัดละ 1 คน: "ชื่อ IC" หรือ "ชื่อ IC, Discord ID"
-      const lines = (t) => String(t || '').split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
-        const [ic, dc] = l.split(',').map((x) => x.trim());
-        return dc ? { ic_name: ic, discord_id: dc } : { ic_name: ic };
-      });
+      // แถวที่ว่างทั้งแถวไม่ส่ง · แถวที่มีเบอร์/Discord แต่ไม่มีชื่อ ให้แก้ก่อน
+      const clean = (list) => m[list].filter((p) => p.ic_name.trim() || p.ic_phone.trim() || p.discord_id.trim());
+      for (const [key, server] of [['co', 'co_leaders'], ['members', 'members'], ['reserves', 'reserves']]) {
+        clean(key).forEach((p, i) => need(!p.ic_name.trim(), `${server}.${i}.ic_name`, 'กรุณากรอกชื่อ IC'));
+      }
+      if (Object.keys(this.impErrors).length) return this.scrollToError();
+
+      const person = (p) => ({ ic_name: p.ic_name.trim(), ...(p.ic_phone.trim() ? { ic_phone: p.ic_phone.trim() } : {}), ...(p.discord_id.trim() ? { discord_id: p.discord_id.trim() } : {}) });
       const body = {
-        type: m.type,
-        is_lady: m.type === 'gang' && m.is_lady,
+        type: m.kind === 'family' ? 'family' : 'gang',
+        is_lady: m.kind === 'lady',
         name: m.name.trim(),
         registered_at: m.registered_at,
         source: m.source.trim(),
-        leader: { ic_name: m.leader.ic_name.trim(), ...(m.leader.discord_id.trim() ? { discord_id: m.leader.discord_id.trim() } : {}) },
-        co_leaders: lines(m.co_leaders),
-        members: lines(m.members),
-        reserves: m.type === 'gang' ? lines(m.reserves) : [],
+        leader: person(m.leader),
+        co_leaders: clean('co').map(person),
+        members: clean('members').map(person),
+        reserves: clean('reserves').map(person),
       };
       for (const k of ['short_name', 'logo_url', 'color_hex', 'color_name']) if (m[k].trim()) body[k] = m[k].trim();
 
@@ -479,10 +511,19 @@ function manageGroupsPage() {
         this.open(res.data);
         this.msg = 'นำเข้าทะเบียนเดิมเรียบร้อย';
       } catch (e) {
-        m.err = (e.errors && Object.values(e.errors)[0][0]) || API.describe(e, 'นำเข้าไม่สำเร็จ');
+        if (e.status === 422 && e.errors) {
+          this.impErrors = Object.fromEntries(Object.entries(e.errors).map(([key, v]) => [key, v[0]]));
+        } else {
+          m.err = API.describe(e, e.message || 'นำเข้าไม่สำเร็จ');
+        }
+        this.scrollToError();
       } finally {
         this.importing = false;
       }
+    },
+
+    scrollToError() {
+      this.$nextTick(() => document.querySelector('.reg-backdrop:not([style*="display: none"]) .reg-err:not([style*="display: none"])')?.scrollIntoView({ block: 'center', behavior: 'smooth' }));
     },
 
     openCreate() {

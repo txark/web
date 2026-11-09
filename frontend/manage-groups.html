@@ -823,7 +823,7 @@
 
   <!-- ═════════ ป๊อปอัปนำเข้าทะเบียนเดิม (ขึ้นทะเบียนแบบสภา) ═════════ -->
   <div x-show="showImport" x-cloak class="reg-backdrop" role="dialog" aria-modal="true" aria-labelledby="imp-title" @keydown.escape.window="closeImport()" @mousedown.self="closeImport()">
-    <form class="reg-modal ds-modal" @submit.prevent="importGroup()" novalidate>
+    <form class="reg-modal" @submit.prevent="importGroup()" novalidate>
       <header class="reg-head">
         <h2 id="imp-title" class="reg-title">นำเข้าทะเบียนเดิม (ขึ้นทะเบียนแบบสภา)</h2>
         <button type="button" class="reg-close" aria-label="ปิด" @click="closeImport()">
@@ -832,88 +832,122 @@
       </header>
 
       <div class="reg-body">
-        <p class="note-box">สำหรับแก๊ง/ครอบครัวที่มีทะเบียนอยู่แล้วจากที่อื่น · ระบุวันที่ขึ้นทะเบียนเดิมย้อนหลังได้ ไม่ต้องเลือกเบอร์สีชุดชั่วคราวหรือ Protect และไม่บังคับจำนวนสมาชิกขั้นต่ำ · ทุกรายการบันทึกที่มาของข้อมูลในบันทึกกิจกรรม</p>
-        <p class="penalty-box" x-show="imp.err" x-text="imp.err" role="alert"></p>
+        <p class="reg-banner">สำหรับแก๊ง/ครอบครัวที่มีทะเบียนอยู่แล้วจากที่อื่น · ระบุวันที่ขึ้นทะเบียนเดิมย้อนหลังได้ · ไม่ต้องเลือกเบอร์สีชุดชั่วคราวหรือ Protect และไม่บังคับจำนวนสมาชิกขั้นต่ำ</p>
 
-        <div class="ds-grid">
+        <!-- ที่มาของข้อมูล -->
+        <h3 class="reg-sec">ที่มาของข้อมูล</h3>
+        <div class="reg-grid">
           <div class="reg-field">
-            <label class="reg-label" for="imp-type">ประเภท <span class="text-accent">*</span></label>
-            <select id="imp-type" class="input" x-model="imp.type">
-              <option value="gang">แก๊ง</option>
-              <option value="family">ครอบครัว</option>
-            </select>
+            <label class="reg-label" for="i-date">วันที่ขึ้นทะเบียนเดิม</label>
+            <input id="i-date" type="date" class="input" x-model="imp.registered_at" :max="new Date().toISOString().slice(0, 10)" :aria-invalid="!!ie('registered_at')">
+            <p class="reg-err" x-show="ie('registered_at')" x-text="ie('registered_at')"></p>
           </div>
           <div class="reg-field">
-            <label class="reg-label" for="imp-name">ชื่อ <span class="text-accent">*</span></label>
-            <input id="imp-name" class="input" x-model="imp.name" maxlength="40" autocomplete="off">
+            <label class="reg-label" for="i-source">ที่มาของข้อมูล <span class="reg-hint">(บันทึกไว้ในบันทึกกิจกรรม)</span></label>
+            <input id="i-source" class="input" x-model="imp.source" maxlength="300" placeholder="เช่น ย้ายจากเซิร์ฟเวอร์เดิม / จากเอกสารเก่า" autocomplete="off" :aria-invalid="!!ie('source')">
+            <p class="reg-err" x-show="ie('source')" x-text="ie('source')"></p>
           </div>
         </div>
 
-        <label class="ds-check" x-show="imp.type === 'gang'">
-          <input type="checkbox" x-model="imp.is_lady">
-          <span>แก๊งหญิงล้วน</span>
-        </label>
-
-        <div class="ds-grid">
-          <div class="reg-field">
-            <label class="reg-label" for="imp-date">วันที่ขึ้นทะเบียนเดิม <span class="text-accent">*</span></label>
-            <input id="imp-date" type="date" class="input" x-model="imp.registered_at" :max="new Date().toISOString().slice(0, 10)">
+        <!-- ข้อมูลทั่วไป -->
+        <h3 class="reg-sec">ข้อมูลทั่วไป</h3>
+        <div class="reg-grid">
+          <div class="reg-field reg-wide">
+            <span class="reg-label" id="i-type-label">ประเภท</span>
+            <div class="flex flex-wrap gap-2" role="group" aria-labelledby="i-type-label">
+              <template x-for="t in [{ v: 'gang', l: 'GANG' }, { v: 'lady', l: 'LADY-GANG' }, { v: 'family', l: 'FAMILY' }]" :key="t.v">
+                <button type="button" class="chip" :aria-pressed="imp.kind === t.v" @click="imp.kind = t.v" x-text="t.l"></button>
+              </template>
+            </div>
           </div>
           <div class="reg-field">
-            <label class="reg-label" for="imp-source">ที่มาของข้อมูล <span class="text-accent">*</span></label>
-            <input id="imp-source" class="input" x-model="imp.source" maxlength="300" placeholder="เช่น ย้ายจากเซิร์ฟเวอร์เดิม / จากเอกสารเก่า" autocomplete="off">
-          </div>
-        </div>
-
-        <div class="ds-grid">
-          <div class="reg-field">
-            <label class="reg-label" for="imp-short">ชื่อย่อ <span class="reg-hint">(ไม่บังคับ · A-Z 0-9 ไม่เกิน 4 ตัว)</span></label>
-            <input id="imp-short" class="input" x-model="imp.short_name" maxlength="4" autocomplete="off" @input="imp.short_name = imp.short_name.toUpperCase()">
+            <label class="reg-label" for="i-name">ชื่อเต็ม <span class="reg-hint">(ไม่เกิน 40 ตัวอักษร)</span></label>
+            <input id="i-name" x-model="imp.name" maxlength="40" autocomplete="off" class="input" :aria-invalid="!!ie('name')">
+            <p class="reg-err" x-show="ie('name')" x-text="ie('name')"></p>
           </div>
           <div class="reg-field">
-            <label class="reg-label" for="imp-logo">ลิงก์โลโก้ <span class="reg-hint">(ไม่บังคับ · https://)</span></label>
-            <input id="imp-logo" class="input" x-model="imp.logo_url" maxlength="500" autocomplete="off">
-          </div>
-        </div>
-
-        <div class="ds-grid">
-          <div class="reg-field">
-            <label class="reg-label" for="imp-hex">โค้ดสี <span class="reg-hint">(ไม่บังคับ · #RRGGBB)</span></label>
-            <input id="imp-hex" class="input" x-model="imp.color_hex" maxlength="7" placeholder="#FF0000" autocomplete="off">
+            <label class="reg-label" for="i-short">ชื่อย่อ <span class="reg-hint">(ไม่บังคับ · พิมพ์ใหญ่ A-Z หรือตัวเลข ไม่เกิน 4 ตัว)</span></label>
+            <input id="i-short" x-model="imp.short_name" @input="imp.short_name = imp.short_name.toUpperCase().replace(/[^A-Z0-9]/g, '')" maxlength="4" autocomplete="off" class="input uppercase" :aria-invalid="!!ie('short_name')">
+            <p class="reg-err" x-show="ie('short_name')" x-text="ie('short_name')"></p>
           </div>
           <div class="reg-field">
-            <label class="reg-label" for="imp-cname">ชื่อสี</label>
-            <input id="imp-cname" class="input" x-model="imp.color_name" maxlength="60" autocomplete="off">
-          </div>
-        </div>
-
-        <h3 class="sm-sec"><em>01</em>หัวหน้า</h3>
-        <div class="ds-grid">
-          <div class="reg-field">
-            <label class="reg-label" for="imp-l-name">ชื่อ IC หัวหน้า <span class="text-accent">*</span></label>
-            <input id="imp-l-name" class="input" x-model="imp.leader.ic_name" maxlength="120" autocomplete="off">
+            <label class="reg-label" for="i-hex">โค้ดสีหลัก <span class="reg-hint">(HEX · ไม่บังคับ)</span></label>
+            <div class="reg-color">
+              <input type="color" class="reg-swatch" aria-label="เลือกสี" :value="/^#[0-9A-Fa-f]{6}$/.test(imp.color_hex) ? imp.color_hex : '#000000'" @input="imp.color_hex = $event.target.value.toUpperCase()">
+              <input id="i-hex" x-model="imp.color_hex" maxlength="7" placeholder="#FF0000" autocomplete="off" class="input font-mono uppercase" :aria-invalid="!!ie('color_hex')">
+            </div>
+            <p class="reg-err" x-show="ie('color_hex')" x-text="ie('color_hex')"></p>
           </div>
           <div class="reg-field">
-            <label class="reg-label" for="imp-l-dc">Discord ID หัวหน้า <span class="reg-hint">(ไม่บังคับ · ตัวเลข 17-20 หลัก)</span></label>
-            <input id="imp-l-dc" class="input" x-model="imp.leader.discord_id" inputmode="numeric" maxlength="20" autocomplete="off">
+            <label class="reg-label" for="i-cname">ชื่อสี <span class="reg-hint">(เติมให้อัตโนมัติจากโค้ด HEX แก้ไขได้)</span></label>
+            <input id="i-cname" x-model="imp.color_name" @input="imp.color_auto = false" maxlength="60" placeholder="เช่น แดงเลือดหมู" autocomplete="off" class="input" :aria-invalid="!!ie('color_name')">
+            <p class="reg-err" x-show="ie('color_name')" x-text="ie('color_name')"></p>
+          </div>
+          <div class="reg-field reg-wide">
+            <label class="reg-label" for="i-logo">ลิงก์โลโก้ <span class="reg-hint">(ไม่บังคับ · ลิงก์ https:// จากที่ไหนก็ได้)</span></label>
+            <input id="i-logo" type="url" class="input" x-model="imp.logo_url" placeholder="https://..." autocomplete="off" inputmode="url" :aria-invalid="!!ie('logo_url')">
+            <div x-show="/^https:\/\//.test(imp.logo_url)" x-cloak class="reg-preview"><img :src="imp.logo_url" alt="ตัวอย่างโลโก้" referrerpolicy="no-referrer"></div>
+            <p class="reg-err" x-show="ie('logo_url')" x-text="ie('logo_url')"></p>
           </div>
         </div>
 
-        <h3 class="sm-sec"><em>02</em>สมาชิกอื่น <span class="reg-hint">(บรรทัดละ 1 คน · พิมพ์ "ชื่อ IC" หรือ "ชื่อ IC, Discord ID")</span></h3>
-        <div class="ds-grid">
+        <!-- หัวหน้า -->
+        <h3 class="reg-sec">ข้อมูลหัวหน้า</h3>
+        <div class="reg-grid reg-grid-3">
           <div class="reg-field">
-            <label class="reg-label" for="imp-co">รองหัวหน้า</label>
-            <textarea id="imp-co" rows="3" class="input" x-model="imp.co_leaders"></textarea>
+            <label class="reg-label" for="il-name">ชื่อ-นามสกุล IC</label>
+            <input id="il-name" x-model="imp.leader.ic_name" autocomplete="off" class="input" :aria-invalid="!!ie('leader.ic_name')">
+            <p class="reg-err" x-show="ie('leader.ic_name')" x-text="ie('leader.ic_name')"></p>
           </div>
           <div class="reg-field">
-            <label class="reg-label" for="imp-mem">สมาชิกตัวจริง</label>
-            <textarea id="imp-mem" rows="3" class="input" x-model="imp.members"></textarea>
+            <label class="reg-label" for="il-phone">เบอร์ IC</label>
+            <input id="il-phone" x-model="imp.leader.ic_phone" inputmode="tel" autocomplete="off" class="input" :aria-invalid="!!ie('leader.ic_phone')">
+            <p class="reg-err" x-show="ie('leader.ic_phone')" x-text="ie('leader.ic_phone')"></p>
+          </div>
+          <div class="reg-field">
+            <label class="reg-label" for="il-did">Discord ID <span class="reg-hint">(ไม่บังคับ)</span></label>
+            <input id="il-did" x-model="imp.leader.discord_id" inputmode="numeric" autocomplete="off" class="input" :aria-invalid="!!ie('leader.discord_id')">
+            <p class="reg-err" x-show="ie('leader.discord_id')" x-text="ie('leader.discord_id')"></p>
           </div>
         </div>
-        <div class="reg-field" x-show="imp.type === 'gang'">
-          <label class="reg-label" for="imp-res">ตัวสำรอง</label>
-          <textarea id="imp-res" rows="2" class="input" x-model="imp.reserves"></textarea>
-        </div>
+
+        <!-- รอง / สมาชิกตัวจริง / ตัวสำรอง -->
+        <template x-for="s in impLists" :key="s.key">
+          <div>
+            <div class="reg-sec-row">
+              <h3 class="reg-sec"><span x-text="s.title"></span> <span class="reg-hint" x-text="'(ไม่บังคับ · ' + imp[s.key].length + ' / ' + s.max + ' คน)'"></span></h3>
+              <button type="button" class="reg-add" x-show="imp[s.key].length < s.max" @click="addImpPerson(s.key)" x-text="'+ เพิ่ม' + s.noun"></button>
+            </div>
+            <p class="reg-err" x-show="ie(s.server)" x-text="ie(s.server)"></p>
+            <template x-for="(c, i) in imp[s.key]" :key="c.key">
+              <div class="reg-person">
+                <div class="reg-person-head">
+                  <span class="reg-person-title" x-text="s.noun + 'คนที่ ' + (i + 1)"></span>
+                  <button type="button" class="reg-remove" @click="imp[s.key].splice(i, 1)">นำออก</button>
+                </div>
+                <div class="reg-grid reg-grid-3">
+                  <div class="reg-field">
+                    <label class="reg-label" :for="'ip-' + s.key + 'n' + i">ชื่อ-นามสกุล IC</label>
+                    <input :id="'ip-' + s.key + 'n' + i" x-model="c.ic_name" autocomplete="off" class="input" :aria-invalid="!!ie(s.server + '.' + i + '.ic_name')">
+                    <p class="reg-err" x-show="ie(s.server + '.' + i + '.ic_name')" x-text="ie(s.server + '.' + i + '.ic_name')"></p>
+                  </div>
+                  <div class="reg-field">
+                    <label class="reg-label" :for="'ip-' + s.key + 'p' + i">เบอร์ IC</label>
+                    <input :id="'ip-' + s.key + 'p' + i" x-model="c.ic_phone" inputmode="tel" autocomplete="off" class="input" :aria-invalid="!!ie(s.server + '.' + i + '.ic_phone')">
+                    <p class="reg-err" x-show="ie(s.server + '.' + i + '.ic_phone')" x-text="ie(s.server + '.' + i + '.ic_phone')"></p>
+                  </div>
+                  <div class="reg-field">
+                    <label class="reg-label" :for="'ip-' + s.key + 'd' + i">Discord ID <span class="reg-hint">(ไม่บังคับ)</span></label>
+                    <input :id="'ip-' + s.key + 'd' + i" x-model="c.discord_id" inputmode="numeric" autocomplete="off" class="input" :aria-invalid="!!ie(s.server + '.' + i + '.discord_id')">
+                    <p class="reg-err" x-show="ie(s.server + '.' + i + '.discord_id')" x-text="ie(s.server + '.' + i + '.discord_id')"></p>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </div>
+        </template>
+
+        <p class="reg-err mt-3" x-show="imp.err" x-text="imp.err" role="alert"></p>
       </div>
 
       <footer class="reg-foot">
