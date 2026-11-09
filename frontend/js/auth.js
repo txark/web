@@ -92,6 +92,13 @@ const Duty = (() => {
   };
 })();
 
+// ทุกส่วนของหน้า (เมนู แถบข้าง ตัวหน้า) เรียกตรวจผู้ใช้พร้อมกัน: ใช้คำขอเดียวร่วมกัน ไม่ยิงซ้ำหลายรอบ
+let userReq = null;
+const fetchUser = () => {
+  if (!userReq) userReq = API.get('/api/user').then((r) => r.data).finally(() => setTimeout(() => { userReq = null; }, 0));
+  return userReq;
+};
+
 function authState() {
   let cached = null; // ผู้ใช้จากหน้าก่อน (ต่อแท็บ): วาดเมนูทันที แล้ว init() ตรวจกับเซิร์ฟเวอร์ทับ
   try { cached = JSON.parse(sessionStorage.getItem('auth.user') || 'null'); } catch (e) {}
@@ -101,18 +108,26 @@ function authState() {
     loading: !cached,
     duty: council ? Duty.state : null, // null = ไม่เกี่ยว (ไม่ใช่สภา) หรือยังโหลดไม่เสร็จ
     tick: 0,
+    initing: null,
 
-    async init() {
-      try {
-        this.user = (await API.get('/api/user')).data;
-        try { sessionStorage.setItem('auth.user', JSON.stringify(this.user)); } catch (e) {}
-      } catch (e) {
-        this.user = null;
-        try { sessionStorage.removeItem('auth.user'); sessionStorage.removeItem('duty.cache'); } catch (e2) {}
-      } finally {
-        this.loading = false;
+    init() {
+      if (!this.initing) {
+        this.initing = (async () => {
+          // รู้อยู่แล้วว่าเป็นสภา (จากหน้าก่อน): ขอสถานะเวรพร้อมกับตรวจผู้ใช้ ไม่ต้องรอทีละอย่าง
+          if (council) Duty.load().catch(() => {});
+          try {
+            this.user = await fetchUser();
+            try { sessionStorage.setItem('auth.user', JSON.stringify(this.user)); } catch (e) {}
+          } catch (e) {
+            this.user = null;
+            try { sessionStorage.removeItem('auth.user'); sessionStorage.removeItem('duty.cache'); } catch (e2) {}
+          } finally {
+            this.loading = false;
+          }
+          if (this.user && this.can('member')) await this.loadDuty();
+        })();
       }
-      if (this.user && this.can('member')) await this.loadDuty();
+      return this.initing;
     },
 
     async loadDuty() {
@@ -152,14 +167,28 @@ function authState() {
     // opts.also = บทบาทที่ผ่านด้วยแม้ไม่ถึงระดับขั้นต่ำ (เช่น ['admin'] สำหรับหน้าจัดการผู้ใช้)
     // opts.offDutyOk = ยังไม่เข้าเวรก็เปิดหน้าได้ (หน้าที่ดูได้อย่างเดียวเมื่อไม่ได้อยู่ในเวร)
     async require(minRole = 'gang', opts = {}) {
-      await this.init();
       const go = (url) => {
         location.href = url;
         return new Promise(() => {});
       };
-      if (!this.user) return go('/login.html');
-      if (!this.can(minRole) && !(opts.also || []).includes(this.user.role)) return go('/index.html');
-      if (!opts.offDutyOk && this.duty && this.duty.required && !this.duty.on_duty) return go('/index.html?duty=required');
+      const allowed = () => this.can(minRole) || (opts.also || []).includes(this.user.role);
+      const check = () => {
+        if (!this.user) return go('/login.html');
+        if (!allowed()) return go('/index.html');
+        if (!opts.offDutyOk && this.duty && this.duty.required && !this.duty.on_duty) return go('/index.html?duty=required');
+      };
+
+      // ทางลัด: มีผู้ใช้และสถานะเวรที่จำไว้จากหน้าก่อน และผ่านเงื่อนไข → เปิดหน้าทันที ไม่รอเซิร์ฟเวอร์
+      // แล้วตรวจกับเซิร์ฟเวอร์ตามหลัง (ถ้าไม่ผ่านจะเปลี่ยนหน้า) · เซิร์ฟเวอร์ตรวจสิทธิ์ทุกคำขอข้อมูลอยู่แล้ว
+      const quick = !!this.user && allowed()
+        && (!council || (!!this.duty && (opts.offDutyOk || !this.duty.required || this.duty.on_duty)));
+      if (quick) {
+        this.init().then(check);
+        return;
+      }
+
+      await this.init();
+      return check();
     },
 
     async logout() {
