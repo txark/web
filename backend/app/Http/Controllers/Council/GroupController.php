@@ -241,14 +241,13 @@ class GroupController extends Controller
     /**
      * นำเข้าทะเบียนเดิม (ขึ้นทะเบียนแบบสภา): สภากรอกข้อมูลของแก๊ง/ครอบครัวที่มีอยู่แล้วจากที่อื่น
      * ผ่อนกฎเทียบกับขึ้นทะเบียนใหม่: ระบุวันที่ขึ้นทะเบียนเดิมย้อนหลังได้ · ไม่ต้องมีเบอร์สีชุดชั่วคราว/Protect · โลโก้ใช้ลิงก์ https ใดก็ได้ ·
-     * ไม่บังคับจำนวนสมาชิกขั้นต่ำ · ยังตรวจชื่อไม่ซ้ำและจำนวนสมาชิกไม่เกินช่อง · บันทึกที่มาของข้อมูลในประวัติและบันทึกกิจกรรม
+     * ไม่ต้องมีสมาชิกตัวจริง/ตัวสำรอง (ใส่เฉพาะหัวหน้าและรอง) · ยังตรวจชื่อไม่ซ้ำ · บันทึกที่มาของข้อมูลในประวัติและบันทึกกิจกรรม
      */
     public function import(Request $request): JsonResponse
     {
         $type = GroupType::tryFrom((string) $request->input('type'));
         $isLady = $type === GroupType::Gang && $request->boolean('is_lady');
         $key = $type === GroupType::Family ? 'family' : ($isLady ? 'lady' : 'gang');
-        $slots = config("council.groups.slots.{$key}");
         $maxCo = $type ? Group::coLeaderLimit($type) : (int) config('council.groups.max_co_leaders');
 
         $member = fn (string $p) => [
@@ -272,12 +271,6 @@ class GroupController extends Controller
             'co_leaders' => ['nullable', 'array', "max:{$maxCo}"],
             'co_leaders.*' => ['array'],
             ...$member('co_leaders.*'),
-            'members' => ['nullable', 'array'],
-            'members.*' => ['array'],
-            ...$member('members.*'),
-            'reserves' => ['nullable', 'array', 'max:'.$slots['reserve']],
-            'reserves.*' => ['array'],
-            ...$member('reserves.*'),
         ], self::MESSAGES + [
             'name.max' => 'ชื่อต้องยาวไม่เกิน 40 ตัวอักษร',
             'short_name.regex' => 'ชื่อย่อต้องเป็นตัวพิมพ์ใหญ่ภาษาอังกฤษหรือตัวเลขเท่านั้น ไม่เกิน 4 ตัวอักษร',
@@ -287,7 +280,6 @@ class GroupController extends Controller
             'registered_at.before_or_equal' => 'วันที่ขึ้นทะเบียนเดิมต้องไม่เป็นวันในอนาคต',
             'source.required' => 'กรุณาระบุที่มาของข้อมูล (เช่น ย้ายจากเซิร์ฟเวอร์เดิม)',
             'co_leaders.max' => $type === GroupType::Family ? 'ครอบครัวมีรองได้ 1 คน' : "แก๊งมีรองได้ไม่เกิน {$maxCo} คน",
-            'reserves.max' => $slots['reserve'] > 0 ? "ตัวสำรองได้ไม่เกิน {$slots['reserve']} คน" : 'กลุ่มประเภทนี้ไม่มีตัวสำรอง',
             '*.discord_id.regex' => 'Discord ID ต้องเป็นตัวเลข 17-20 หลัก',
             '*.ic_phone.regex' => 'เบอร์ IC ไม่ถูกต้อง',
         ]);
@@ -305,18 +297,9 @@ class GroupController extends Controller
         foreach ($data['co_leaders'] ?? [] as $p) {
             $main[] = ['p' => $p, 'pos' => MemberPosition::CoLeader, 'reserve' => false];
         }
-        foreach ($data['members'] ?? [] as $p) {
-            $main[] = ['p' => $p, 'pos' => MemberPosition::Member, 'reserve' => false];
-        }
-        foreach ($data['reserves'] ?? [] as $p) {
-            $main[] = ['p' => $p, 'pos' => MemberPosition::Member, 'reserve' => true];
-        }
-        if (count(array_filter($main, fn ($m) => ! $m['reserve'])) > $slots['main']) {
-            throw ValidationException::withMessages(['members' => "สมาชิกตัวจริงเกินช่อง (ไม่เกิน {$slots['main']} คน)"]);
-        }
         $names = array_map(fn ($m) => mb_strtolower(trim($m['p']['ic_name'])), $main);
         if (count(array_unique($names)) !== count($names)) {
-            throw ValidationException::withMessages(['members' => 'มีชื่อสมาชิกซ้ำกัน']);
+            throw ValidationException::withMessages(['co_leaders' => 'ชื่อหัวหน้าและรองต้องไม่ซ้ำกัน']);
         }
 
         $registered = \Illuminate\Support\Carbon::parse($data['registered_at'], config('council.report_timezone'))->startOfDay()->utc();

@@ -147,7 +147,7 @@ const OUTFITS = [
 ];
 const FAMILY_OUTFITS = ['hoodie', 'tshirt', 'polo', 'accessories']; // ครอบครัวลงได้เฉพาะ ฮูด เสื้อยืด เสื้อโปโล และ accessories
 const LOGO_HOST = 'images.wavevycity.com';   // โลโก้รับเฉพาะลิงก์จากเว็บนี้ (ฝั่งเซิร์ฟเวอร์ตรวจซ้ำ)
-const blankImport = () => ({ kind: 'gang', name: '', registered_at: '', source: '', short_name: '', logo_url: '', color_hex: '', color_name: '', color_auto: true, leader: blankPerson(), co: [], members: [], reserves: [], err: '' });
+const blankImport = () => ({ kind: 'gang', name: '', registered_at: '', source: '', short_name: '', logo_url: '', color_hex: '', color_name: '', color_auto: true, leader: blankPerson(), co: [], err: '' });
 const logoOk = (u) => { try { const x = new URL(String(u || '').trim()); return x.protocol === 'https:' && x.hostname.toLowerCase() === LOGO_HOST && !x.username && !x.password && !x.port && x.pathname.length > 1; } catch (e) { return false; } };
 const blankTxn = () => ({ kind: 'rename', name: '', short_name: '', logo_url: '', color_hex: '', color_name: '', color_auto: true, outfit_zip: null, leader_name: '', leader_phone: '', leader_discord: '', member_names: '', red_card: false, reason: '' });
 
@@ -439,19 +439,8 @@ function manageGroupsPage() {
       return this.impErrors[key] || '';
     },
 
-    /** จำนวนช่องตามประเภท: ตัวจริง/ตัวสำรอง (ตรงกับ config ฝั่งเซิร์ฟเวอร์) */
-    get impSlots() {
-      return { gang: { main: 20, reserve: 5 }, lady: { main: 25, reserve: 5 }, family: { main: 10, reserve: 0 } }[this.imp.kind];
-    },
-
     get impLists() {
-      const s = this.impSlots;
-      const lists = [
-        { key: 'co', server: 'co_leaders', title: 'ข้อมูลรอง', noun: 'รอง', max: 2 },
-        { key: 'members', server: 'members', title: 'สมาชิกตัวจริง', noun: 'สมาชิก', max: Math.max(0, s.main - 1 - this.imp.co.length) },
-      ];
-      if (s.reserve > 0) lists.push({ key: 'reserves', server: 'reserves', title: 'ตัวสำรอง', noun: 'ตัวสำรอง', max: s.reserve });
-      return lists;
+      return [{ key: 'co', server: 'co_leaders', title: 'ข้อมูลรอง', noun: 'รอง', max: 2 }];
     },
 
     addImpPerson(list) {
@@ -484,7 +473,7 @@ function manageGroupsPage() {
 
       // แถวที่ว่างทั้งแถวไม่ส่ง · แถวที่มีเบอร์/Discord แต่ไม่มีชื่อ ให้แก้ก่อน
       const clean = (list) => m[list].filter((p) => p.ic_name.trim() || p.ic_phone.trim() || p.discord_id.trim());
-      for (const [key, server] of [['co', 'co_leaders'], ['members', 'members'], ['reserves', 'reserves']]) {
+      for (const [key, server] of [['co', 'co_leaders']]) {
         clean(key).forEach((p, i) => need(!p.ic_name.trim(), `${server}.${i}.ic_name`, 'กรุณากรอกชื่อ IC'));
       }
       if (Object.keys(this.impErrors).length) return this.scrollToError();
@@ -498,8 +487,6 @@ function manageGroupsPage() {
         source: m.source.trim(),
         leader: person(m.leader),
         co_leaders: clean('co').map(person),
-        members: clean('members').map(person),
-        reserves: clean('reserves').map(person),
       };
       for (const k of ['short_name', 'logo_url', 'color_hex', 'color_name']) if (m[k].trim()) body[k] = m[k].trim();
 

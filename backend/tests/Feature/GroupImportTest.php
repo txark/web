@@ -57,16 +57,14 @@ class GroupImportTest extends TestCase
             'short_name' => 'OLD',
             'logo_url' => 'https://example.com/logo.png',
             'co_leaders' => [['ic_name' => 'Deputy A']],
-            'members' => [['ic_name' => 'Member 1'], ['ic_name' => 'Member 2', 'discord_id' => '223456789012345678']],
-            'reserves' => [['ic_name' => 'Reserve 1']],
         ]))->assertCreated();
 
         $g = Group::where('name', 'Old Gang Name จากที่เก่า')->firstOrFail();
         $this->assertSame('2026-08-15', $g->registered_at->setTimezone('Asia/Bangkok')->toDateString());
         $this->assertNull($g->temp_outfit_color);
         $this->assertFalse((bool) $g->protect_requested);
-        $this->assertSame(5, $g->members()->count());
-        $this->assertSame(1, $g->members()->where('is_reserve', true)->count());
+        $this->assertSame(2, $g->members()->count());
+        $this->assertSame(0, $g->members()->where('position', 'member')->count());
         $this->assertSame('leader', $g->members()->orderBy('id')->first()->position->value);
         $this->assertStringContainsString('นำเข้าทะเบียนเดิม', $g->statusHistory()->first()->reason);
         $res->assertJsonPath('data.name', 'Old Gang Name จากที่เก่า');
@@ -82,10 +80,8 @@ class GroupImportTest extends TestCase
         $this->postJson(self::URL, $this->payload(['name' => 'taken']))->assertUnprocessable()->assertJsonValidationErrors('name');
         $this->postJson(self::URL, $this->payload(['logo_url' => 'http://insecure.example/x.png']))->assertUnprocessable()->assertJsonValidationErrors('logo_url');
         $this->postJson(self::URL, $this->payload(['color_hex' => '#FF0000']))->assertUnprocessable()->assertJsonValidationErrors('color_name');
-        // ครอบครัวไม่มีตัวสำรอง
-        $this->postJson(self::URL, $this->payload(['type' => 'family', 'reserves' => [['ic_name' => 'R']]]))->assertUnprocessable()->assertJsonValidationErrors('reserves');
-        // ชื่อสมาชิกซ้ำ
-        $this->postJson(self::URL, $this->payload(['members' => [['ic_name' => 'boss one']]]))->assertUnprocessable()->assertJsonValidationErrors('members');
+        // ชื่อหัวหน้ากับรองซ้ำกัน
+        $this->postJson(self::URL, $this->payload(['co_leaders' => [['ic_name' => 'boss one']]]))->assertUnprocessable()->assertJsonValidationErrors('co_leaders');
     }
 
     public function test_import_is_recorded_with_its_source_in_the_activity_log(): void
