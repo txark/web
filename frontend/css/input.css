@@ -8624,7 +8624,7 @@ html.has-side .pub .pub-toolbar { margin-top: 1.25rem; }
 .ds-grid { display: grid; gap: 1rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 @media (max-width: 720px) { .ds-grid { grid-template-columns: minmax(0, 1fr); } }
 .ds-modal { max-width: 56rem; }
-.ds-pick { min-width: 0; padding: 0.9rem 1rem 1rem; border: 1px solid var(--line); border-radius: 0.9rem; }
+.ds-pick-old { }
 .ds-pick legend { padding: 0 0.5rem; font-size: 0.9rem; font-weight: 600; }
 .ds-pick legend small { color: var(--muted); font-weight: 400; }
 .ds-list { margin-top: 0.7rem; max-height: 15rem; overflow-y: auto; display: grid; gap: 0.15rem; }
@@ -8646,3 +8646,15 @@ html.has-side .pub .pub-toolbar { margin-top: 1.25rem; }
 .ds-vid .ic { width: 1.8rem; height: 1.8rem; }
 .ds-x { position: absolute; top: -0.4rem; right: -0.4rem; width: 1.2rem; height: 1.2rem; border-radius: 50%; border: 1px solid var(--line); background: var(--panel); color: var(--muted); font-size: 0.6rem; cursor: pointer; }
 .ds-x:hover { color: var(--danger); }
+
+/* ตัวเลือกแบบค้นหา + ป้ายที่เลือก (ฟอร์มข้อพิพาท) */
+.ds-pick { position: relative; min-width: 0; }
+.ds-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.55rem; }
+.ds-chip-on { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.2rem 0.3rem 0.2rem 0.7rem; border-color: var(--accent); background: var(--accent-soft); color: var(--fg); font-size: 0.82rem; }
+.ds-chip-on button { width: 1.2rem; height: 1.2rem; border: 0; border-radius: 50%; background: transparent; color: var(--muted); font-size: 0.62rem; cursor: pointer; }
+.ds-chip-on button:hover { color: var(--danger); }
+.ds-results { position: absolute; z-index: 5; left: 0; right: 0; margin-top: 0.35rem; max-height: 14rem; overflow-y: auto; border: 1px solid var(--line); border-radius: 0.8rem; background: var(--panel); box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35); }
+.ds-res { display: block; width: 100%; padding: 0.55rem 0.8rem; border: 0; background: transparent; color: var(--fg); text-align: left; cursor: pointer; }
+.ds-res:hover, .ds-res:focus-visible { background: var(--accent-soft); }
+.ds-res b { display: block; font-size: 0.9rem; }
+.ds-res small { display: block; color: var(--muted); font-size: 0.76rem; }

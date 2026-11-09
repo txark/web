@@ -43,7 +43,7 @@ const API = (() => {
       window.dispatchEvent(new CustomEvent('auth:unauthenticated'));
     }
     // เวรหมดระหว่างใช้งาน (เช่น ออกเวรจากอีกแท็บ): กลับหน้าแรกเพื่อเข้าเวรใหม่
-    if (res.status === 403 && data && data.code === 'off_duty' && !/^\/(index\.html)?$/.test(location.pathname)) {
+    if (res.status === 403 && data && data.code === 'off_duty' && !/^\/(index\.html)?$/.test(window.PAGE_PATH || location.pathname)) {
       location.href = '/index.html?duty=required';
     }
     if (!res.ok) {

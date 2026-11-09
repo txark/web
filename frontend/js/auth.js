@@ -24,7 +24,7 @@ const Duty = (() => {
       const was = state && state.on_duty;
       const d = apply((await API.post('/api/duty/heartbeat')).data);
       // ถูกบังคับออกเวรระหว่างที่หน้านี้เปิดอยู่ (เช่น เน็ตหลุดนาน): กลับหน้าแรกถ้าหน้านี้ต้องอยู่ในเวร
-      if (was && !d.on_duty && d.required && !FREE_PAGES.includes(location.pathname)) {
+      if (was && !d.on_duty && d.required && !FREE_PAGES.includes(window.PAGE_PATH || location.pathname)) {
         location.href = '/index.html?duty=required';
       }
     } catch (e) {}

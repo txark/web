@@ -68,7 +68,7 @@
     ]],
   };
 
-  const entry = HELP[location.pathname === '/' ? '/index.html' : location.pathname];
+  const entry = HELP[(window.PAGE_PATH || location.pathname) === '/' ? '/index.html' : (window.PAGE_PATH || location.pathname)];
   if (!entry) return;
 
   function mount() {

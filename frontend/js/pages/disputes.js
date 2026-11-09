@@ -105,12 +105,17 @@ function disputesPage() {
 
     get shownGroups() {
       const q = this.gq.trim().toLowerCase();
-      return this.groups.filter((g) => !q || (g.name + ' ' + (g.short_name || '')).toLowerCase().includes(q));
+      return this.groups.filter((g) => !this.form.group_ids.includes(g.id) && (!q || (g.name + ' ' + (g.short_name || '')).toLowerCase().includes(q)));
     },
 
     get shownCouncil() {
       const q = this.cq.trim().toLowerCase();
-      return this.council.filter((c) => !q || (c.name + ' ' + c.role_label).toLowerCase().includes(q));
+      return this.council.filter((c) => !this.form.council_ids.includes(c.id) && (!q || (c.name + ' ' + c.role_label).toLowerCase().includes(q)));
+    },
+
+    nameOf(list, id) {
+      const x = list.find((i) => i.id === id);
+      return x ? x.name : '#' + id;
     },
 
     toggle(list, id) {

@@ -10,7 +10,7 @@
     { href: '/finance.html', icon: 'wallet', label: 'ธุรกรรมการเงิน', hint: 'รายรับ รายจ่าย กองทุน เงินกู้ โบนัส', min: 'vice_president' },
   ];
 
-  const here = location.pathname;
+  const here = window.PAGE_PATH || location.pathname;
   const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
   const rows = ITEMS.map((it) => {

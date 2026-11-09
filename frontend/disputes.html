@@ -156,33 +156,40 @@
           </div>
 
           <div class="ds-grid">
-            <fieldset class="ds-pick">
-              <legend>ผู้มีข้อพิพาท <span class="text-accent">*</span> <small x-show="form.group_ids.length" x-text="'(เลือก ' + form.group_ids.length + ')'"></small></legend>
-              <input type="search" class="input" x-model="gq" placeholder="ค้นหาผู้มีข้อพิพาท" aria-label="ค้นหาผู้มีข้อพิพาท">
-              <div class="ds-list">
-                <template x-for="g in shownGroups" :key="g.id">
-                  <label class="ds-opt">
-                    <input type="checkbox" :value="g.id" :checked="form.group_ids.includes(g.id)" @change="toggle(form.group_ids, g.id)">
-                    <span><b x-text="g.name"></b><small x-text="(g.short_name ? '[' + g.short_name + '] · ' : '') + g.kind_label"></small></span>
-                  </label>
+            <div class="ds-pick" x-data="{ open: false }" @click.outside="open = false" @keydown.escape="open = false">
+              <p class="reg-label">ผู้มีข้อพิพาท <span class="text-accent">*</span></p>
+              <div class="ds-chips" x-show="form.group_ids.length">
+                <template x-for="id in form.group_ids" :key="id">
+                  <span class="ds-chip ds-chip-on"><span x-text="nameOf(groups, id)"></span><button type="button" @click="toggle(form.group_ids, id)" :aria-label="'เอาออก ' + nameOf(groups, id)">✕</button></span>
                 </template>
-                <p class="text-sm text-muted" x-show="shownGroups.length === 0">ไม่พบรายการ</p>
               </div>
-            </fieldset>
-
-            <fieldset class="ds-pick">
-              <legend>สภาผู้อยู่ในเหตุการณ์ <span class="text-accent">*</span> <small x-show="form.council_ids.length" x-text="'(เลือก ' + form.council_ids.length + ')'"></small></legend>
-              <input type="search" class="input" x-model="cq" placeholder="ค้นหาสภาผู้อยู่ในเหตุการณ์" aria-label="ค้นหาสภา">
-              <div class="ds-list">
-                <template x-for="c in shownCouncil" :key="c.id">
-                  <label class="ds-opt">
-                    <input type="checkbox" :value="c.id" :checked="form.council_ids.includes(c.id)" @change="toggle(form.council_ids, c.id)">
-                    <span><b x-text="c.name"></b><small x-text="c.role_label"></small></span>
-                  </label>
+              <input type="search" class="input" x-model="gq" @focus="open = true" @input="open = true" placeholder="พิมพ์ค้นหาแล้วเลือกผู้มีข้อพิพาท" aria-label="พิมพ์ค้นหาแล้วเลือกผู้มีข้อพิพาท" autocomplete="off">
+              <div class="ds-results" x-show="open" x-cloak>
+                <template x-for="o in shownGroups" :key="o.id">
+                  <button type="button" class="ds-res" @click="toggle(form.group_ids, o.id); gq = ''" >
+                    <b x-text="o.name"></b><small x-text="(o.short_name ? '[' + o.short_name + '] · ' : '') + o.kind_label"></small>
+                  </button>
                 </template>
-                <p class="text-sm text-muted" x-show="shownCouncil.length === 0">ไม่พบรายการ</p>
+                <p class="px-3 py-2 text-sm text-muted" x-show="shownGroups.length === 0">ไม่พบรายการ</p>
               </div>
-            </fieldset>
+            </div>
+            <div class="ds-pick" x-data="{ open: false }" @click.outside="open = false" @keydown.escape="open = false">
+              <p class="reg-label">สภาผู้อยู่ในเหตุการณ์ <span class="text-accent">*</span></p>
+              <div class="ds-chips" x-show="form.council_ids.length">
+                <template x-for="id in form.council_ids" :key="id">
+                  <span class="ds-chip ds-chip-on"><span x-text="nameOf(council, id)"></span><button type="button" @click="toggle(form.council_ids, id)" :aria-label="'เอาออก ' + nameOf(council, id)">✕</button></span>
+                </template>
+              </div>
+              <input type="search" class="input" x-model="cq" @focus="open = true" @input="open = true" placeholder="พิมพ์ค้นหาแล้วเลือกสภาผู้อยู่ในเหตุการณ์" aria-label="พิมพ์ค้นหาแล้วเลือกสภาผู้อยู่ในเหตุการณ์" autocomplete="off">
+              <div class="ds-results" x-show="open" x-cloak>
+                <template x-for="o in shownCouncil" :key="o.id">
+                  <button type="button" class="ds-res" @click="toggle(form.council_ids, o.id); cq = ''" >
+                    <b x-text="o.name"></b><small x-text="o.role_label"></small>
+                  </button>
+                </template>
+                <p class="px-3 py-2 text-sm text-muted" x-show="shownCouncil.length === 0">ไม่พบรายการ</p>
+              </div>
+            </div>
           </div>
 
           <div class="ds-grid">

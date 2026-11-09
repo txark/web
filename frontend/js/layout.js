@@ -4,7 +4,7 @@
   const host = document.getElementById('site-header');
   if (!host) return;
 
-  const here = location.pathname;
+  const here = window.PAGE_PATH || location.pathname;
   const ic = (n) => `<i class="ic" data-icon="${n}" aria-hidden="true"></i>`;
   const cur = (cond) => (cond ? ' aria-current="page"' : '');
 
