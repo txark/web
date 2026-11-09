@@ -18,6 +18,11 @@ return Application::configure(basePath: dirname(__DIR__))
         if ($proxies = env('TRUSTED_PROXIES')) {
             $middleware->trustProxies(at: $proxies === '*' ? '*' : explode(',', $proxies));
         }
+        // ตัวตรวจสิทธิ์ของระบบต้องทำงานก่อนการค้นหาข้อมูลตามรหัสในเส้นทาง (SubstituteBindings)
+        // ไม่งั้นผู้ที่ไม่มีสิทธิ์จะเห็นความต่างระหว่าง 404 (ไม่มีรหัสนี้) กับ 403 (มี แต่เข้าไม่ได้) และเดารหัสได้
+        foreach ([\App\Http\Middleware\EnsureActive::class, \App\Http\Middleware\EnsureRole::class, \App\Http\Middleware\EnsureOnDuty::class] as $guard) {
+            $middleware->prependToPriorityList(before: \Illuminate\Routing\Middleware\SubstituteBindings::class, prepend: $guard);
+        }
         $middleware->alias([
             'role' => \App\Http\Middleware\EnsureRole::class,
             'log.access' => \App\Http\Middleware\LogAccess::class,
