@@ -40,7 +40,7 @@ Route::prefix('public')->middleware('throttle:120,1')->group(function () {
     Route::get('loan-contracts/{token}.png', [LoanController::class, 'publicImage'])->where('token', '[A-Za-z0-9]{40}'); // รูปหนังสือสัญญากู้ตามลิงก์
 });
 
-Route::middleware(['auth:sanctum', 'active'])->group(function () {
+Route::middleware(['auth:sanctum', 'active', 'throttle:writes'])->group(function () {
     Route::get('/user', fn (Request $request) => new UserResource($request->user()));
     Route::post('/logout', [DiscordController::class, 'logout']);
 

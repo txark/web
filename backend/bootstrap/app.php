@@ -27,6 +27,16 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // ทำรายการถี่เกินไป: แจ้งเป็นภาษาไทย พร้อมบอกว่าต้องรอกี่วินาที
+        $exceptions->render(function (\Illuminate\Http\Exceptions\ThrottleRequestsException $e, Request $request) {
+            $wait = (int) ($e->getHeaders()['Retry-After'] ?? 5);
+
+            return response()->json([
+                'message' => 'ทำรายการถี่เกินไป กรุณารอ '.max($wait, 1).' วินาทีแล้วลองใหม่',
+                'code' => 'throttled',
+            ], 429, $e->getHeaders());
+        });
+
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );

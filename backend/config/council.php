@@ -133,6 +133,13 @@ return [
         'rejoin_cooldown_days' => 7,          // ออกจากกลุ่มแล้วเข้ากลุ่มใหม่ได้หลังกี่วัน
     ],
 
+    // กันกดรัว/เรียกซ้ำ (ต่อผู้ใช้ ต่อนาที): เฉพาะการเขียนข้อมูล (POST/PUT/PATCH/DELETE) · การเปิดดูและสัญญาณเวรไม่ถูกจำกัด
+    'rate' => [
+        'writes' => (int) env('RATE_WRITES_PER_MIN', 60),
+        'uploads' => (int) env('RATE_UPLOADS_PER_MIN', 20),   // คำขอที่แนบไฟล์
+        'login' => (int) env('RATE_LOGIN_PER_MIN', 20),       // ขอล็อกอิน Discord ต่อ IP
+    ],
+
     // แจ้งเตือนงานค้าง
     'alerts' => [
         'loan_due_soon_days' => 3, // สัญญากู้เงินที่จะครบกำหนดภายในกี่วันขึ้นแจ้งเตือน (ประธาน/รองประธาน)

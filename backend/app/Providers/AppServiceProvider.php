@@ -5,7 +5,10 @@ namespace App\Providers;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Activitylog\Support\CauserResolver;
@@ -27,6 +30,21 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // กันกดรัว/เรียกซ้ำ: จำกัดการเขียนข้อมูลต่อผู้ใช้ต่อนาที (คำขอที่แนบไฟล์จำกัดเข้มกว่า) · ยกเว้นการเปิดดูและสัญญาณเวร
+        RateLimiter::for('writes', function (Request $request) {
+            if (in_array($request->method(), ['GET', 'HEAD', 'OPTIONS'], true) || $request->is('api/duty/heartbeat')) {
+                return Limit::none();
+            }
+            $who = $request->user()?->getAuthIdentifier() ?? $request->ip();
+            $limits = [Limit::perMinute(config('council.rate.writes'))->by("w:{$who}")];
+            if ($request->allFiles()) {
+                $limits[] = Limit::perMinute(config('council.rate.uploads'))->by("u:{$who}");
+            }
+
+            return $limits;
+        });
+        RateLimiter::for('login', fn (Request $request) => Limit::perMinute(config('council.rate.login'))->by($request->ip()));
+
         Event::listen(SocialiteWasCalled::class, DiscordExtendSocialite::class.'@handle');
 
         // ผู้กระทำของบันทึกกิจกรรม: ใช้ผู้ที่ยืนยันตัวตนอยู่ไม่ว่าด้วยวิธีใด (session ของเว็บ หรือโทเค็น API)

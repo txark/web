@@ -11,7 +11,19 @@ const API = (() => {
     await fetch(`${base()}/sanctum/csrf-cookie`, { credentials: 'include' });
   }
 
-  async function request(method, path, body) {
+  // กดซ้ำ/เรียกซ้ำ: คำขอเขียนข้อมูลแบบ JSON ที่เหมือนกันทุกอย่างและยังไม่เสร็จ ใช้ผลของคำขอเดิมร่วมกัน (ไม่ส่งซ้ำไปที่เซิร์ฟเวอร์)
+  const inflight = new Map();
+
+  function request(method, path, body) {
+    if (method === 'GET' || body instanceof FormData) return send(method, path, body);
+    const key = method + ' ' + path + ' ' + (body === undefined ? '' : JSON.stringify(body));
+    if (inflight.has(key)) return inflight.get(key);
+    const p = send(method, path, body).finally(() => inflight.delete(key));
+    inflight.set(key, p);
+    return p;
+  }
+
+  async function send(method, path, body) {
     const opts = {
       method,
       credentials: 'include',
@@ -47,7 +59,7 @@ const API = (() => {
       location.href = '/index.html?duty=required';
     }
     if (!res.ok) {
-      const err = new Error((data && data.message) || `HTTP ${res.status}`);
+      const err = new Error((data && data.message) || (res.status === 429 ? 'ทำรายการถี่เกินไป กรุณารอสักครู่แล้วลองใหม่' : `HTTP ${res.status}`));
       err.status = res.status;
       err.errors = data && data.errors;
       throw err;
