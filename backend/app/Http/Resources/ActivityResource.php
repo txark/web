@@ -126,6 +126,10 @@ class ActivityResource extends JsonResource
                     $lines[] = [$label, $dash($date($from)).' → '.$dash($date($to))];
                 }
             }
+        } elseif (isset($p['import_source'])) {
+            $lines[] = ['ที่มาของข้อมูล', $p['import_source']];
+            $lines[] = ['วันที่ขึ้นทะเบียนเดิม', $date($p['registered_at'] ?? null) ?? '—'];
+            $lines[] = ['จำนวนสมาชิกที่นำเข้า', ($p['members'] ?? 0).' คน'];
         } elseif (isset($p['penalty_type'])) {
             $penance = $p['penalty_type'] === 'penance';
             $both = $p['penalty_type'] === 'both';

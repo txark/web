@@ -238,6 +238,134 @@ class GroupController extends Controller
         return (new GroupAdminResource($this->full($group)))->response()->setStatusCode(201);
     }
 
+    /**
+     * นำเข้าทะเบียนเดิม (ขึ้นทะเบียนแบบสภา): สภากรอกข้อมูลของแก๊ง/ครอบครัวที่มีอยู่แล้วจากที่อื่น
+     * ผ่อนกฎเทียบกับขึ้นทะเบียนใหม่: ระบุวันที่ขึ้นทะเบียนเดิมย้อนหลังได้ · ไม่ต้องมีเบอร์สีชุดชั่วคราว/Protect · โลโก้ใช้ลิงก์ https ใดก็ได้ ·
+     * ไม่บังคับจำนวนสมาชิกขั้นต่ำ · ยังตรวจชื่อไม่ซ้ำและจำนวนสมาชิกไม่เกินช่อง · บันทึกที่มาของข้อมูลในประวัติและบันทึกกิจกรรม
+     */
+    public function import(Request $request): JsonResponse
+    {
+        $type = GroupType::tryFrom((string) $request->input('type'));
+        $isLady = $type === GroupType::Gang && $request->boolean('is_lady');
+        $key = $type === GroupType::Family ? 'family' : ($isLady ? 'lady' : 'gang');
+        $slots = config("council.groups.slots.{$key}");
+        $maxCo = $type ? Group::coLeaderLimit($type) : (int) config('council.groups.max_co_leaders');
+
+        $member = fn (string $p) => [
+            "{$p}.ic_name" => ['required', 'string', 'max:120'],
+            "{$p}.ic_phone" => ['nullable', 'string', 'max:30', 'regex:/^[0-9 \-+]+$/'],
+            "{$p}.discord_id" => ['nullable', 'regex:/^\d{17,20}$/'],
+        ];
+
+        $data = $request->validate([
+            'type' => ['required', Rule::enum(GroupType::class)],
+            'is_lady' => ['sometimes', 'boolean'],
+            'name' => ['required', 'string', 'max:40'],
+            'short_name' => ['nullable', 'string', 'max:4', 'regex:/^[A-Z0-9]+$/'],
+            'color_hex' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'color_name' => ['nullable', 'string', 'max:60'],
+            'logo_url' => ['nullable', 'string', 'max:500', 'url:https'],
+            'registered_at' => ['required', 'date', 'before_or_equal:today'],
+            'source' => ['required', 'string', 'max:300'],
+            'leader' => ['required', 'array'],
+            ...$member('leader'),
+            'co_leaders' => ['nullable', 'array', "max:{$maxCo}"],
+            'co_leaders.*' => ['array'],
+            ...$member('co_leaders.*'),
+            'members' => ['nullable', 'array'],
+            'members.*' => ['array'],
+            ...$member('members.*'),
+            'reserves' => ['nullable', 'array', 'max:'.$slots['reserve']],
+            'reserves.*' => ['array'],
+            ...$member('reserves.*'),
+        ], self::MESSAGES + [
+            'name.max' => 'ชื่อต้องยาวไม่เกิน 40 ตัวอักษร',
+            'short_name.regex' => 'ชื่อย่อต้องเป็นตัวพิมพ์ใหญ่ภาษาอังกฤษหรือตัวเลขเท่านั้น ไม่เกิน 4 ตัวอักษร',
+            'color_hex.regex' => 'โค้ดสีต้องเป็นรูปแบบ #RRGGBB',
+            'logo_url.url' => 'ลิงก์โลโก้ต้องขึ้นต้นด้วย https://',
+            'registered_at.required' => 'กรุณาระบุวันที่ขึ้นทะเบียนเดิม',
+            'registered_at.before_or_equal' => 'วันที่ขึ้นทะเบียนเดิมต้องไม่เป็นวันในอนาคต',
+            'source.required' => 'กรุณาระบุที่มาของข้อมูล (เช่น ย้ายจากเซิร์ฟเวอร์เดิม)',
+            'co_leaders.max' => $type === GroupType::Family ? 'ครอบครัวมีรองได้ 1 คน' : "แก๊งมีรองได้ไม่เกิน {$maxCo} คน",
+            'reserves.max' => $slots['reserve'] > 0 ? "ตัวสำรองได้ไม่เกิน {$slots['reserve']} คน" : 'กลุ่มประเภทนี้ไม่มีตัวสำรอง',
+            '*.discord_id.regex' => 'Discord ID ต้องเป็นตัวเลข 17-20 หลัก',
+            '*.ic_phone.regex' => 'เบอร์ IC ไม่ถูกต้อง',
+        ]);
+
+        // ชื่อต้องไม่ซ้ำกับทะเบียนที่มีอยู่ (รวมที่ยุบแล้ว) · ถ้าใส่สี ต้องมีทั้งโค้ดและชื่อสี
+        $name = trim($data['name']);
+        if (Group::withTrashed()->whereRaw('lower(name) = ?', [mb_strtolower($name)])->exists()) {
+            throw ValidationException::withMessages(['name' => 'ชื่อนี้ถูกใช้แล้ว']);
+        }
+        if (! empty($data['color_hex']) !== ! empty($data['color_name'])) {
+            throw ValidationException::withMessages(['color_name' => 'กรุณาใส่โค้ดสีและชื่อสีให้ครบทั้งคู่ (หรือเว้นว่างทั้งคู่)']);
+        }
+
+        $main = [['p' => $data['leader'], 'pos' => MemberPosition::Leader, 'reserve' => false]];
+        foreach ($data['co_leaders'] ?? [] as $p) {
+            $main[] = ['p' => $p, 'pos' => MemberPosition::CoLeader, 'reserve' => false];
+        }
+        foreach ($data['members'] ?? [] as $p) {
+            $main[] = ['p' => $p, 'pos' => MemberPosition::Member, 'reserve' => false];
+        }
+        foreach ($data['reserves'] ?? [] as $p) {
+            $main[] = ['p' => $p, 'pos' => MemberPosition::Member, 'reserve' => true];
+        }
+        if (count(array_filter($main, fn ($m) => ! $m['reserve'])) > $slots['main']) {
+            throw ValidationException::withMessages(['members' => "สมาชิกตัวจริงเกินช่อง (ไม่เกิน {$slots['main']} คน)"]);
+        }
+        $names = array_map(fn ($m) => mb_strtolower(trim($m['p']['ic_name'])), $main);
+        if (count(array_unique($names)) !== count($names)) {
+            throw ValidationException::withMessages(['members' => 'มีชื่อสมาชิกซ้ำกัน']);
+        }
+
+        $registered = \Illuminate\Support\Carbon::parse($data['registered_at'], config('council.report_timezone'))->startOfDay()->utc();
+        $source = trim($data['source']);
+
+        $group = DB::transaction(function () use ($data, $type, $isLady, $request, $main, $name, $registered, $source) {
+            $group = Group::create([
+                'type' => $type,
+                'is_lady' => $isLady,
+                'name' => $name,
+                'short_name' => $data['short_name'] ?? null,
+                'color_hex' => ! empty($data['color_hex']) ? strtoupper($data['color_hex']) : null,
+                'color_name' => $data['color_name'] ?? null,
+                'logo_path' => null,
+                'logo_url' => $data['logo_url'] ?? null,
+                'protect_requested' => false,
+                'status' => GroupStatus::Normal,
+                'status_changed_at' => now(),
+                'registered_at' => $registered,
+            ]);
+
+            $group->statusHistory()->create([
+                'status' => GroupStatus::Normal,
+                'reason' => 'นำเข้าทะเบียนเดิม: '.$source,
+                'changed_by' => $request->user()->id,
+                'started_at' => $registered,
+            ]);
+
+            foreach ($main as $m) {
+                $group->members()->create([
+                    'character_name' => trim($m['p']['ic_name']),
+                    'ic_phone' => $m['p']['ic_phone'] ?? null,
+                    'discord_id' => $m['p']['discord_id'] ?? null,
+                    'position' => $m['pos'],
+                    'is_reserve' => $m['reserve'],
+                    'joined_at' => $registered,
+                ]);
+            }
+
+            activity('groups')->causedBy($request->user())->performedOn($group)->event('created')
+                ->withProperties(['import_source' => $source, 'registered_at' => $registered->toIso8601String(), 'members' => count($main)])
+                ->log("นำเข้าทะเบียนเดิม {$group->name}");
+
+            return $group;
+        });
+
+        return (new GroupAdminResource($this->full($group)))->response()->setStatusCode(201);
+    }
+
     /** ดาวน์โหลดไฟล์ส่วนตัวของกลุ่ม (ชุดชั่วคราว PNG / ไฟล์ชุด ZIP) */
     /** เบอร์สีชุดชั่วคราวที่ถูกใช้ไปแล้ววันนี้ (เวลาไทย) ไว้ให้หน้าขึ้นทะเบียนปิดเบอร์ที่ซ้ำ */
     public function tempColors(): \Illuminate\Http\JsonResponse

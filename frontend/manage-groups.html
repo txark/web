@@ -44,6 +44,10 @@
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7h13l-3-3M17 17H4l3 3"/></svg>
               สร้างธุรกรรม
             </button>
+            <button type="button" class="rg-ghost-btn" @click="openImport()" title="กรอกข้อมูลแก๊ง/ครอบครัวที่มีอยู่แล้วจากที่อื่น">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0-4-4m4 4 4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+              นำเข้าทะเบียนเดิม
+            </button>
             <button type="button" class="rg-primary-btn" @click="openCreate()">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
               ขึ้นทะเบียนใหม่
@@ -815,6 +819,108 @@
         </ul>
       </div>
     </div>
+  </div>
+
+  <!-- ═════════ ป๊อปอัปนำเข้าทะเบียนเดิม (ขึ้นทะเบียนแบบสภา) ═════════ -->
+  <div x-show="showImport" x-cloak class="reg-backdrop" role="dialog" aria-modal="true" aria-labelledby="imp-title" @keydown.escape.window="closeImport()" @mousedown.self="closeImport()">
+    <form class="reg-modal ds-modal" @submit.prevent="importGroup()" novalidate>
+      <header class="reg-head">
+        <h2 id="imp-title" class="reg-title">นำเข้าทะเบียนเดิม (ขึ้นทะเบียนแบบสภา)</h2>
+        <button type="button" class="reg-close" aria-label="ปิด" @click="closeImport()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </header>
+
+      <div class="reg-body">
+        <p class="note-box">สำหรับแก๊ง/ครอบครัวที่มีทะเบียนอยู่แล้วจากที่อื่น · ระบุวันที่ขึ้นทะเบียนเดิมย้อนหลังได้ ไม่ต้องเลือกเบอร์สีชุดชั่วคราวหรือ Protect และไม่บังคับจำนวนสมาชิกขั้นต่ำ · ทุกรายการบันทึกที่มาของข้อมูลในบันทึกกิจกรรม</p>
+        <p class="penalty-box" x-show="imp.err" x-text="imp.err" role="alert"></p>
+
+        <div class="ds-grid">
+          <div class="reg-field">
+            <label class="reg-label" for="imp-type">ประเภท <span class="text-accent">*</span></label>
+            <select id="imp-type" class="input" x-model="imp.type">
+              <option value="gang">แก๊ง</option>
+              <option value="family">ครอบครัว</option>
+            </select>
+          </div>
+          <div class="reg-field">
+            <label class="reg-label" for="imp-name">ชื่อ <span class="text-accent">*</span></label>
+            <input id="imp-name" class="input" x-model="imp.name" maxlength="40" autocomplete="off">
+          </div>
+        </div>
+
+        <label class="ds-check" x-show="imp.type === 'gang'">
+          <input type="checkbox" x-model="imp.is_lady">
+          <span>แก๊งหญิงล้วน</span>
+        </label>
+
+        <div class="ds-grid">
+          <div class="reg-field">
+            <label class="reg-label" for="imp-date">วันที่ขึ้นทะเบียนเดิม <span class="text-accent">*</span></label>
+            <input id="imp-date" type="date" class="input" x-model="imp.registered_at" :max="new Date().toISOString().slice(0, 10)">
+          </div>
+          <div class="reg-field">
+            <label class="reg-label" for="imp-source">ที่มาของข้อมูล <span class="text-accent">*</span></label>
+            <input id="imp-source" class="input" x-model="imp.source" maxlength="300" placeholder="เช่น ย้ายจากเซิร์ฟเวอร์เดิม / จากเอกสารเก่า" autocomplete="off">
+          </div>
+        </div>
+
+        <div class="ds-grid">
+          <div class="reg-field">
+            <label class="reg-label" for="imp-short">ชื่อย่อ <span class="reg-hint">(ไม่บังคับ · A-Z 0-9 ไม่เกิน 4 ตัว)</span></label>
+            <input id="imp-short" class="input" x-model="imp.short_name" maxlength="4" autocomplete="off" @input="imp.short_name = imp.short_name.toUpperCase()">
+          </div>
+          <div class="reg-field">
+            <label class="reg-label" for="imp-logo">ลิงก์โลโก้ <span class="reg-hint">(ไม่บังคับ · https://)</span></label>
+            <input id="imp-logo" class="input" x-model="imp.logo_url" maxlength="500" autocomplete="off">
+          </div>
+        </div>
+
+        <div class="ds-grid">
+          <div class="reg-field">
+            <label class="reg-label" for="imp-hex">โค้ดสี <span class="reg-hint">(ไม่บังคับ · #RRGGBB)</span></label>
+            <input id="imp-hex" class="input" x-model="imp.color_hex" maxlength="7" placeholder="#FF0000" autocomplete="off">
+          </div>
+          <div class="reg-field">
+            <label class="reg-label" for="imp-cname">ชื่อสี</label>
+            <input id="imp-cname" class="input" x-model="imp.color_name" maxlength="60" autocomplete="off">
+          </div>
+        </div>
+
+        <h3 class="sm-sec"><em>01</em>หัวหน้า</h3>
+        <div class="ds-grid">
+          <div class="reg-field">
+            <label class="reg-label" for="imp-l-name">ชื่อ IC หัวหน้า <span class="text-accent">*</span></label>
+            <input id="imp-l-name" class="input" x-model="imp.leader.ic_name" maxlength="120" autocomplete="off">
+          </div>
+          <div class="reg-field">
+            <label class="reg-label" for="imp-l-dc">Discord ID หัวหน้า <span class="reg-hint">(ไม่บังคับ · ตัวเลข 17-20 หลัก)</span></label>
+            <input id="imp-l-dc" class="input" x-model="imp.leader.discord_id" inputmode="numeric" maxlength="20" autocomplete="off">
+          </div>
+        </div>
+
+        <h3 class="sm-sec"><em>02</em>สมาชิกอื่น <span class="reg-hint">(บรรทัดละ 1 คน · พิมพ์ "ชื่อ IC" หรือ "ชื่อ IC, Discord ID")</span></h3>
+        <div class="ds-grid">
+          <div class="reg-field">
+            <label class="reg-label" for="imp-co">รองหัวหน้า</label>
+            <textarea id="imp-co" rows="3" class="input" x-model="imp.co_leaders"></textarea>
+          </div>
+          <div class="reg-field">
+            <label class="reg-label" for="imp-mem">สมาชิกตัวจริง</label>
+            <textarea id="imp-mem" rows="3" class="input" x-model="imp.members"></textarea>
+          </div>
+        </div>
+        <div class="reg-field" x-show="imp.type === 'gang'">
+          <label class="reg-label" for="imp-res">ตัวสำรอง</label>
+          <textarea id="imp-res" rows="2" class="input" x-model="imp.reserves"></textarea>
+        </div>
+      </div>
+
+      <footer class="reg-foot">
+        <button type="button" class="btn-outline" @click="closeImport()">ยกเลิก</button>
+        <button type="submit" class="btn-solid" :disabled="importing" x-text="importing ? 'กำลังบันทึก...' : 'นำเข้าทะเบียน'"></button>
+      </footer>
+    </form>
   </div>
 
   <!-- ═════════ ป๊อปอัปขึ้นทะเบียน ═════════ -->

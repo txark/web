@@ -154,6 +154,7 @@ Route::middleware(['auth:sanctum', 'active', 'throttle:writes'])->group(function
     Route::prefix('council/groups')->middleware(['role:member', 'duty', 'log.access:จัดการแก๊ง/ครอบครัว'])->group(function () {
         Route::get('/', [CouncilGroupController::class, 'index']);
         Route::post('/', [CouncilGroupController::class, 'store']);
+        Route::post('import', [CouncilGroupController::class, 'import']); // นำเข้าทะเบียนเดิม (ขึ้นทะเบียนแบบสภา)
         Route::get('temp-colors', [CouncilGroupController::class, 'tempColors']); // เบอร์สีชุดชั่วคราวที่ถูกใช้ไปแล้ววันนี้
         Route::get('{group}', [CouncilGroupController::class, 'show']);
         Route::get('{group}/files/{kind}', [CouncilGroupController::class, 'file']);
