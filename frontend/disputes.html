@@ -149,10 +149,11 @@
 
           <div class="ds-grid">
             <div class="reg-field">
-              <label class="reg-label" for="ds-f-status">สถานะ</label>
-              <select id="ds-f-status" class="input" x-model="form.status">
-                <template x-for="s in statuses" :key="s.value"><option :value="s.value" x-text="s.label"></option></template>
-              </select>
+              <p class="reg-label">สถานะ</p>
+              <label class="ds-check">
+                <input type="checkbox" :checked="form.status === 'closed'" @change="form.status = $event.target.checked ? 'closed' : 'open'">
+                <span>จบแล้ว <small class="text-muted" x-text="form.status === 'closed' ? '· ปิดเรื่องแล้ว' : '· ยังไม่จบ'"></small></span>
+              </label>
             </div>
           </div>
 

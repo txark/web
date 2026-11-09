@@ -8658,3 +8658,6 @@ html.has-side .pub .pub-toolbar { margin-top: 1.25rem; }
 .ds-res:hover, .ds-res:focus-visible { background: var(--accent-soft); }
 .ds-res b { display: block; font-size: 0.9rem; }
 .ds-res small { display: block; color: var(--muted); font-size: 0.76rem; }
+
+.ds-check { display: flex; align-items: center; gap: 0.7rem; min-height: 2.75rem; padding: 0 0.9rem; border: 1px solid var(--line); border-radius: 0.8rem; cursor: pointer; }
+.ds-check input { width: 1.1rem; height: 1.1rem; }
