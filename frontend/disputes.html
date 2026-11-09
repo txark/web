@@ -196,14 +196,30 @@
 
           <div class="ds-grid">
             <div class="reg-field">
-              <label class="reg-label" for="ds-f-img">เพิ่มภาพหลักฐาน <span class="reg-hint">(เลือกได้หลายภาพ · PNG JPG GIF WEBP ไม่เกิน 10 MB)</span></label>
-              <input id="ds-f-img" type="file" class="input" accept="image/png,image/jpeg,image/gif,image/webp" multiple @change="form.images = [...$event.target.files]">
-              <p class="mt-1 text-xs text-muted" x-show="form.images.length" x-text="form.images.length + ' ภาพที่จะแนบ'"></p>
+              <p class="reg-label">ภาพหลักฐาน</p>
+              <label class="ds-drop">
+                <i class="ic" data-icon="image" aria-hidden="true"></i>
+                <span><b>เลือกภาพ</b><small>PNG JPG GIF WEBP · ไม่เกิน 10 MB ต่อภาพ</small></span>
+                <input type="file" class="sr-only" accept="image/png,image/jpeg,image/gif,image/webp" multiple @change="addFiles('images', $event)">
+              </label>
+              <ul class="ds-picked" x-show="form.images.length">
+                <template x-for="(f, i) in form.images" :key="f.name + i">
+                  <li><span class="truncate" x-text="f.name"></span><small x-text="size(f.size)"></small><button type="button" @click="form.images.splice(i, 1)" :aria-label="'เอาออก ' + f.name">✕</button></li>
+                </template>
+              </ul>
             </div>
             <div class="reg-field">
-              <label class="reg-label" for="ds-f-vid">เพิ่มวิดีโอหลักฐาน <span class="reg-hint">(เลือกได้หลายไฟล์ · MP4 MOV WEBM ไม่เกิน 100 MB)</span></label>
-              <input id="ds-f-vid" type="file" class="input" accept="video/mp4,video/quicktime,video/webm" multiple @change="form.videos = [...$event.target.files]">
-              <p class="mt-1 text-xs text-muted" x-show="form.videos.length" x-text="form.videos.length + ' วิดีโอที่จะแนบ'"></p>
+              <p class="reg-label">วิดีโอหลักฐาน</p>
+              <label class="ds-drop">
+                <i class="ic" data-icon="video" aria-hidden="true"></i>
+                <span><b>เลือกวิดีโอ</b><small>MP4 MOV WEBM · ไม่เกิน 100 MB ต่อไฟล์</small></span>
+                <input type="file" class="sr-only" accept="video/mp4,video/quicktime,video/webm" multiple @change="addFiles('videos', $event)">
+              </label>
+              <ul class="ds-picked" x-show="form.videos.length">
+                <template x-for="(f, i) in form.videos" :key="f.name + i">
+                  <li><span class="truncate" x-text="f.name"></span><small x-text="size(f.size)"></small><button type="button" @click="form.videos.splice(i, 1)" :aria-label="'เอาออก ' + f.name">✕</button></li>
+                </template>
+              </ul>
             </div>
           </div>
         </div>

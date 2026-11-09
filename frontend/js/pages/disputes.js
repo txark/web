@@ -113,6 +113,29 @@ function disputesPage() {
       return this.council.filter((c) => !this.form.council_ids.includes(c.id) && (!q || (c.name + ' ' + c.role_label).toLowerCase().includes(q)));
     },
 
+    // เลือกไฟล์เพิ่มได้หลายครั้ง (ต่อท้ายของเดิม) · ตรวจขนาดก่อนส่งเพื่อบอกผู้ใช้ทันที
+    addFiles(field, ev) {
+      const max = field === 'images' ? 10 : 100;
+      const f = this.form;
+      f.err = '';
+      for (const file of ev.target.files) {
+        if (file.size > max * 1024 * 1024) {
+          f.err = `ไฟล์ "${file.name}" ใหญ่เกินไป (ไม่เกิน ${max} MB)`;
+          continue;
+        }
+        if (f[field].length >= 10) {
+          f.err = 'แนบได้ไม่เกิน 10 ไฟล์ต่อครั้ง';
+          break;
+        }
+        f[field].push(file);
+      }
+      ev.target.value = '';
+    },
+
+    size(n) {
+      return n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+    },
+
     nameOf(list, id) {
       const x = list.find((i) => i.id === id);
       return x ? x.name : '#' + id;
